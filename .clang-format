@@ -3,7 +3,6 @@
   AccessModifierOffset: '-2'
   AlignTrailingComments: 'true'
   AllowAllParametersOfDeclarationOnNextLine: 'false'
-  AlwaysBreakTemplateDeclarations: 'No'
   BreakBeforeBraces: Attach
   ColumnLimit: '100'
   ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
@@ -13,4 +12,5 @@
   NamespaceIndentation: All
   BreakBeforeBinaryOperators: All
   BreakBeforeTernaryOperators: 'true'
+  AlwaysBreakTemplateDeclarations: 'Yes'
 ...
