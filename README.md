@@ -7,9 +7,9 @@
 
 PawnDB is an open source embedded DBMS that is specifically designed to meet the most rigid safety requirements from special industries such as aerospace and automotive.
 
-It is designed based on the [Byzantine Fault Tolerant (BFT)](https://en.wikipedia.org/wiki/Byzantine_fault) algorithm to promise the maximum data reliability. You can have multiple devices running the same PawnDB software on the same IP subnet. Each PawnDB device works as a node. For any transaction the data will be committed only when more than half nodes reach a consensus at the calculated results, those nodes who fails to consent are forced to be synchronized afterwards.
+It is designed based on the [Byzantine Fault Tolerant (BFT)](https://en.wikipedia.org/wiki/Byzantine_fault) algorithm to promise the maximum data reliability. You can have multiple devices running the same PawnDB software on the same IP subnet. Each PawnDB device works as a node. For any transaction the data will be committed only when more than half nodes reach a consensus at the calculated results, those nodes who fails to consent are forced to synchronize with the committed afterwards.
 
-Compared to other modern database management systems, the functions PawnDB provides are pretty limited. Despite being a DBMS, PawnDB only has minimal components so that application developers can directly add it to their application software.
+Despite being a DBMS, PawnDB only has minimal components so that application developers can directly add it to their application software.
 
 ## Features
 
