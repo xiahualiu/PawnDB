@@ -1,78 +1,65 @@
-cmake_minimum_required(VERSION 3.14...3.22)
+# --- cmake minimum version ---
+cmake_minimum_required(VERSION 3.14)
 
-# ---- Project ----
+# add this options before PROJECT keyword
+set(CMAKE_DISABLE_SOURCE_CHANGES ON)
+set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-# Note: update this to your new project's name and version
+# ---- Main Project ----
 project(
-  Greeter
-  VERSION 1.0
+  PawnDB
+  VERSION 0.1
   LANGUAGES CXX
 )
 
-# ---- Include guards ----
+# ---- Add source files ----
+file(GLOB_RECURSE lib_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
+file(GLOB_RECURSE lib_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
-if(PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
-  message(
-    FATAL_ERROR
-      "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there."
+# ---- Create library ----
+add_library(${PROJECT_NAME} STATIC ${lib_sources})
+
+# C++ properties
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
+
+# Enforce stricter compilation
+add_compile_options(-Wall -Wpedantic -Wextra -Werror)
+
+# include paths
+target_include_directories(
+  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+                         $<INSTALL_INTERFACE:include/>
+)
+
+# Set Public header property
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${lib_headers})
+
+# Install to system default path minimum
+string(TOLOWER "${PROJECT_NAME}" LOWERCASE_PROJECT_NAME)
+install(
+  TARGETS ${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  PUBLIC_HEADER DESTINATION include/${LOWERCASE_PROJECT_NAME}
+)
+
+# --- Configure cppcheck ---
+find_program(CPPCHECK_PROGRAM NAMES cppcheck)
+if(CPPCHECK_PROGRAM)
+  set(CMAKE_CXX_CPPCHECK "cppcheck")
+  list(APPEND CMAKE_CXX_CPPCHECK 
+    "--inline-suppr"
+    "--force"
+    "--suppressions-list=${CMAKE_SOURCE_DIR}/CppCheckSuppressions.txt"
   )
 endif()
 
-# ---- Add dependencies via CPM ----
-# see https://github.com/TheLartians/CPM.cmake for more info
+# --- Configure ccache ---
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+endif()
 
-include(cmake/CPM.cmake)
-
-# PackageProject.cmake will be used to make our target installable
-CPMAddPackage("gh:TheLartians/PackageProject.cmake@1.8.0")
-
-CPMAddPackage(
-  NAME fmt
-  GIT_TAG 10.2.1
-  GITHUB_REPOSITORY fmtlib/fmt
-  OPTIONS "FMT_INSTALL YES" # create an installable target
-)
-
-# ---- Add source files ----
-
-# Note: globbing sources is considered bad practice as CMake's generators may not detect new files
-# automatically. Keep that in mind when changing files, or explicitly mention them here.
-file(GLOB_RECURSE headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
-file(GLOB_RECURSE sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
-
-# ---- Create library ----
-
-# Note: for header-only libraries change all PUBLIC flags to INTERFACE and create an interface
-# target: add_library(${PROJECT_NAME} INTERFACE)
-add_library(${PROJECT_NAME} ${headers} ${sources})
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
-
-# being a cross-platform target, we enforce standards conformance on MSVC
-target_compile_options(${PROJECT_NAME} PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
-
-# Link dependencies
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
-
-target_include_directories(
-  ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
-)
-
-# ---- Create an installable target ----
-# this allows users to install and find the library via `find_package()`.
-
-# the location where the project's version header will be placed should match the project's regular
-# header paths
-string(TOLOWER ${PROJECT_NAME}/version.h VERSION_HEADER_LOCATION)
-
-packageProject(
-  NAME ${PROJECT_NAME}
-  VERSION ${PROJECT_VERSION}
-  NAMESPACE ${PROJECT_NAME}
-  BINARY_DIR ${PROJECT_BINARY_DIR}
-  INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include
-  INCLUDE_DESTINATION include/${PROJECT_NAME}-${PROJECT_VERSION}
-  VERSION_HEADER "${VERSION_HEADER_LOCATION}"
-  COMPATIBILITY SameMajorVersion
-  DEPENDENCIES "fmt 9.1.0"
-)
+# --- Include standalone and test ---
+add_subdirectory(standalone EXCLUDE_FROM_ALL)
+add_subdirectory(test EXCLUDE_FROM_ALL)
+add_subdirectory(style EXCLUDE_FROM_ALL)
