@@ -20,10 +20,10 @@ jobs:
           submodules: 'true'
 
       - name: configure
-        run: cmake -Sstandalone -Bbuild -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build
-        run: cmake --build build -j4
+        run: cmake --build build --target PawnDB_App -j4
 
       - name: run
-        run: ./build/PawnDB_App
+        run: ./build/standalone/PawnDB_App

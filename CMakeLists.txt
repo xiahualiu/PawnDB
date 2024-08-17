@@ -35,10 +35,11 @@ target_include_directories(
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${lib_headers})
 
 # Install to system default path minimum
+string(TOLOWER "${PROJECT_NAME}" LOWERCASE_PROJECT_NAME)
 install(
   TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
-  PUBLIC_HEADER DESTINATION include
+  PUBLIC_HEADER DESTINATION include/${LOWERCASE_PROJECT_NAME}
 )
 
 # --- Configure cppcheck ---
@@ -46,6 +47,7 @@ find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
 if(CMAKE_CXX_CPPCHECK)
   list(APPEND CMAKE_CXX_CPPCHECK 
     "--inline-suppr"
+    "--force"
     "--suppressions-list=${CMAKE_SOURCE_DIR}/CppCheckSuppressions.txt"
   )
 endif()

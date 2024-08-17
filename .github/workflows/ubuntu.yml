@@ -20,12 +20,12 @@ jobs:
           submodules: 'true'
 
       - name: configure
-        run: cmake -Stest -Bbuild -DCMAKE_BUILD_TYPE=Debug
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build
-        run: cmake --build build -j4
+        run: cmake --build build --target PawnDB_Tests -j4
 
       - name: test
         run: |
-          cd build
+          cd build/test/
           ctest --build-config Debug
