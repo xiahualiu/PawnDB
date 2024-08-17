@@ -3,11 +3,9 @@ name: Standalone
 on:
   push:
     branches:
-      - master
       - main
   pull_request:
     branches:
-      - master
       - main
 
 jobs:
@@ -18,12 +16,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'true'
+      
+      - name: install required packages
+        run: |
+          sudo apt-get update && sudo apt-get install -y cppcheck ccache 
 
       - name: configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
-      - name: build
+      - name: build app
         run: cmake --build build --target PawnDB_App -j4
 
-      - name: run
+      - name: run app
         run: ./build/standalone/PawnDB_App
