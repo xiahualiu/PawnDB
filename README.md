@@ -47,8 +47,8 @@ Depending on your preference, you may install one of the following build systems
 Use the following command to build and run the executable target.
 
 ```bash
-cmake -S standalone -B build/standalone
-cmake --build build/standalone
+cmake -S . -B build
+cmake --build build --target PawnDB_App
 ./build/standalone/PawnDB_App
 ```
 
@@ -57,23 +57,21 @@ cmake --build build/standalone
 Use the following commands from the project's root directory to run the test suite.
 
 ```bash
-cmake -S test -B build/test
-cmake --build build/test
+cmake -S . -B build
+cmake --build build --target PawnDB_Tests
 cd build/test
 ctest
 # or simply call the executable: 
 ./PawnDB_Tests
 ```
 
-### Run clang-format
+### Check clang-format
 
 ```bash
-cmake -S style -B build/style
-
-# view changes
-cmake --build build/style --target check-clang-format
+cmake -S . -B build
+cmake --build build --target check-clang-format
 ```
 
-### `ccache`
+### Enable `ccache`
 
 It is enable by default.
