@@ -1,3 +1,7 @@
+# --- cmake minimum version ---
+cmake_minimum_required(VERSION 3.14)
+
+# --- Standalone App ---
 project(PawnDB_App LANGUAGES CXX)
 
 # ---- Create standalone executable ----

@@ -1,17 +1,14 @@
 # --- cmake minimum version ---
 cmake_minimum_required(VERSION 3.14)
 
-# --- Debug
-#set(CMAKE_VERBOSE_MAKEFILE ON)
-
 # add this options before PROJECT keyword
 set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
-# ---- Project ----
+# ---- Main Project ----
 project(
   PawnDB
-  VERSION 1.0
+  VERSION 0.1
   LANGUAGES CXX
 )
 
@@ -38,10 +35,28 @@ target_include_directories(
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${lib_headers})
 
 # Install to system default path minimum
-install(TARGETS ${PROJECT_NAME}
-        LIBRARY DESTINATION lib
-        PUBLIC_HEADER DESTINATION include)
+install(
+  TARGETS ${PROJECT_NAME}
+  LIBRARY DESTINATION lib
+  PUBLIC_HEADER DESTINATION include
+)
+
+# --- Configure cppcheck ---
+find_program(CMAKE_CXX_CPPCHECK NAMES cppcheck)
+if(CMAKE_CXX_CPPCHECK)
+  list(APPEND CMAKE_CXX_CPPCHECK 
+    "--inline-suppr"
+    "--suppressions-list=${CMAKE_SOURCE_DIR}/CppCheckSuppressions.txt"
+  )
+endif()
+
+# --- Configure ccache ---
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
+endif()
 
 # --- Include standalone and test ---
-add_subdirectory(standalone)
-add_subdirectory(test)
+add_subdirectory(standalone EXCLUDE_FROM_ALL)
+add_subdirectory(test EXCLUDE_FROM_ALL)
+add_subdirectory(style EXCLUDE_FROM_ALL)

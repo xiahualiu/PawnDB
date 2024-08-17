@@ -10,21 +10,12 @@ on:
       - master
       - main
 
-env:
-  CTEST_OUTPUT_ON_FAILURE: 1
-  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm_modules
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/cache@v3
-        with:
-          path: "**/cpm_modules"
-          key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+      - uses: actions/checkout@v4
 
       - name: configure
         run: cmake -Stest -Bbuild -DCMAKE_BUILD_TYPE=Debug
