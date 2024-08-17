@@ -1,6 +1,7 @@
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Ubuntu/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
-[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Style/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
+[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Standalone/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Install/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
+[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Style/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 
 # PawnDB (DO NOT USE, Still WIP)
 
