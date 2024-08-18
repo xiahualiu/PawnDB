@@ -1,0 +1,27 @@
+name: AArch64
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: aarch64
+          distro: ubuntu_latest
+          install: apt-get update && apt-get install -y cppcheck ccache cmake build-essential
+          run: |
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+            cmake --build build --target pawndb -j2

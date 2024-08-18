@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # --- Test target ---
-project(PawnDB_Tests LANGUAGES CXX)
+project(pawndb_tests LANGUAGES CXX)
 
 # --- Add Doctest ---
 add_subdirectory(doctest)
