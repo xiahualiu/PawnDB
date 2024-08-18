@@ -18,9 +18,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # Include and link from system path
 if(NOT TEST_INSTALLED_VERSION)
-  target_link_libraries(${PROJECT_NAME} PRIVATE PawnDB doctest)
+  target_link_libraries(${PROJECT_NAME} PRIVATE pawndb doctest)
 else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE doctest)
+  find_library(libPath pawndb)
+  target_link_libraries(${PROJECT_NAME} PRIVATE ${libPath} doctest)
 endif()
 
 # ---- Configure CTest ----

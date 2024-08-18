@@ -7,7 +7,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 # ---- Main Project ----
 project(
-  PawnDB
+  pawndb
   VERSION 0.1
   LANGUAGES CXX
 )
@@ -31,16 +31,13 @@ target_include_directories(
                          $<INSTALL_INTERFACE:include/>
 )
 
-# Set Public header property
-set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER ${lib_headers})
-
 # Install to system default path minimum
-string(TOLOWER "${PROJECT_NAME}" LOWERCASE_PROJECT_NAME)
 install(
   TARGETS ${PROJECT_NAME}
   LIBRARY DESTINATION lib
-  PUBLIC_HEADER DESTINATION include/${LOWERCASE_PROJECT_NAME}
 )
+
+install(FILES ${lib_headers} DESTINATION include/${PROJECT_NAME})
 
 # --- Configure cppcheck ---
 find_program(CPPCHECK_PROGRAM NAMES cppcheck)
