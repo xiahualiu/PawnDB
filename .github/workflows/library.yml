@@ -19,7 +19,7 @@ jobs:
         with:
           submodules: 'true'
       
-      - uses: actions/cache@4
+      - uses: actions/cache@3
         with:
           path: ~/.cache/ccache
           key: ${{ runner.os }}-library
