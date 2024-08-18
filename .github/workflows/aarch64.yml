@@ -17,11 +17,6 @@ jobs:
         with:
           submodules: 'true'
 
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ccache
-          key: ${{ runner.os }}-aarch64
-
       - uses: uraimo/run-on-arch-action@v2
         with:
           arch: aarch64
@@ -29,4 +24,6 @@ jobs:
           install: apt-get update && apt-get install -y cppcheck ccache cmake build-essential
           run: |
             cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-            cmake --build build --target pawndb -j4
+            cmake --build build --target pawndb_tests -j2
+            cd build/test/
+            ctest --build-config Debug

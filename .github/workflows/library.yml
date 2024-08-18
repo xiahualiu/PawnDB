@@ -32,7 +32,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build test app
-        run: cmake --build build --target pawndb_tests -j4
+        run: cmake --build build --target pawndb_tests -j2
 
       - name: run test app
         run: |

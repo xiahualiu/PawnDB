@@ -30,7 +30,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build app
-        run: cmake --build build --target pawndb_app -j4
+        run: cmake --build build --target pawndb_app -j2
 
       - name: run app
         run: ./build/standalone/pawndb_app

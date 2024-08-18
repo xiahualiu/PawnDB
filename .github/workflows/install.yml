@@ -36,7 +36,7 @@ jobs:
         run: cmake -S . -B build -DTEST_INSTALLED_VERSION=1
 
       - name: build
-        run: cmake --build build --target pawndb_tests -j4
+        run: cmake --build build --target pawndb_tests -j2
 
       - name: test
         run: |
