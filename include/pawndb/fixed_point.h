@@ -2,6 +2,7 @@
 #define FIXED_POINT_H
 
 #include <cstdint>
+#include <iterator>
 
 #include "pawndb/base_type.h"
 
@@ -21,8 +22,15 @@ namespace PawnDB {
     FixedPoint(bool&& is_neg, std::uint16_t&& left, std::uint16_t&& right);
 
     inline std::uint32_t check_sum() const override { return r_part + (l_part << 16) + sign; }
-
     inline void update_check_sum() { this->checksum = check_sum(); }
+
+    bool operator==(const FixedPoint& f) const {
+      return (l_part == f.l_part && r_part == f.r_part && sign == f.sign);
+    }
+
+    bool operator!=(const FixedPoint& f) const {
+      return (l_part != f.l_part || r_part != f.r_part || sign != f.sign);
+    }
 
     std::uint8_t sign;
     std::uint16_t l_part;
