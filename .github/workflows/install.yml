@@ -17,6 +17,11 @@ jobs:
         with:
           submodules: 'true'
 
+      - uses: actions/cache@4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-install
+
       - name: install required packages
         run: |
           sudo apt-get update && sudo apt-get install -y cppcheck ccache
@@ -31,7 +36,7 @@ jobs:
         run: cmake -S . -B build -DTEST_INSTALLED_VERSION=1
 
       - name: build
-        run: cmake --build build --target PawnDB_Tests -j4
+        run: cmake --build build --target pawndb_tests -j4
 
       - name: test
         run: |

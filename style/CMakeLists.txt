@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.14)
 
 # --- Style target ---
-project(PawnDB_Style LANGUAGES CXX)
+project(pawndb_style LANGUAGES CXX)
 
 # --- Find clang-format ---
 find_program(CLANG_FORMAT_PROGRAM NAMES clang-format)

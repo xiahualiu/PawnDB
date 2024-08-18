@@ -1,4 +1,4 @@
-name: Ubuntu
+name: Library
 
 on:
   push:
@@ -19,6 +19,11 @@ jobs:
         with:
           submodules: 'true'
       
+      - uses: actions/cache@4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-library
+      
       - name: install required packages
         run: |
           sudo apt-get update && sudo apt-get install -y cppcheck ccache
@@ -27,7 +32,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build test app
-        run: cmake --build build --target PawnDB_Tests -j4
+        run: cmake --build build --target pawndb_tests -j4
 
       - name: run test app
         run: |

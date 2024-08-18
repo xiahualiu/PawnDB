@@ -17,6 +17,11 @@ jobs:
         with:
           submodules: 'true'
       
+      - uses: actions/cache@4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-standalone
+      
       - name: install required packages
         run: |
           sudo apt-get update && sudo apt-get install -y cppcheck ccache 
@@ -25,7 +30,7 @@ jobs:
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 
       - name: build app
-        run: cmake --build build --target PawnDB_App -j4
+        run: cmake --build build --target pawndb_app -j4
 
       - name: run app
-        run: ./build/standalone/PawnDB_App
+        run: ./build/standalone/pawndb_app

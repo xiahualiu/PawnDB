@@ -1,4 +1,4 @@
-[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Ubuntu/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
+[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Library/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Standalone/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Install/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Style/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
@@ -49,8 +49,8 @@ Use the following command to build and run the executable target.
 
 ```bash
 cmake -S . -B build
-cmake --build build --target PawnDB_App
-./build/standalone/PawnDB_App
+cmake --build build --target pawndb_app
+./build/standalone/pawndb_app
 ```
 
 ### Build and run test suite
@@ -59,11 +59,11 @@ Use the following commands from the project's root directory to run the test sui
 
 ```bash
 cmake -S . -B build
-cmake --build build --target PawnDB_Tests
+cmake --build build --target pawndb_tests
 cd build/test
 ctest
 # or simply call the executable: 
-./PawnDB_Tests
+./pawndb_tests
 ```
 
 ### Check clang-format
