@@ -14,6 +14,7 @@ Despite being a DBMS, PawnDB only has minimal components so that application dev
 ## Features
 
 - Whole database (tables & indexes) are stored **in RAM**. Most embedded systems are designed to run for extensive time (sometimes maybe >10 years), the disks (or flash chips) can easily get worn out if we contantly paging out data from RAM. In PawnDB, tables & indexes are statically allocated in RAM, meaning you need to define the tuple structure as well as the size of the table in your code. Besides, the hash index tables and hash functions also needs to be defined statically in the code.
+- Fully portable, based on ISO C++ and POSIX standards.
 - For concurrent transaction execution, PawnDB supports [Multi-Version Concurrency Control (MVCC)](https://en.wikipedia.org/wiki/Multiversion_concurrency_control), and [2 Phase Locking](https://en.wikipedia.org/wiki/Two-phase_locking) at the table level (to prevent phantom reads at very cheap cost).
 - All tuple fields come with extra checksum values even when they are in memory, in order to prevent bit corruption.
 - All nodes are identical to each other and each one of them has the capability to become the **primary proposer** at runtime, who can start a transaction to other nodes. This guarantees the whole system can run even after multiple node failure.
