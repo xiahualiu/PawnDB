@@ -12,4 +12,4 @@ add_executable(${PROJECT_NAME} ${app_sources})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17 OUTPUT_NAME "PawnDB_App")
 
-target_link_libraries(${PROJECT_NAME} PUBLIC PawnDB)
+target_link_libraries(${PROJECT_NAME} PUBLIC pawndb)
