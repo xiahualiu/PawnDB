@@ -2,6 +2,8 @@
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Standalone/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Install/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 [![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Style/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
+[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/Aarch64/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
+[![Actions Status](https://github.com/xiahualiu/PawnDB/workflows/RV64/badge.svg)](https://github.com/xiahualiu/PawnDB/actions)
 
 # PawnDB (DO NOT USE, Still WIP)
 

@@ -1,4 +1,4 @@
-name: AArch64
+name: RV64
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
 
       - uses: uraimo/run-on-arch-action@v2
         with:
-          arch: aarch64
+          arch: riscv64
           distro: ubuntu_latest
           install: apt-get update && apt-get install -y cppcheck ccache cmake build-essential
           run: |
