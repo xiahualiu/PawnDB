@@ -1,0 +1,28 @@
+name: AArch64
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      - uses: uraimo/run-on-arch-action@v2.7.2
+        with:
+          arch: aarch64
+          distro: ubuntu_latest
+          install: sudo apt-get update && sudo apt-get install -y cppcheck ccache
+          run: |
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+            cmake --build build --target PawnDB_Tests -j4
+            cd build/test/
+            ctest --build-config Debug
