@@ -20,7 +20,7 @@ jobs:
         with:
           arch: aarch64
           distro: ubuntu_latest
-          install: apt-get update && apt-get install -y cppcheck ccache
+          install: apt-get update && apt-get install -y cppcheck ccache cmake build-essential
           run: |
             cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
             cmake --build build --target PawnDB_Tests -j4
