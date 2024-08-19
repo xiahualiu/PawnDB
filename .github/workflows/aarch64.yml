@@ -1,4 +1,4 @@
-name: AArch64
+name: Aarch64
 
 on:
   push:
