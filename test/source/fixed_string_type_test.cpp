@@ -8,7 +8,9 @@ namespace FIXED_STRING_TYPE_TESTS {
 
   FixedString<20> A("Hello World!");
 
-  TEST_CASE("Fixed String Constructor") { CHECK(A.to_std_string() == std::string_view("Hello World!")); }
+  TEST_CASE("Fixed String Constructor") {
+    CHECK(A.to_std_string() == std::string_view("Hello World!"));
+  }
 
   TEST_CASE("Fixed String Check Sum") {
     FixedString<20> B("Hello World!");

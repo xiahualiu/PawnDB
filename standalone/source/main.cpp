@@ -1,8 +1,8 @@
 #include <pawndb/fixed_point.h>
-#include <pawndb/u32_type.h>
+#include <pawndb/fixed_string_type.h>
 #include <pawndb/tables.h>
 #include <pawndb/tuples.h>
-#include <pawndb/fixed_string_type.h>
+#include <pawndb/u32_type.h>
 
 #include <iostream>
 
