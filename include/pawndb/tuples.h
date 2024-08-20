@@ -8,6 +8,11 @@ namespace PawnDB {
   template <class... tuple_type>
   class Tuple {
   public:
+    /**
+     * @brief Construct a new Tuple object
+     * 
+     * @tparam t list of the types
+     */
     template <class... t>
     Tuple() : list() {}
 

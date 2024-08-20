@@ -1,0 +1,87 @@
+#ifndef FIXED_STRING_TYPE_H
+#define FIXED_STRING_TYPE_H
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+
+#include "pawndb/base_type.h"
+
+namespace PawnDB {
+
+  /**
+   * @brief A example fixed size string class
+   *
+   */
+  template <std::size_t str_length>
+  class FixedString : public Base_Type<std::uint32_t> {
+  public:
+    inline FixedString() : byte_array({}), length(0) { update_stored_checksum(); }
+
+    // With static_assert()
+    template <std::size_t N>
+    inline FixedString(const char (&s)[N]) : byte_array({}), length(N - 1) {
+      static_assert(N < str_length, "String literal exceeds given size!");
+      static_assert(N != 0, "String literal cannot be 0 size!");
+      std::copy(s, s + N, byte_array.data());
+      update_stored_checksum();
+    }
+
+    inline FixedString(std::string&& str) : byte_array({}), length(str.length()) {
+      if (str.length() > str_length) {
+        throw std::runtime_error("Input str length is longer than given size.");
+      }
+      std::copy(str.begin(), str.end(), byte_array.data());
+      update_stored_checksum();
+    }
+
+    // Required checksum function
+    inline std::uint32_t check_sum() const override { return stored_checksum; }
+
+    // Required hash function
+    inline std::size_t hash() const override { return stored_checksum; }
+
+    // Required equal function
+    template <std::size_t other_size>
+    bool operator==(const FixedString<other_size>& str) const {
+      return this->to_std_string() == str.to_std_string();
+    }
+
+    // Required not equal function
+    template <std::size_t other_size>
+    bool operator!=(const FixedString<other_size>& str) const {
+      return this->to_std_string() != str.to_std_string();
+    }
+
+    /**
+     * @brief Used to get a read-only std::string_view object from FixedString
+     *
+     * @return std::string_view
+     */
+    inline std::string_view to_std_string() const {
+      return std::string_view(this->byte_array.data(), length);
+    }
+
+    /**
+     * @brief Used to update the internal checksum value
+     *
+     */
+    inline void update_stored_checksum() {
+      this->stored_checksum = 0;
+      for (auto c : byte_array) {
+        this->stored_checksum += c;
+      }
+    }
+
+    std::array<char, str_length> byte_array;
+    std::size_t length;
+
+  private:
+    std::uint32_t stored_checksum;
+  };
+
+}  // namespace PawnDB
+
+#endif
