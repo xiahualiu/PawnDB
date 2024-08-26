@@ -1,4 +1,4 @@
-#include <pawndb/fixed_string_type.h>
+#include <pawndb/user/fixed_string_type.h>
 
 #include "doctest/doctest.h"
 

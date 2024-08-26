@@ -1,5 +1,5 @@
-#include <pawndb/fixed_point.h>
-#include <pawndb/tuples.h>
+#include <pawndb/basic_tuples.h>
+#include <pawndb/user/fixed_point_type.h>
 
 #include "doctest/doctest.h"
 

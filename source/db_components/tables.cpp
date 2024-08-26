@@ -1,1 +1,1 @@
-#include "pawndb/tables.h"
+#include <pawndb/basic_tables.h>
