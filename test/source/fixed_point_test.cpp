@@ -1,40 +1,39 @@
-#include <pawndb/fixed_point.h>
+#include <pawndb/user/fixed_point_type.h>
 
 #include "doctest/doctest.h"
 
-using namespace PawnDB;
+namespace FIXED_POINT_TESTS {
 
-FixedPoint A(0, 1, 2);
+  using namespace PawnDB;
 
-TEST_CASE("Fixed Point Constructor") {
-  CHECK(A.sign == 0);
-  CHECK(A.l_part == 1);
-  CHECK(A.r_part == 2);
-}
+  FixedPoint<100> A(1, 1);
+  FixedPoint<100> A0(1, 0);
 
-TEST_CASE("Fixed Point Check Sum") {
-  FixedPoint B(0, 1, 2);
-  CHECK(A.check_sum() == B.check_sum());
-}
+  TEST_CASE("Fixed Point Check Sum") {
+    FixedPoint<100> B(1, 1);
+    CHECK(A.check_sum() == B.check_sum());
+  }
 
-TEST_CASE("Fixed Point Not Equal") {
-  FixedPoint B1(1, 1, 2);
-  FixedPoint B2(0, 2, 2);
-  FixedPoint B3(0, 1, 3);
-  FixedPoint C(0, 1, 2);
-  CHECK(A != B1);
-  CHECK(A != B2);
-  CHECK(A != B3);
-  CHECK(!(A != C));
-}
+  TEST_CASE("Fixed Point Equal & Not Equal") {
+    FixedPoint<100> B1(1, 1);
+    FixedPoint<100> B2(0, 0);
+    CHECK(A == B1);
+    CHECK(A0 != B1);
+    CHECK(A0 == B2);
+    CHECK(A != B2);
+  }
 
-TEST_CASE("Fixed Point Equal") {
-  FixedPoint B(0, 1, 2);
-  FixedPoint C1(1, 1, 2);
-  FixedPoint C2(0, 2, 2);
-  FixedPoint C3(0, 1, 3);
-  CHECK(A == B);
-  CHECK(!(A == C1));
-  CHECK(!(A == C2));
-  CHECK(!(A == C3));
-}
+  TEST_CASE("Fixed Point > and <") {
+    FixedPoint<100> B1(1, 1);
+    FixedPoint<100> B2(0, 0);
+    FixedPoint<100> B3(0, 100);
+    CHECK(!(A0 < B2));
+    CHECK(!(A0 > B2));
+    CHECK(A0 < B1);
+    CHECK(A > B3);
+    CHECK(B3 < A);
+    CHECK(B3 < B2);
+    CHECK(B2 > B3);
+  }
+
+}  // namespace FIXED_POINT_TESTS

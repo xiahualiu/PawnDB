@@ -38,7 +38,7 @@ Despite being a DBMS, PawnDB only has minimal components so that application dev
 * (optional) `cppcheck` version > 2.5.
 * (optional) `ccache` version > 3.4.2.
 
-`cppcheck` and `ccache` will be enabled if cmake detects them on the `PATH`.
+`cppcheck` and `ccache` will be enabled automatically if cmake detects them on the `PATH`.
 
 Depending on your preference, you may install one of the following build systems:
 

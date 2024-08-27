@@ -13,7 +13,8 @@ project(
 )
 
 # ---- Add source files ----
-file(GLOB_RECURSE lib_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h")
+file(GLOB db_lib_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/pawndb/*.h")
+file(GLOB user_lib_headers CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/include/pawndb/user/*.h")
 file(GLOB_RECURSE lib_sources CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
 
 # ---- Create library ----
@@ -23,7 +24,7 @@ add_library(${PROJECT_NAME} STATIC ${lib_sources})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
 
 # Enforce stricter compilation
-add_compile_options(-Wall -Wpedantic -Wextra -Werror)
+add_compile_options(-O2 -Wall -Wpedantic -Wextra -Werror)
 
 # include paths
 target_include_directories(
@@ -37,7 +38,8 @@ install(
   LIBRARY DESTINATION lib
 )
 
-install(FILES ${lib_headers} DESTINATION include/${PROJECT_NAME})
+install(FILES ${db_lib_headers} DESTINATION include/${PROJECT_NAME})
+install(FILES ${user_lib_headers} DESTINATION include/${PROJECT_NAME}/user)
 
 # --- Configure cppcheck ---
 find_program(CPPCHECK_PROGRAM NAMES cppcheck)
