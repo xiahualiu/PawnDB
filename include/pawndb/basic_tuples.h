@@ -3,82 +3,95 @@
 
 #include <cstddef>
 #include <tuple>
-#include <type_traits>
+
+#include "pawndb/basic_data.h"
 
 namespace PawnDB {
-
-  namespace CheckEqual {
-    struct NoEqual {};
-    template <typename T, typename Arg>
-    NoEqual operator==(const T &, const Arg &);
-    template <typename T, typename Arg = T>
-    struct EqualExists {
-      static constexpr bool value
-          = !std::is_same<decltype(std::declval<const T &>() == std::declval<const Arg &>()),
-                          NoEqual>::value;
-    };
-  }  // namespace CheckEqual
-
   /**
    * @brief The base class for implementing your own tuple type.
    *
    * @tparam tuple_type the list of the tuple data types, must be derived from the BasicType
    * abstract class.
    */
-  template <class... tuple_types>
+  template <class T, class... tuple_types>
   class BasicTuple {
-    /**
-     * @brief Make sure all data types inside the tuple have hash and checksum functions
-     *
-     */
-    static_assert((std::is_member_function_pointer_v<decltype(&tuple_types::hash)> && ...),
-                  "Hash function is missing in one of the data types");
-    static_assert(
-        (std::is_same_v<decltype(std::declval<tuple_types>().hash()), std::size_t> && ...),
-        "Hash function must return std::size_t type");
-    static_assert(
-        (std::is_member_function_pointer_v<decltype(&tuple_types::verify_checksum)> && ...),
-        "Verify checksum function is missing in one of the data types");
-    static_assert(
-        (std::is_same_v<decltype(std::declval<tuple_types>().verify_checksum()), bool> && ...),
-        "Verify checksum function must return bool type");
-    static_assert((CheckEqual::EqualExists<tuple_types>::value && ...),
-                  "Data types in tuple must have == operator defined.");
-    /**
-     * @brief Make sure we can copy data from/to these data types
-     *
-     */
-    static_assert((std::is_copy_assignable_v<tuple_types> && ...),
-                  "Data types in tuple must can be copy assigned");
-    static_assert((std::is_copy_constructible_v<tuple_types> && ...),
-                  "Data types in tuple must can be copy constructed");
-
   public:
-    /**
-     * @brief Copy construct a new Basic Tuple object
-     *
-     * @param tuple another tuple object
-     */
-    inline BasicTuple(const BasicTuple &tuple) : list(tuple.list) {}
-
     /**
      * @brief Return how many items in the tuple type
      *
      * @return std::size_t the number of columns inside this typle
      */
-    inline std::size_t length() { return sizeof...(tuple_types); }
+    constexpr std::size_t length() const { return sizeof...(tuple_types); }
 
-    std::tuple<tuple_types...> list;
+    /**
+     * @brief Return a copy of the data object stored inside the tuple
+     *
+     * @tparam I n-th element inside the tuple
+     * @return std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type
+     */
+    template <std::size_t I>
+    typename std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type get()
+        const noexcept {
+      return static_cast<const T*>(this)->user_get_cp();
+    }
+
+    /**
+     * @brief Return a lvalue ref of the data object stored inside the tuple
+     *
+     * @tparam I n-th element inside the tuple
+     * @return std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type
+     */
+    template <std::size_t I>
+    typename std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type& get() noexcept {
+      return static_cast<T*>(this)->user_get_ref();
+    }
+
+    /**
+     * @brief Return a rvalue ref of the data object stored inside the tuple
+     *
+     * @tparam I
+     * @return std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type&&
+     */
+    template <std::size_t I>
+    typename std::tuple_element<I, std::tuple<BasicData<tuple_types>...>>::type&& get() noexcept {
+      return static_cast<T*>(this)->user_get_mv();
+    }
+
+    /**
+     * @brief Get the primary key of a tuple
+     *
+     * @return std::size_t
+     */
+    std::size_t hash() const { return static_cast<const T*>(this)->user_hash(); }
+
+    /**
+     * @brief Tuple must provide user_verify()
+     *
+     * @return true
+     * @return false
+     */
+    bool verify() const { return recursive_verify<0, sizeof...(tuple_types)>(); }
 
   protected:
-    /**
-     * @brief Construct a new Tuple object
-     *
-     * @tparam t list of the types
-     */
-    inline BasicTuple() : list() {}
-
   private:
+    /**
+     * @brief Recursively verify all data inside a tuple
+     *
+     * @tparam I
+     * @tparam Ts
+     * @return true
+     * @return false
+     */
+    template <std::size_t I, std::size_t Ts>
+    bool recursive_verify() const {
+      if constexpr (I >= Ts) {
+        return true;
+      } else if (!this->get<I>().verify()) {
+        return false;
+      } else {
+        return recursive_verify<I + 1, Ts>();
+      }
+    }
   };
 
 }  // namespace PawnDB

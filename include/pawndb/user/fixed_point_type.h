@@ -1,8 +1,12 @@
 #ifndef FIXED_POINT_TYPE_H
 #define FIXED_POINT_TYPE_H
 
+#include <pawndb/basic_data.h>
+
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace PawnDB {
 
@@ -18,33 +22,43 @@ namespace PawnDB {
    * @tparam denom The denomerator of the fraction. I.e. 100 means value=n_part/100.
    */
   template <std::uint32_t denom>
-  class FixedPoint {
+  class FixedPoint : public BasicData<FixedPoint<denom>> {
   public:
-    inline FixedPoint() : sign(0), n_part(0) { checksum = check_sum(); };
-    inline FixedPoint(bool&& is_pos, std::uint32_t&& value) : sign(is_pos), n_part(value) {
+    FixedPoint() : sign(0), n_part(0) { checksum = check_sum(); };
+    FixedPoint(bool&& is_pos, std::uint32_t&& value) : sign(is_pos), n_part(value) {
       checksum = check_sum();
     };
 
-    // Required checksum function
-    inline std::uint32_t check_sum() const { return (sign) ? n_part : ~n_part; }
+    bool is_pos() const { return sign == 1; }
 
-    // Required hash function
-    inline std::size_t hash() const { return (sign) ? n_part : ~n_part; }
+    std::uint32_t check_sum() const { return (sign) ? n_part : ~n_part; }
+
+    // Required functions
+    std::size_t user_hash() const { return (sign) ? n_part : ~n_part; }
+
+    bool user_verify() const { return checksum == check_sum(); }
+
+    std::string user_print() const {
+      return (is_pos() ? std::string("+") : std::string("-")) + std::to_string(n_part / denom) + "."
+             + to_string_with_zero_padding(n_part % denom);
+    }
+
+    std::string to_string_with_zero_padding(const std::size_t& value) const {
+      auto str = std::to_string(value);
+      if (str.length() < std::log10(denom)) str.insert(0, std::log10(denom) - str.length(), '0');
+      return str;
+    }
 
     // Required equal function
-    bool operator==(const FixedPoint<denom>& f) const {
+    bool user_eq(const FixedPoint<denom>& f) const {
       if (n_part == 0 && f.n_part == 0)
         return true;
       else
         return this->sign == f.sign && this->n_part == f.n_part;
     }
 
-    inline bool verify_checksum() const { return checksum == check_sum(); }
-
-    bool inline is_pos() const { return sign == 1; }
-
     // Required not equal function
-    bool operator!=(const FixedPoint<denom>& f) const {
+    bool user_neq(const FixedPoint<denom>& f) const {
       if (n_part == 0 && f.n_part == 0)
         return false;
       else
