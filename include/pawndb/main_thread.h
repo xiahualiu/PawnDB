@@ -22,8 +22,16 @@
 
 namespace PawnDB {
 
+/**
+ * @brief Class representing the main thread.
+ */
 class MainThread {
  public:
+  /**
+   * @brief Constructs a new MainThread object.
+   *
+   * @param _db Reference to the database.
+   */
   MainThread(Database& _db) noexcept
       : db(_db),
         workers(),
@@ -34,7 +42,18 @@ class MainThread {
         next_txn_id(0),
         txn_table() {}
 
+  /**
+   * @brief Starts the main thread.
+   *
+   * This function starts the main thread and runs indefinitely.
+   */
   [[noreturn]] void start() noexcept;
+
+  /**
+   * @brief Cleans up worker threads.
+   *
+   * This function cleans up the worker threads.
+   */
   void clean_worker() noexcept;
 
  private:

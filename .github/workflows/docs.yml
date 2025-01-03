@@ -8,6 +8,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,7 +26,19 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y doxygen graphviz dia mscgen cmake ninja-build
 
-      - name: build and run clang-format
+      - name: build and run doxygen
         run: |
           cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_DOXYGEN_TASK=1 -G Ninja
           cmake --build build --target doxygen
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

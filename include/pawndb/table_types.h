@@ -17,11 +17,29 @@
 
 namespace PawnDB {
 
+/**
+ * @brief Type alias for the student table.
+ * 
+ * The student table has 16 rows and contains student names and a uint8_t field.
+ */
 using student_table = Table<16, student_name, std::uint8_t>;
 
+/**
+ * @brief Template function to get the table ID for a given table type.
+ * 
+ * This function is deleted for all types except the specializations provided below.
+ * 
+ * @tparam T The table type for which to get the table ID.
+ * @return The table ID for the given table type.
+ */
 template <typename T>
 constexpr tp_id_t tbl_id() = delete;
 
+/**
+ * @brief Specialization of tbl_id for student_table.
+ * 
+ * @return The table ID for student_table.
+ */
 template <>
 constexpr tp_id_t tbl_id<student_table>() {
   return 1;

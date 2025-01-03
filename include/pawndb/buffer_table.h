@@ -21,6 +21,12 @@
 
 namespace PawnDB {
 
+/**
+ * @brief Class representing the buffer table.
+ *
+ * The buffer table is implemented as a ring buffer. Note that there is no
+ * safety check for buffer overflow, so the buffer size should be big enough.
+ */
 class BufferTable : private Ring<std::array<char, BUFFER_WIDTH>, BUFFER_ROWS> {
  private:
   using _base = Ring<std::array<char, BUFFER_WIDTH>, BUFFER_ROWS>;
@@ -28,22 +34,44 @@ class BufferTable : private Ring<std::array<char, BUFFER_WIDTH>, BUFFER_ROWS> {
  public:
   using buffer_t = std::array<char, BUFFER_WIDTH>;
 
+  /**
+   * @brief Constructs a new BufferTable object.
+   */
   BufferTable() noexcept : _base(), table_mutex() {}
 
+  /**
+   * @brief Requests a buffer from the buffer table.
+   *
+   * @return The index of the requested buffer.
+   */
   tbl_row_t request() noexcept {
-    auto lock = std::lock_guard<std::mutex>(table_mutex);
+    std::lock_guard<std::mutex> lock(table_mutex);
     return _base::get();
   }
 
-  void release(tbl_row_t row) noexcept {
-    auto lock = std::lock_guard<std::mutex>(table_mutex);
-    _base::put(row);
+  /**
+   * @brief Releases a buffer back to the buffer table.
+   *
+   * @param index The index of the buffer to release.
+   */
+  void release(tbl_row_t index) noexcept {
+    std::lock_guard<std::mutex> lock(table_mutex);
+    _base::put(index);
   }
 
-  using _base::operator[];
+  /**
+   * @brief Accesses the buffer at the specified index.
+   *
+   * @param index The index of the buffer to access.
+   * @return A reference to the buffer at the specified index.
+   */
+  buffer_t& operator[](tbl_row_t index) noexcept {
+    return _base::operator[](index);
+  }
 
  private:
-  std::mutex table_mutex;
+  std::mutex
+      table_mutex;
 };
 
 }  // namespace PawnDB

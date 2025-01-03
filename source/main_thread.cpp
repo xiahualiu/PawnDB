@@ -1,12 +1,19 @@
 /**
  * @file main_thread.cpp
- * @author Xiahua Liu @xiahualiu
- * @brief PawnDB main thread, used for managing worker threads and connections.
+ * @brief Implementation of PawnDB's main thread functionality.
  * @version 0.1
  * @date 2025-01-02
  *
- * @copyright MIT License
+ * This file implements the main thread functionality of PawnDB, which:
+ * - Manages worker threads
+ * - Handles client connections
+ * - Coordinates transaction processing
+ * - Manages system resources
  *
+ * The main thread acts as the coordinator for all database operations,
+ * delegating work to worker threads and managing the overall system state.
+ *
+ * @copyright MIT License
  */
 
 #include "pawndb/main_thread.h"
@@ -31,14 +38,32 @@
 
 namespace PawnDB {
 
-static void packet_ack(OpAck _ack, Parser& _parser, int server_fd,
+/**
+ * @brief Sends an acknowledgment packet to the client
+ *
+ * @param _ack Acknowledgment type to send
+ * @param _parser Parser containing response data
+ * @param _server_fd Server socket file descriptor
+ * @param _client_addr Client address structure
+ * @param _client_addr_len Length of client address structure
+ */
+static void packet_ack(OpAck _ack, Parser& _parser, int _server_fd,
                        sockaddr& _client_addr,
                        socklen_t _client_addr_len) noexcept {
   _parser.set_ack(_ack);
-  sendto(server_fd, _parser.buffer().data(), _parser.get_buffer_size(), 0,
+  sendto(_server_fd, _parser.buffer().data(), _parser.get_buffer_size(), 0,
          &_client_addr, _client_addr_len);
 }
 
+/**
+ * @brief Cleans up terminated worker threads
+ *
+ * Handles worker thread cleanup by:
+ * - Receiving terminated transaction IDs
+ * - Removing from transaction table
+ * - Clearing running flags
+ * - Draining job channels
+ */
 void MainThread::clean_worker() noexcept {
   while (true) {
     auto dead_txn_r = main_ch.get();
@@ -69,6 +94,17 @@ void MainThread::clean_worker() noexcept {
   }
 }
 
+/**
+ * @brief Starts the main server thread
+ *
+ * - Creates Unix domain socket
+ * - Binds to configured address
+ * - Initializes worker threads
+ * - Processes client requests
+ * - Handles cleanup on shutdown
+ *
+ * @throws std::runtime_error on socket/bind failure
+ */
 void MainThread::start() noexcept {
   server_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
   if (-1 == server_fd) {
@@ -141,38 +177,14 @@ void MainThread::start() noexcept {
         job_chs[index].notify();
         continue;
       }
-      case OpType::ABORT_TXN: {
-        auto txn_id_r = parser.get_txn();
-        if (!txn_id_r) {
-          std::cerr << "Failed to parse transaction ID" << std::endl;
-          packet_ack(OpAck::BAD_TXN, parser, server_fd, client_addr,
-                     client_addr_len);
-          db.buffers.release(recv_buf_index);
-          continue;
-        }
-        auto txn_id = txn_id_r.unwrap();
-        auto search_r = txn_table.search(txn_id);
-        if (!search_r) {
-          std::cerr << "Failed to find worker" << std::endl;
-          packet_ack(OpAck::BAD_TXN, parser, server_fd, client_addr,
-                     client_addr_len);
-          db.buffers.release(recv_buf_index);
-          continue;
-        }
-        auto index = search_r.unwrap();
-        running_flags[index].clear();
-        packet_ack(OpAck::SUCCESS, parser, server_fd, client_addr,
-                   client_addr_len);
-        db.buffers.release(recv_buf_index);
-        continue;
-      }
+      case OpType::COMMIT_TXN:
+      case OpType::ABORT_TXN:
       case OpType::ADD_TUPLE:
       case OpType::SHARED_READ:
       case OpType::EXCLUSIVE_READ:
       case OpType::PROMOTE:
       case OpType::UPDATE:
-      case OpType::DELETE:
-      case OpType::COMMIT_TXN: {
+      case OpType::DELETE: {
         auto txn_id_r = parser.get_txn();
         if (!txn_id_r) {
           std::cerr << "Failed to parse transaction ID" << std::endl;
@@ -207,8 +219,11 @@ void MainThread::start() noexcept {
           db.buffers.release(recv_buf_index);
           continue;
         }
+        if (op == OpType::ABORT_TXN) {
+          running_flags[index].clear(std::memory_order_release);
+        }
         job_chs[index].notify();
-        break;
+        continue;
       }
       default: {
         continue;

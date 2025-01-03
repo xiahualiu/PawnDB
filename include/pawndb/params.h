@@ -75,7 +75,7 @@ constexpr tbl_row_t MAX_COMMIT_PER_TRANSACTION = 16;
 constexpr auto WAIT_TIMEOUT = std::chrono::milliseconds(3000);
 
 /// @brief The max timeout retry times. Any operation will be considered
-/// failed if it exceeds this number.
+/// failed if it exceeds this number. Note commit operation will not be retried.
 constexpr std::uint8_t MAX_TIMEOUT_RETRY = 8;
 
 /// @brief Socket file path. Must be smaller than sockaddr_un::sun_path.
