@@ -22,14 +22,39 @@
 
 namespace PawnDB {
 
-enum class DeserialError { None, IDMismatch };
+/**
+ * @brief Enumeration of possible deserialization errors.
+ */
+enum class DeserialError {
+  None,      /**< No error */
+  IDMismatch /**< ID mismatch error */
+};
 
+/**
+ * @brief Template class for tuple serialization and deserialization.
+ *
+ * @tparam T The type of the tuple.
+ */
 template <typename T>
 class TpSerDes;
 
+/**
+ * @brief Specialization of TpSerDes for Table.
+ *
+ * @tparam Rows The number of rows in the table.
+ * @tparam Ts The types of the columns in the table.
+ */
 template <tbl_row_t Rows, typename... Ts>
 class TpSerDes<Table<Rows, Ts...>> {
  public:
+  /**
+   * @brief Serializes a tuple into a buffer.
+   *
+   * @param _tuple The tuple to serialize.
+   * @param _buffer The buffer to serialize into.
+   * @param _offset The offset in the buffer to start serialization.
+   * @return The new offset after serialization.
+   */
   static buf_size_t serialize(const std::tuple<Ts...>& _tuple,
                               BufferTable::buffer_t& _buffer,
                               buf_size_t _offset) noexcept {
@@ -37,6 +62,15 @@ class TpSerDes<Table<Rows, Ts...>> {
   }
 
   using DeSerialR = Result<buf_size_t, DeserialError>;
+  /**
+   * @brief Deserializes a tuple from a buffer.
+   *
+   * @param _buffer The buffer to deserialize from.
+   * @param _offset The offset in the buffer to start deserialization.
+   * @param _tuple The tuple to deserialize into.
+   * @return The new offset after deserialization, or an error if
+   * deserialization fails.
+   */
   static DeSerialR deserialize(const BufferTable::buffer_t& _buffer,
                                buf_size_t _offset,
                                std::tuple<Ts...>& _tuple) noexcept {
@@ -44,6 +78,15 @@ class TpSerDes<Table<Rows, Ts...>> {
   }
 
  private:
+  /**
+   * @brief Helper function for tuple serialization.
+   *
+   * @tparam I The index of the tuple element to serialize.
+   * @param _tuple The tuple to serialize.
+   * @param _buffer The buffer to serialize into.
+   * @param _offset The offset in the buffer to start serialization.
+   * @return The new offset after serialization.
+   */
   template <std::size_t I = 0>
   static buf_size_t serialize_impl(const std::tuple<Ts...>& _tuple,
                                    BufferTable::buffer_t& _buffer,
@@ -62,6 +105,16 @@ class TpSerDes<Table<Rows, Ts...>> {
     }
   }
 
+  /**
+   * @brief Helper function for tuple deserialization.
+   *
+   * @tparam I The index of the tuple element to deserialize.
+   * @param _buffer The buffer to deserialize from.
+   * @param _offset The offset in the buffer to start deserialization.
+   * @param _tuple The tuple to deserialize into.
+   * @return The new offset after deserialization, or an error if
+   * deserialization fails.
+   */
   template <std::size_t I = 0>
   static DeSerialR deserialize_impl(const BufferTable::buffer_t& _buffer,
                                     buf_size_t& _offset,

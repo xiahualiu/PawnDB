@@ -1,12 +1,16 @@
 /**
  * @file worker_thread.cpp
- * @author Xiahua Liu @xiahualiu
- * @brief PawnDB worker class, used for processing transactions.
+ * @brief Worker thread implementation for PawnDB
  * @version 0.1
  * @date 2025-01-02
  *
- * @copyright MIT License
+ * Handles:
+ * - Transaction processing
+ * - Lock management
+ * - Request handling
+ * - Client communication
  *
+ * @copyright MIT License
  */
 
 #include "pawndb/worker_thread.h"
@@ -307,6 +311,28 @@ static void process_update(const WorkerContext& _context,
   return;
 }
 
+/**
+ * @brief Processes a lock promotion request
+ *
+ * Upgrades a shared lock to an exclusive lock in growing phase:
+ * - Validates transaction is in growing phase
+ * - Checks table ID and tuple key validity
+ * - Verifies shared lock ownership
+ * - Attempts lock promotion
+ * - Updates lock table state
+ *
+ * Error cases:
+ * - BAD_PHASE: Not in growing phase
+ * - BAD_TABLE: Invalid table ID
+ * - BAD_TP: Invalid tuple key
+ * - BAD_ACCESS: Lock not held or wrong type
+ * - LOCK_CONFLICT: Promotion failed
+ *
+ * @param _context Worker execution context
+ * @param _runtime Worker runtime state
+ * @param _parser Request parser
+ * @param _job Current job details
+ */
 static void process_promote(const WorkerContext& _context,
                             WorkerRuntime& _runtime, Parser& _parser,
                             Job& _job) {
@@ -329,7 +355,8 @@ static void process_promote(const WorkerContext& _context,
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  if (_runtime.lock_table.promote(table_id, tuple_key) != LockError::None) {
+  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
+  if (!lock_r || lock_r.unwrap() != LockType::Shared) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
     return;
@@ -355,6 +382,11 @@ static void process_promote(const WorkerContext& _context,
         }
         break;
       }
+      if (_runtime.lock_table.promote(table_id, tuple_key) != LockError::None) {
+        _parser.set_buffer_size(7);
+        job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+        return;
+      }
       job_ack(OpAck::SUCCESS, _context, _parser, _job);
       return;
     }
@@ -366,6 +398,25 @@ static void process_promote(const WorkerContext& _context,
   }
 }
 
+/**
+ * @brief Processes transaction commit
+ *
+ * Handles commit phase by:
+ * - Validating transaction is in shrinking phase
+ * - Processing queued commit operations
+ * - Releasing locks and buffers
+ * - Sending acknowledgment
+ *
+ * Operation types:
+ * - ADD_TUPLE: Insert new tuple
+ * - DELETE_TUPLE: Remove existing tuple
+ * - UPDATE: Modify existing tuple
+ *
+ * @param _context Worker execution context
+ * @param _runtime Worker runtime state
+ * @param _parser Request parser
+ * @param _job Current job details
+ */
 static void process_commit(const WorkerContext& _context,
                            WorkerRuntime& _runtime, Parser& _parser,
                            Job& _job) {
@@ -440,6 +491,16 @@ static void process_commit(const WorkerContext& _context,
   return;
 }
 
+/**
+ * @brief Releases all locks held by transaction
+ *
+ * Iterates through lock table and releases:
+ * - Shared locks
+ * - Exclusive locks
+ *
+ * @param _context Worker context containing transaction info
+ * @param _runtime Runtime state with lock table
+ */
 static void release_locks(const WorkerContext& _context,
                           const WorkerRuntime& _runtime) {
   for (const auto [tbl, key, lock] : _runtime.lock_table) {
@@ -460,6 +521,17 @@ static void release_locks(const WorkerContext& _context,
   }
 }
 
+/**
+ * @brief Performs worker thread cleanup and shutdown
+ *
+ * Cleanup sequence:
+ * - Release all held locks
+ * - Clear running flag
+ * - Notify main thread
+ *
+ * @param _context Worker context
+ * @param _runtime Runtime state
+ */
 static void worker_quit(const WorkerContext& _context,
                         const WorkerRuntime& _runtime) noexcept {
   release_locks(_context, _runtime);
@@ -467,6 +539,17 @@ static void worker_quit(const WorkerContext& _context,
   _context.main_ch->send(_context.txn_id);
 }
 
+/**
+ * @brief Main worker thread function
+ *
+ * Process loop:
+ * - Wait for jobs
+ * - Process requests
+ * - Handle commits
+ * - Manage cleanup
+ *
+ * @param _context Worker thread context
+ */
 void worker_main(const WorkerContext&& _context) noexcept {
   const auto context = WorkerContext(std::move(_context));
   auto runtime = WorkerRuntime{0, Queue<Commit, MAX_COMMIT_PER_TRANSACTION>{},

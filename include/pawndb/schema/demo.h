@@ -20,8 +20,14 @@
 
 namespace PawnDB {
 
+/**
+ * @brief Class representing the demo database.
+ */
 class Database {
  public:
+  /**
+   * @brief Constructs a new Database object.
+   */
   Database() = default;
 
   std::tuple<student_table> table;

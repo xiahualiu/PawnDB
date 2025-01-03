@@ -21,8 +21,21 @@
 
 namespace PawnDB {
 
-enum class ChannelError { None, GetNothing, Timeout, TableFull };
+/**
+ * @brief Enumeration of possible channel errors.
+ */
+enum class ChannelError {
+  None,       /**< No error */
+  GetNothing, /**< No item to get */
+  Timeout,    /**< Operation timed out */
+  TableFull,  /**< Channel is full */
+};
 
+/**
+ * @brief Channel data structure.
+ *
+ * @tparam T The type of the elements in the channel.
+ */
 template <typename T>
 class Channel : private Queue<T, CHANNEL_ROWS> {
  private:
@@ -36,6 +49,11 @@ class Channel : private Queue<T, CHANNEL_ROWS> {
 
   using GetR = Result<T, ChannelError>;
 
+  /**
+   * @brief Gets an element from the channel without blocking.
+   *
+   * @return GetR The element if available, or a ChannelError if not.
+   */
   GetR get() noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     if (empty()) {
@@ -45,6 +63,12 @@ class Channel : private Queue<T, CHANNEL_ROWS> {
     }
   }
 
+  /**
+   * @brief Receives an element from the channel, blocking until one is
+   * available or a timeout occurs.
+   *
+   * @return GetR The element if available, or a ChannelError if not.
+   */
   GetR recv() noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     if (not_empty.wait_for(lock, WAIT_TIMEOUT, [this] { return !empty(); })) {
@@ -54,11 +78,21 @@ class Channel : private Queue<T, CHANNEL_ROWS> {
     }
   }
 
+  /**
+   * @brief Pops an element from the channel.
+   */
   void pop() noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     _base::pop();
   }
 
+  /**
+   * @brief Sends an element to the channel.
+   *
+   * @param _value The value to send.
+   * @return ChannelError::None if the operation is successful,
+   * ChannelError::TableFull if the channel is full.
+   */
   ChannelError send(const T& _value) noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     if (full()) {
@@ -69,6 +103,13 @@ class Channel : private Queue<T, CHANNEL_ROWS> {
     }
   }
 
+  /**
+   * @brief Sends an element to the channel.
+   *
+   * @param _value The value to send.
+   * @return ChannelError::None if the operation is successful,
+   * ChannelError::TableFull if the channel is full.
+   */
   ChannelError send(T&& _value) noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     if (full()) {
@@ -79,11 +120,17 @@ class Channel : private Queue<T, CHANNEL_ROWS> {
     }
   }
 
+  /**
+   * @brief Clears the channel.
+   */
   void clear() noexcept {
     auto lock = std::unique_lock<std::mutex>(ch_mutex);
     _base::clear();
   }
 
+  /**
+   * @brief Notifies one waiting thread.
+   */
   inline void notify() noexcept { not_empty.notify_one(); }
 
  private:
