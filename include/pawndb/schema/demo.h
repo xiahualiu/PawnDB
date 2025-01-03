@@ -14,8 +14,8 @@
 
 #include <tuple>
 
-#include "pawndb/params.h"
 #include "pawndb/buffer_table.h"
+#include "pawndb/params.h"
 #include "pawndb/table_types.h"
 
 namespace PawnDB {

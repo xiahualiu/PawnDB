@@ -14,11 +14,11 @@
 
 #include <cstring>
 
+#include "pawndb/buffer_table.h"
 #include "pawndb/data_types.h"
 #include "pawndb/params.h"
 #include "pawndb/result.h"
 #include "pawndb/table.h"
-#include "pawndb/buffer_table.h"
 
 namespace PawnDB {
 

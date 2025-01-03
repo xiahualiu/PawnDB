@@ -9,18 +9,19 @@
  *
  */
 
+#include "pawndb/worker_thread.h"
+
 #include <cstring>
 
 #include "pawndb/params.h"
 #include "pawndb/parser.h"
 #include "pawndb/table_types.h"
 #include "pawndb/tuple_serdes.h"
-#include "pawndb/worker_thread.h"
 
 namespace PawnDB {
 
-static void job_ack(const OpAck _ack, const WorkerContext& _context, Parser& _parser,
-             Job& _job) noexcept {
+static void job_ack(const OpAck _ack, const WorkerContext& _context,
+                    Parser& _parser, Job& _job) noexcept {
   _parser.set_ack(_ack);
   sendto(_context.server_fd, _parser.buffer().data(), _parser.get_buffer_size(),
          0, &_job.client_addr, _job.client_addr_len);
@@ -29,7 +30,7 @@ static void job_ack(const OpAck _ack, const WorkerContext& _context, Parser& _pa
 }
 
 static void process_add(const WorkerContext& _context, WorkerRuntime& _runtime,
-                 Parser& _parser, Job& _job) {
+                        Parser& _parser, Job& _job) {
   if (_runtime.status == TxnStatus::GROWING) {
     _runtime.status = TxnStatus::SHRINKING;
   }
@@ -74,7 +75,7 @@ static void process_add(const WorkerContext& _context, WorkerRuntime& _runtime,
 }
 
 static void process_rm(const WorkerContext& _context, WorkerRuntime& _runtime,
-                Parser& _parser, Job& _job) {
+                       Parser& _parser, Job& _job) {
   if (_runtime.status == TxnStatus::GROWING) {
     _runtime.status = TxnStatus::SHRINKING;
   }
@@ -108,8 +109,9 @@ static void process_rm(const WorkerContext& _context, WorkerRuntime& _runtime,
   return;
 }
 
-static void process_shared_read(const WorkerContext& _context, WorkerRuntime& _runtime,
-                         Parser& _parser, Job& _job) {
+static void process_shared_read(const WorkerContext& _context,
+                                WorkerRuntime& _runtime, Parser& _parser,
+                                Job& _job) {
   if (_runtime.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
@@ -177,8 +179,8 @@ static void process_shared_read(const WorkerContext& _context, WorkerRuntime& _r
 }
 
 static void process_exclusive_read(const WorkerContext& _context,
-                            WorkerRuntime& _runtime, Parser& _parser,
-                            Job& _job) {
+                                   WorkerRuntime& _runtime, Parser& _parser,
+                                   Job& _job) {
   if (_runtime.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
@@ -245,8 +247,9 @@ static void process_exclusive_read(const WorkerContext& _context,
   }
 }
 
-static void process_update(const WorkerContext& _context, WorkerRuntime& _runtime,
-                    Parser& _parser, Job& _job) {
+static void process_update(const WorkerContext& _context,
+                           WorkerRuntime& _runtime, Parser& _parser,
+                           Job& _job) {
   if (_runtime.status == TxnStatus::GROWING) {
     _runtime.status = TxnStatus::SHRINKING;
   }
@@ -304,8 +307,9 @@ static void process_update(const WorkerContext& _context, WorkerRuntime& _runtim
   return;
 }
 
-static void process_promote(const WorkerContext& _context, WorkerRuntime& _runtime,
-                     Parser& _parser, Job& _job) {
+static void process_promote(const WorkerContext& _context,
+                            WorkerRuntime& _runtime, Parser& _parser,
+                            Job& _job) {
   if (_runtime.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
@@ -362,8 +366,9 @@ static void process_promote(const WorkerContext& _context, WorkerRuntime& _runti
   }
 }
 
-static void process_commit(const WorkerContext& _context, WorkerRuntime& _runtime,
-                    Parser& _parser, Job& _job) {
+static void process_commit(const WorkerContext& _context,
+                           WorkerRuntime& _runtime, Parser& _parser,
+                           Job& _job) {
   if (_runtime.status != TxnStatus::SHRINKING) {
     job_ack(OpAck::SUCCESS, _context, _parser, _job);
     return;
@@ -381,6 +386,7 @@ static void process_commit(const WorkerContext& _context, WorkerRuntime& _runtim
             std::memcpy(&new_tuple, _context.db->buffers[buffer_index].data(),
                         sizeof(new_tuple));
             table_ref.insert(new_tuple);
+            table_ref.notify_not_empty();
             break;
           }
           default: {
@@ -396,6 +402,7 @@ static void process_commit(const WorkerContext& _context, WorkerRuntime& _runtim
           case tbl_id<student_table>(): {
             auto& table_ref = std::get<0>(_context.db->table);
             table_ref.remove(tuple_key);
+            table_ref.notify_not_full();
             break;
           }
           default: {
@@ -434,7 +441,7 @@ static void process_commit(const WorkerContext& _context, WorkerRuntime& _runtim
 }
 
 static void release_locks(const WorkerContext& _context,
-                   const WorkerRuntime& _runtime) {
+                          const WorkerRuntime& _runtime) {
   for (const auto [tbl, key, lock] : _runtime.lock_table) {
     switch (tbl) {
       case tbl_id<student_table>(): {
@@ -454,7 +461,7 @@ static void release_locks(const WorkerContext& _context,
 }
 
 static void worker_quit(const WorkerContext& _context,
-                 const WorkerRuntime& _runtime) noexcept {
+                        const WorkerRuntime& _runtime) noexcept {
   release_locks(_context, _runtime);
   _context.running->clear(std::memory_order_release);
   _context.main_ch->send(_context.txn_id);

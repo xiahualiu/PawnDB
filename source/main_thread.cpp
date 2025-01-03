@@ -9,6 +9,8 @@
  *
  */
 
+#include "pawndb/main_thread.h"
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -23,7 +25,6 @@
 
 #include "pawndb/buffer_table.h"
 #include "pawndb/channel.h"
-#include "pawndb/main_thread.h"
 #include "pawndb/params.h"
 #include "pawndb/parser.h"
 #include "pawndb/worker_thread.h"
