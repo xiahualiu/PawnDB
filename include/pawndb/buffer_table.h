@@ -70,8 +70,7 @@ class BufferTable : private Ring<std::array<char, BUFFER_WIDTH>, BUFFER_ROWS> {
   }
 
  private:
-  std::mutex
-      table_mutex;
+  std::mutex table_mutex;
 };
 
 }  // namespace PawnDB
