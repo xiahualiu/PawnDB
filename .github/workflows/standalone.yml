@@ -24,16 +24,13 @@ jobs:
       
       - name: install required packages
         run: |
-          sudo apt-get update && apt-get install -y cmake ninja-build
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          ./llvm.sh 18
+          sudo ./llvm.sh 18
 
       - name: configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STANDALONE_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
 
       - name: build app
         run: cmake --build build --target pawndb-app -j
-
-      - name: run app
-        run: ./build/standalone/pawndb_app

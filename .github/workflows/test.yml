@@ -26,11 +26,11 @@ jobs:
       
       - name: install required packages
         run: |
-          sudo apt-get update && apt-get install -y cmake ninja-build lsb-release software-properties-common python3-pip
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build lsb-release software-properties-common python3-pip
           pip install gcovr
           wget https://apt.llvm.org/llvm.sh
           chmod +x llvm.sh
-          ./llvm.sh 18
+          sudo ./llvm.sh 18
 
       - name: configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DI_AM_CI_MACHINE=1 -DCI_MACHINE_TEST_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake

@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y clang-format
 
-      - name: build and run clang-format
+      - name: run clang-format
         run: |
-          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STYLE_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STYLE_TASK=1
           cmake --build build --target check-clang-format
