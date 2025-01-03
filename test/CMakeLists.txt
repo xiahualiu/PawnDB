@@ -45,14 +45,14 @@ add_custom_target(
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(GCOV_EXE gcov)
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(GCOV_EXE llvm-cov${CLANG_VERSION_SURFFIX} gcov)
+  set(GCOV_EXE \"llvm-cov${CLANG_VERSION_SUFFIX}\")
 endif()
 
 add_custom_target(
   show-test-coverage
   DEPENDS ${test_targets}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMAND gcovr 
+  COMMAND gcovr
   --gcov-executable ${GCOV_EXE} 
   . 
   --filter include/ 

@@ -23,5 +23,5 @@ jobs:
 
       - name: build and run clang-format
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STYLE_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
           cmake --build build --target check-clang-format

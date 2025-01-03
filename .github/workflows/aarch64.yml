@@ -25,4 +25,4 @@ jobs:
             apt-get update && apt-get install -y cmake build-essential ninja-build
           run: |
             cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/gcc.cmake
-            cmake --build build --target pawndb
+            cmake --build build --target pawndb -j
