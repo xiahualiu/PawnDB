@@ -1,0 +1,41 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    branches:
+      - master
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+      
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ${{ runner.os }}-test
+      
+      - name: install required packages
+        run: |
+          sudo apt-get update && sudo apt-get install -y cmake ninja-build lsb-release software-properties-common python3-pip
+          pip install gcovr
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 18
+
+      - name: configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DI_AM_CI_MACHINE=1 -DCI_MACHINE_TEST_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+
+      - name: build & run test apps
+        run: |
+          cmake --build build --target run-all-tests
+          cmake --build build --target show-test-coverage
