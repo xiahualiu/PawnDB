@@ -1,0 +1,27 @@
+name: Doxygen
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'true'
+
+      - name: install required packages
+        run: |
+          sudo apt-get update && sudo apt-get install -y doxygen graphviz dia mscgen cmake ninja-build
+
+      - name: build and run clang-format
+        run: |
+          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_DOXYGEN_TASK=1 -G Ninja
+          cmake --build build --target doxygen

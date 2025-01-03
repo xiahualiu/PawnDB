@@ -19,7 +19,7 @@ jobs:
 
       - name: install required packages
         run: |
-          sudo apt-get update && sudo apt-get install -y clang-format
+          sudo apt-get update && sudo apt-get install -y clang-format cmake
 
       - name: run clang-format
         run: |
