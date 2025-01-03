@@ -21,7 +21,8 @@ jobs:
         with:
           arch: aarch64
           distro: ubuntu_latest
-          install: apt-get update && apt-get install -y cppcheck ccache cmake build-essential
+          install: | 
+            apt-get update && apt-get install -y cmake build-essential ninja-build
           run: |
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
-            cmake --build build --target pawndb -j2
+            cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/gcc.cmake
+            cmake --build build --target pawndb
