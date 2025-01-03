@@ -30,6 +30,11 @@ jobs:
         run: |
           cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_DOXYGEN_TASK=1 -G Ninja
           cmake --build build --target doxygen
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/docs/html
   
   deploy:
     needs: build
