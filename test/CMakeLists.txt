@@ -1,32 +1,30 @@
-# --- cmake minimum version ---
-cmake_minimum_required(VERSION 3.14)
-
 # --- Test target ---
-project(pawndb_tests LANGUAGES CXX)
+project(pawndb-test LANGUAGES CXX)
 
 # --- Add Doctest ---
 add_subdirectory(doctest)
-
-# ---- Options ----
-option(TEST_INSTALLED_VERSION "Test the installed version" OFF)
-
-file(GLOB test_sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
-
-# ---- Create binary ----
-add_executable(${PROJECT_NAME} ${test_sources})
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
-
-# Include and link from system path
-if(NOT TEST_INSTALLED_VERSION)
-  target_link_libraries(${PROJECT_NAME} PRIVATE pawndb doctest)
-else()
-  find_library(libPath pawndb)
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${libPath} doctest)
-endif()
-
-# ---- Configure CTest ----
-enable_testing()
-
 include(${CMAKE_CURRENT_SOURCE_DIR}/doctest/scripts/cmake/doctest.cmake)
 
-doctest_discover_tests(${PROJECT_NAME})
+add_subdirectory("source")
+
+# ---- Find all test tartgets ----
+function(get_test_targets dir var_name)
+  get_property(subdirectories DIRECTORY ${dir} PROPERTY SUBDIRECTORIES)
+  foreach(subdir ${subdirectories})
+    get_test_targets(${subdir} ${var_name})
+  endforeach()
+
+  get_property(test_targets DIRECTORY ${dir} PROPERTY BUILDSYSTEM_TARGETS)
+  foreach(test_target ${test_targets})
+    get_target_property(test_target_type ${test_target} TYPE)
+    if(${test_target_type} STREQUAL "EXECUTABLE")
+      list(APPEND ${var_name} ${test_target})
+    endif()
+    set(${var_name} ${${var_name}} PARENT_SCOPE)
+  endforeach()
+ endfunction() 
+
+ set(test_targets "")
+ get_test_targets("${CMAKE_CURRENT_SOURCE_DIR}/source" test_targets)
+
+ add_custom_target(run-all-tests DEPENDS ${test_targets} WORKING_DIRECTORY ${CMAKE_BINARY_DIR} COMMAND ctest -j 0)

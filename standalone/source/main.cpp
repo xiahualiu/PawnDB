@@ -1,25 +1,22 @@
-#include <pawndb/basic_tables.h>
-#include <pawndb/user/fixed_point_type.h>
-#include <pawndb/user/fixed_string_type.h>
-#include <pawndb/user/student_table.h>
-#include <pawndb/user/student_tuple.h>
-#include <pawndb/user/u32_type.h>
+/**
+ * @file main.cpp
+ * @author Xiahua Liu @xiahualiu
+ * @brief Demo application for PawnDB.
+ * @version 0.1
+ * @date 2025-01-03
+ *
+ * @copyright Copyright (c) 2025
+ *
+ */
 
-#include <iostream>
+#include "pawndb/main_thread.h"
+#include "pawndb/schema/demo.h"
 
-auto main() -> int {
-  using namespace PawnDB;
+using namespace PawnDB;
 
-  std::cout << "This is the standalone app." << std::endl;
+static __attribute__((no_destroy)) auto database = Database();
 
-  StudentTuple temp(U32Int(100), FixedString<20>("Alice"), FixedPoint<100>(1, 9999));
-
-  std::cout << "Length of Tuple name: " << std::get<1>(temp.list).length << std::endl;
-  std::cout << "Size of U32Int(100): " << sizeof(U32Int) << std::endl;
-  std::cout << "Size of FixedString<20>: " << sizeof(FixedString<20>) << std::endl;
-  std::cout << "Size of FixedPoint<100>: " << sizeof(FixedPoint<100>) << std::endl;
-  std::cout << "Size of StudentTuple: " << sizeof(temp) << std::endl;
-  std::cout << "Size of StudentTable: " << sizeof(StudentTable) << std::endl;
-
-  return 0;
+int main() {
+  auto main_thread = MainThread{database};
+  main_thread.start();
 }
