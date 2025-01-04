@@ -251,6 +251,50 @@ static void process_exclusive_read(const WorkerContext& _context,
   }
 }
 
+static void process_yield(const WorkerContext& _context,
+                          WorkerRuntime& _runtime, Parser& _parser, Job& _job) {
+  if (_runtime.status != TxnStatus::GROWING) {
+    _parser.set_buffer_size(7);
+    job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
+    return;
+  }
+  auto table_id_r = _parser.get_tbl();
+  if (!table_id_r) {
+    _parser.set_buffer_size(7);
+    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    return;
+  }
+  auto tuple_key_r = _parser.get_tp_key();
+  if (!tuple_key_r) {
+    _parser.set_buffer_size(7);
+    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    return;
+  }
+  auto table_id = table_id_r.unwrap();
+  auto tuple_key = tuple_key_r.unwrap();
+  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
+  if (!_runtime.lock_table.get(table_id, tuple_key) ||
+      lock_r.unwrap() != LockType::Shared) {
+    _parser.set_buffer_size(7);
+    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+    return;
+  }
+  _runtime.lock_table.unlock(table_id, tuple_key);
+  switch (table_id) {
+    case tbl_id<student_table>(): {
+      auto& table_ref = std::get<0>(_context.db->table);
+      table_ref.release_s(tuple_key);
+      job_ack(OpAck::SUCCESS, _context, _parser, _job);
+      return;
+    }
+    default: {
+      _parser.set_buffer_size(7);
+      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      return;
+    }
+  }
+}
+
 static void process_update(const WorkerContext& _context,
                            WorkerRuntime& _runtime, Parser& _parser,
                            Job& _job) {
@@ -597,6 +641,10 @@ void worker_main(const WorkerContext&& _context) noexcept {
       }
       case OpType::EXCLUSIVE_READ: {
         process_exclusive_read(context, runtime, parser, job);
+        break;
+      }
+      case OpType::YIELD_READ: {
+        process_yield(context, runtime, parser, job);
         break;
       }
       case OpType::PROMOTE: {

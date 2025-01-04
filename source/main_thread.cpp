@@ -182,6 +182,7 @@ void MainThread::start() noexcept {
       case OpType::ADD_TUPLE:
       case OpType::SHARED_READ:
       case OpType::EXCLUSIVE_READ:
+      case OpType::YIELD_READ:
       case OpType::PROMOTE:
       case OpType::UPDATE:
       case OpType::DELETE: {

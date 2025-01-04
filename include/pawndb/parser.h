@@ -28,6 +28,7 @@ enum class OpType : std::uint8_t {
   ADD_TUPLE,
   SHARED_READ,
   EXCLUSIVE_READ,
+  YIELD_READ,
   PROMOTE,
   UPDATE,
   DELETE,
