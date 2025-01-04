@@ -152,6 +152,7 @@ class Hash {
       if (!table[i].is_used && !table[i].is_deleted) {
         return HashError::NotFound;
       } else if (table[i].is_used && table[i].key == _key) {
+        table[i].is_used = false;
         table[i].is_deleted = true;
         size--;
         return i;

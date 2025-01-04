@@ -9,8 +9,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(
   pawndb
   VERSION 0.1
-  LANGUAGES CXX
-)
+  LANGUAGES CXX)
 
 # Set the standard to ISO C++17 without extensions
 set(CMAKE_CXX_STANDARD 17)
@@ -26,8 +25,7 @@ add_library(${PROJECT_NAME} "")
 # include paths
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include/>
-)
+                         $<INSTALL_INTERFACE:include/>)
 
 # Install to system default path minimum
 include(cmake/install.cmake)
@@ -55,7 +53,8 @@ if(I_AM_CI_MACHINE)
     add_subdirectory("standalone")
   endif()
 else()
-  add_subdirectory("source")  
+  enable_testing()
+  add_subdirectory("source")
   add_subdirectory("standalone")
   add_subdirectory("test")
   add_subdirectory("docs")
