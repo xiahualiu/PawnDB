@@ -60,7 +60,7 @@ TEST_CASE("LockTable Lock Release #2") {
   LockTable lock_table;
   CHECK(lock_table.lock(1, 1, LockType::Exclusive) == LockError::None);
   CHECK(lock_table.unlock(1, 16) == LockError::LockNotFound);
-  CHECK(lock_table.empty());
+  CHECK(!lock_table.empty());
 }
 
 TEST_CASE("LockTable Resource Exhaustion #1") {
