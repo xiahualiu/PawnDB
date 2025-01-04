@@ -187,9 +187,7 @@ class LockTable {
     using reference = const value_type&;
 
     ConstIterator(const LockTable* _table, size_t _index)
-        : table(_table), index(static_cast<tbl_row_t>(_index)) {
-      advance_to_valid();
-    }
+        : table(_table), index(static_cast<tbl_row_t>(_index)) {}
 
     /**
      * @brief Dereference operator to access the value at the current iterator
@@ -206,7 +204,7 @@ class LockTable {
     value_type operator*() const {
       auto hash_key = table->hash_table[index];
       auto [tbl, key] = table->key(hash_key);
-      return std::make_tuple(tbl, key, table->locks[hash_key]);
+      return std::make_tuple(tbl, key, table->locks[index]);
     }
 
     ConstIterator& operator++() {
@@ -229,7 +227,6 @@ class LockTable {
       return a.index != b.index;
     }
 
-   private:
     /**
      * @brief Advances the index to the next valid entry in the hash table.
      *
@@ -237,17 +234,33 @@ class LockTable {
      * in the hash table or reaches the maximum number of locks per transaction.
      */
     void advance_to_valid() {
-      while (index < MAX_LOCK_PER_TRANSACTION &&
-             !table->hash_table.is_valid(index)) {
+      while (!table->hash_table.is_valid(index)) {
         ++index;
+        if (index >= MAX_LOCK_PER_TRANSACTION) {
+          index = MAX_LOCK_PER_TRANSACTION;
+          break;
+        }
       }
     }
 
+    /**
+     * @brief Returns the index associated with the current iterator position.
+     *
+     * @note This function is used for testing purposes only.
+     * @return The index associated with the current iterator position.
+     */
+    tbl_row_t _test_index() const { return index; }
+
+   private:
     const LockTable* table;
     tbl_row_t index;
   };
 
-  ConstIterator begin() const { return ConstIterator(this, 0); }
+  ConstIterator begin() const {
+    auto i = ConstIterator(this, 0);
+    i.advance_to_valid();
+    return i;
+  }
   ConstIterator end() const {
     return ConstIterator(this, MAX_LOCK_PER_TRANSACTION);
   }

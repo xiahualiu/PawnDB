@@ -10,71 +10,142 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "doctest/doctest.h"
-#include "pawndb/buffer_table.h"
 #include <thread>
 #include <vector>
 
+#include "doctest/doctest.h"
+#include "pawndb/buffer_table.h"
+
 namespace PawnDB {
 
-TEST_CASE("BufferTable Basic Operations #1") {
-    BufferTable table;
-    auto idx = table.request();
-    CHECK(idx >= 0);
-    table.release(idx);
+TEST_CASE("BufferRef Constructor #1") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref1_index = ref1._test_index();
+  CHECK(table._test_counter(ref1_index) == 1);
 }
 
-TEST_CASE("BufferTable Multiple Buffers #1") {
-    BufferTable table;
-    std::vector<tbl_row_t> indices;
-    
-    // Request multiple buffers
-    for(int i = 0; i < 5; i++) {
-        indices.push_back(table.request());
-    }
-    
-    // Verify and release
-    for(auto idx : indices) {
-        CHECK(idx >= 0);
-        table[idx][0] = 'a';  // Test buffer access
-        table.release(idx);
-    }
+TEST_CASE("BufferRef Copy #1") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref2(ref1);  // Copy constructor
+  auto ref1_index = ref1._test_index();
+  auto ref2_index = ref2._test_index();
+  CHECK(ref1_index == ref2_index);
+  CHECK(table._test_counter(ref1_index) == 2);
 }
 
-TEST_CASE("BufferTable Concurrent Access #1") {
-    BufferTable table;
-    std::vector<std::thread> threads;
-    
-    for(int i = 0; i < 4; i++) {
-        threads.emplace_back([&table]() {
-            auto idx = table.request();
-            table[idx][0] = 'x';
-            table.release(idx);
-        });
-    }
-    
-    for(auto& t : threads) {
-        t.join();
-    }
+TEST_CASE("BufferRef Copy Assignment #1") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref2 = BufferTable::BufferRef();
+  ref2 = ref1;  // Copy assignment
+  auto ref1_index = ref1._test_index();
+  INFO("The value of ref1_index is ", ref1_index);
+  auto ref2_index = ref2._test_index();
+  INFO("The value of ref2_index is ", ref2_index);
+  CHECK(ref1_index == ref2_index);
+  CHECK(table._test_counter(ref1_index) == 2);
 }
 
-TEST_CASE("BufferTable Full #1") {
-    BufferTable table;
-    std::vector<tbl_row_t> indices;
-    
-    // Fill buffer table
-    for(int i = 0; i < BUFFER_ROWS; i++) {
-        indices.push_back(table.request());
-    }
-    
-    // Verify full
-    auto idx = table.request();
-    CHECK(idx == -1);
-    
-    // Release all
-    for(auto idx : indices) {
-        table.release(idx);
-    }
+TEST_CASE("BufferRef Copy Assignment #2") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref1_index = ref1._test_index();
+  auto ref2 = table.request();
+  auto ref2_index_before = ref2._test_index();
+  ref2 = ref1;  // Copy assignment
+  auto ref2_index_after = ref2._test_index();
+  CHECK(ref1_index == ref2_index_after);
+  CHECK(table._test_counter(ref1_index) == 2);
+  CHECK(table._test_counter(ref2_index_before) == 0);
+}
+
+TEST_CASE("BufferRef Copy Assignment #3") {
+  BufferTable table;
+  auto ref1 = BufferTable::BufferRef();
+  auto ref2 = table.request();
+  auto ref2_index_before = ref2._test_index();
+  ref2 = ref1;  // Copy assignment to null object
+  CHECK(table._test_counter(ref2_index_before) == 0);
+}
+
+TEST_CASE("BufferRef Copy Assignment #4") {
+  BufferTable table;
+  auto ref1 = BufferTable::BufferRef();
+  auto ref2 = BufferTable::BufferRef();
+  ref2 = ref1;  // Copy assignment to null object
+}
+
+TEST_CASE("BufferRef Move #1") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref1_index = ref1._test_index();
+  auto ref2 = std::move(ref1);  // Move constructor
+  CHECK(!ref1);                 // Original should be null
+  CHECK(ref2);
+  CHECK(ref2._test_index() == ref1_index);
+  CHECK(table._test_counter(ref1_index) == 1);
+}
+
+TEST_CASE("BufferRef Move Assignment #1") {
+  BufferTable table;
+  auto ref1 = table.request();
+  auto ref1_index = ref1._test_index();
+  auto ref2 = table.request();
+  auto ref2_index_before = ref2._test_index();
+  ref2 = std::move(ref1);  // Move assignment
+  auto ref2_index_after = ref2._test_index();
+  CHECK(ref2);
+  CHECK(!ref1);  // Original should be null
+  CHECK(ref2_index_after == ref1_index);
+  CHECK(table._test_counter(ref2_index_before) == 0);
+}
+
+TEST_CASE("BufferRef Move Assignment #2") {
+  BufferTable table;
+  auto ref1 = BufferTable::BufferRef();
+  auto ref2 = table.request();
+  auto ref2_index_before = ref2._test_index();
+  ref2 = std::move(ref1);  // Copy assignment to null object
+  CHECK(table._test_counter(ref2_index_before) == 0);
+}
+
+TEST_CASE("BufferRef Move Assignment #3") {
+  BufferTable table;
+  auto ref1 = BufferTable::BufferRef();
+  auto ref2 = BufferTable::BufferRef();
+  ref2 = std::move(ref1);  // Copy assignment to null object
+}
+
+TEST_CASE("BufferRef Thread Safety") {
+  BufferTable table;
+  std::vector<std::thread> threads;
+  std::atomic<int> success_count{0};
+
+  for (int i = 0; i < 10; i++) {
+    threads.emplace_back([&]() {
+      auto ref = table.request();
+      if (ref) success_count++;
+    });
+  }
+
+  for (auto& t : threads) {
+    t.join();
+  }
+
+  CHECK(success_count > 0);
+}
+
+TEST_CASE("BufferRef Index") {
+  BufferTable table;
+  auto ref = table.request();
+  (*ref)[0] = 42;
+  CHECK((*ref)[0] == 42);
+  auto ref2 = ref;
+  CHECK((*ref2)[0] == 42);
+  (*ref2)[0] = 43;
+  CHECK((*ref)[0] == 43);
 }
 
 }  // namespace PawnDB

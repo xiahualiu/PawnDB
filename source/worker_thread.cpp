@@ -29,7 +29,6 @@ static void job_ack(const OpAck _ack, const WorkerContext& _context,
   _parser.set_ack(_ack);
   sendto(_context.server_fd, _parser.buffer().data(), _parser.get_buffer_size(),
          0, &_job.client_addr, _job.client_addr_len);
-  _context.db->buffers.release(_job.buffer_index);
   _context.job_ch->pop();
 }
 
@@ -49,31 +48,27 @@ static void process_add(const WorkerContext& _context, WorkerRuntime& _runtime,
     return;
   }
   auto table_id = table_id_r.unwrap();
-  auto new_buffer_index = _context.db->buffers.request();
+  auto new_buffer_ref = _context.db->buffers.request();
   switch (table_id) {
     case tbl_id<student_table>(): {
       auto new_tuple = std::tuple<student_name, std::uint8_t>{};
       auto serializer = TpSerDes<student_table>();
-      if (!serializer.deserialize(_context.db->buffers[_job.buffer_index],
-                                  _parser.get_data_offset(), new_tuple)) {
+      if (!serializer.deserialize(*_job.buffer, _parser.get_data_offset(),
+                                  new_tuple)) {
         _parser.set_buffer_size(7);
         job_ack(OpAck::BAD_DATA, _context, _parser, _job);
-        _context.db->buffers.release(new_buffer_index);
         return;
       }
-      std::memcpy(_context.db->buffers[new_buffer_index].data(), &new_tuple,
-                  sizeof(new_tuple));
+      std::memcpy((*new_buffer_ref).data(), &new_tuple, sizeof(new_tuple));
       break;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
-      _context.db->buffers.release(new_buffer_index);
       return;
     }
   }
-  _runtime.commits.push(
-      Commit{OpType::ADD_TUPLE, table_id, 0, new_buffer_index});
+  _runtime.commits.push(Commit{OpType::ADD_TUPLE, table_id, 0, new_buffer_ref});
   job_ack(OpAck::SUCCESS, _context, _parser, _job);
   return;
 }
@@ -108,7 +103,7 @@ static void process_rm(const WorkerContext& _context, WorkerRuntime& _runtime,
     job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
     return;
   }
-  _runtime.commits.push(Commit{OpType::DELETE, table_id, tuple_key, 0});
+  _runtime.commits.push(Commit{OpType::DELETE, table_id, tuple_key, {}});
   job_ack(OpAck::SUCCESS, _context, _parser, _job);
   return;
 }
@@ -326,31 +321,28 @@ static void process_update(const WorkerContext& _context,
     job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
     return;
   }
-  auto new_buffer_index = _context.db->buffers.request();
+  auto new_buffer_ref = _context.db->buffers.request();
   switch (table_id) {
     case tbl_id<student_table>(): {
       auto serializer = TpSerDes<student_table>();
       auto new_tuple = std::tuple<student_name, std::uint8_t>{};
-      if (!serializer.deserialize(_context.db->buffers[_job.buffer_index],
-                                  _parser.get_data_offset(), new_tuple)) {
+      if (!serializer.deserialize(*new_buffer_ref, _parser.get_data_offset(),
+                                  new_tuple)) {
         _parser.set_buffer_size(7);
         job_ack(OpAck::BAD_DATA, _context, _parser, _job);
-        _context.db->buffers.release(new_buffer_index);
         return;
       }
-      std::memcpy(_context.db->buffers[new_buffer_index].data(), &new_tuple,
-                  sizeof(new_tuple));
+      std::memcpy((*new_buffer_ref).data(), &new_tuple, sizeof(new_tuple));
       break;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
-      _context.db->buffers.release(new_buffer_index);
       return;
     }
   }
   _runtime.commits.push(
-      Commit{OpType::UPDATE, table_id, tuple_key, new_buffer_index});
+      Commit{OpType::UPDATE, table_id, tuple_key, new_buffer_ref});
   job_ack(OpAck::SUCCESS, _context, _parser, _job);
   return;
 }
@@ -473,13 +465,12 @@ static void process_commit(const WorkerContext& _context,
     switch (commit.op) {
       case OpType::ADD_TUPLE: {
         auto table_id = commit.tbl_id;
-        auto buffer_index = commit.buffer_index;
+        auto& buffer = commit.buffer;
         switch (table_id) {
           case tbl_id<student_table>(): {
             auto new_tuple = student_table::tuple_type{};
             auto& table_ref = std::get<0>(_context.db->table);
-            std::memcpy(&new_tuple, _context.db->buffers[buffer_index].data(),
-                        sizeof(new_tuple));
+            std::memcpy(&new_tuple, (*buffer).data(), sizeof(new_tuple));
             table_ref.insert(new_tuple);
             table_ref.notify_not_empty();
             break;
@@ -509,13 +500,12 @@ static void process_commit(const WorkerContext& _context,
       case OpType::UPDATE: {
         auto table_id = commit.tbl_id;
         auto tuple_key = commit.tp_key;
-        auto buffer_index = commit.buffer_index;
+        auto& buffer = commit.buffer;
         switch (table_id) {
           case tbl_id<student_table>(): {
             auto new_tuple = student_table::tuple_type{};
             auto& table_ref = std::get<0>(_context.db->table);
-            std::memcpy(&new_tuple, _context.db->buffers[buffer_index].data(),
-                        sizeof(new_tuple));
+            std::memcpy(&new_tuple, (*buffer).data(), sizeof(new_tuple));
             table_ref.update(tuple_key, new_tuple);
             break;
           }
@@ -580,7 +570,7 @@ static void worker_quit(const WorkerContext& _context,
                         const WorkerRuntime& _runtime) noexcept {
   release_locks(_context, _runtime);
   _context.running->clear(std::memory_order_release);
-  _context.main_ch->send(_context.txn_id);
+  _context.main_ch->send(std::move(_context.txn_id));
 }
 
 /**
@@ -612,8 +602,8 @@ void worker_main(const WorkerContext&& _context) noexcept {
       return;
     }
     auto job = job_r.unwrap();
-    auto& job_buffer = context.db->buffers[job.buffer_index];
-    auto parser = Parser{job_buffer, job.buffer_size};
+    auto& job_buffer = job.buffer;
+    auto parser = Parser{*job_buffer, job.buffer_size};
 
     auto op_r = parser.get_op();
     if (!op_r) {

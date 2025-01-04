@@ -73,8 +73,8 @@ class Queue {
    *
    * @param _value The value to push.
    */
-  inline void push(const T&& _value) noexcept {
-    table[tail] = _value;
+  inline void push(T&& _value) noexcept {
+    table[tail] = std::move(_value);
     tail = (tail + 1) % Rows;
     size++;
   }
@@ -83,6 +83,7 @@ class Queue {
    * @brief Pops an element from the queue.
    */
   inline void pop() noexcept {
+    table[head].~T();
     head = (head + 1) % Rows;
     size--;
   }

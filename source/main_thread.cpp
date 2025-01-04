@@ -84,7 +84,7 @@ void MainThread::clean_worker() noexcept {
         break;
       }
       auto job = get_r.unwrap();
-      auto parser = Parser(db.buffers[job.buffer_index], job.buffer_size);
+      auto parser = Parser(*job.buffer, job.buffer_size);
       parser.set_ack(OpAck::DEAD_TXN);
       sendto(server_fd, parser.buffer().data(), parser.get_buffer_size(), 0,
              &job.client_addr, job.client_addr_len);
@@ -131,8 +131,8 @@ void MainThread::start() noexcept {
   }
   std::cout << "Server is listening on " << UNIX_SOCKET_PATH << std::endl;
   while (true) {
-    auto recv_buf_index = db.buffers.request();
-    auto& recv_buffer = db.buffers[recv_buf_index];
+    auto recv_buffer_ref = db.buffers.request();
+    auto recv_buffer = *recv_buffer_ref;
     auto client_addr = sockaddr();
     auto client_addr_len = socklen_t();
     ssize_t recv_size =
@@ -150,7 +150,6 @@ void MainThread::start() noexcept {
       std::cerr << "Failed to parse operation" << std::endl;
       packet_ack(OpAck::BAD_OP, parser, server_fd, client_addr,
                  client_addr_len);
-      db.buffers.release(recv_buf_index);
       continue;
     }
     auto op = op_r.unwrap();
@@ -162,7 +161,6 @@ void MainThread::start() noexcept {
           std::cerr << "Failed to insert worker" << std::endl;
           packet_ack(OpAck::BUSY, parser, server_fd, client_addr,
                      client_addr_len);
-          db.buffers.release(recv_buf_index);
           continue;
         }
         auto index = index_r.unwrap();
@@ -173,7 +171,7 @@ void MainThread::start() noexcept {
         next_txn_id++;
         job_chs[index].send({client_addr, client_addr_len,
                              static_cast<buf_size_t>(recv_size),
-                             recv_buf_index});
+                             recv_buffer_ref});
         job_chs[index].notify();
         continue;
       }
@@ -191,7 +189,6 @@ void MainThread::start() noexcept {
           std::cerr << "Failed to parse transaction ID" << std::endl;
           packet_ack(OpAck::BAD_TXN, parser, server_fd, client_addr,
                      client_addr_len);
-          db.buffers.release(recv_buf_index);
           continue;
         }
         auto txn_id = txn_id_r.unwrap();
@@ -200,7 +197,6 @@ void MainThread::start() noexcept {
           std::cerr << "Failed to find worker" << std::endl;
           packet_ack(OpAck::BAD_TXN, parser, server_fd, client_addr,
                      client_addr_len);
-          db.buffers.release(recv_buf_index);
           continue;
         }
         auto index = search_r.unwrap();
@@ -208,16 +204,14 @@ void MainThread::start() noexcept {
           running_flags[index].clear(std::memory_order_release);
           packet_ack(OpAck::DEAD_TXN, parser, server_fd, client_addr,
                      client_addr_len);
-          db.buffers.release(recv_buf_index);
           continue;
         }
         auto send_r = job_chs[index].send({client_addr, client_addr_len,
                                            static_cast<buf_size_t>(recv_size),
-                                           recv_buf_index});
+                                           recv_buffer_ref});
         if (ChannelError::TableFull == send_r) {
           packet_ack(OpAck::BUSY, parser, server_fd, client_addr,
                      client_addr_len);
-          db.buffers.release(recv_buf_index);
           continue;
         }
         if (op == OpType::ABORT_TXN) {

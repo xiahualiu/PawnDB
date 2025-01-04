@@ -63,7 +63,7 @@ add_custom_target(
   . --filter include/ 
   --filter source/)
 
-add_custom_target(clean_coverage
+add_custom_target(clean-coverage
   COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcda" -delete
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

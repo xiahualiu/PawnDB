@@ -13,6 +13,7 @@
 #define PAWNDB_RESULT_H
 
 #include <type_traits>
+#include <utility>
 
 namespace PawnDB {
 
@@ -74,14 +75,14 @@ class Result {
    *
    * @return A reference to the value.
    */
-  inline T& unwrap() noexcept { return value; }
+  inline T&& unwrap() noexcept { return std::move(value); }
 
   /**
    * @brief Unwraps the value from the Result.
    *
    * @return A const reference to the value.
    */
-  inline const T& unwrap() const noexcept { return value; }
+  inline const T&& unwrap() const noexcept { return std::move(value); }
 
   /**
    * @brief Gets the error from the Result.

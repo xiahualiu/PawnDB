@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <thread>
 
+#include "pawndb/buffer_table.h"
 #include "pawndb/channel.h"
 #include "pawndb/lock_table.h"
 #include "pawndb/params.h"
@@ -44,10 +45,10 @@ enum class TxnStatus : std::uint8_t {
  * Contains all necessary information for processing a client request.
  */
 struct Job {
-  sockaddr client_addr;      /**< Network address of the client */
-  socklen_t client_addr_len; /**< Length of the client address structure */
-  buf_size_t buffer_size;    /**< Size of the request buffer */
-  tbl_row_t buffer_index;    /**< Index into the buffer pool */
+  sockaddr client_addr;          /**< Network address of the client */
+  socklen_t client_addr_len;     /**< Length of the client address structure */
+  buf_size_t buffer_size;        /**< Size of the request buffer */
+  BufferTable::BufferRef buffer; /**< Reference to the request buffer */
 };
 
 /**
@@ -58,11 +59,10 @@ struct Job {
  * index.
  */
 struct Commit {
-  OpType op;              /**< The type of operation to commit */
-  tp_id_t tbl_id;         /**< The ID of the table to operate on */
-  tbl_row_t tp_key;       /**< The key of the tuple to operate on */
-  tbl_row_t buffer_index; /**< The index of the buffer containing the operation
-                             data */
+  OpType op;                     /**< The type of operation to commit */
+  tp_id_t tbl_id;                /**< The ID of the table to operate on */
+  tbl_row_t tp_key;              /**< The key of the tuple to operate on */
+  BufferTable::BufferRef buffer; /**< Reference to the buffer containing data */
 };
 
 /**

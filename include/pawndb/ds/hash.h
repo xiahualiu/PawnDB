@@ -103,7 +103,8 @@ class Hash {
     do {
       if (!table[i].is_used && !table[i].is_deleted) {
         return HashError::NotFound;
-      } else if (table[i].is_used && table[i].key == _key) {
+      } else if (table[i].is_used && !table[i].is_deleted &&
+                 table[i].key == _key) {
         return i;
       }
       i = (i + 1) % Rows;
@@ -151,8 +152,8 @@ class Hash {
     do {
       if (!table[i].is_used && !table[i].is_deleted) {
         return HashError::NotFound;
-      } else if (table[i].is_used && table[i].key == _key) {
-        table[i].is_used = false;
+      } else if (table[i].is_used && !table[i].is_deleted &&
+                 table[i].key == _key) {
         table[i].is_deleted = true;
         size--;
         return i;
