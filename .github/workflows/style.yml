@@ -19,9 +19,9 @@ jobs:
 
       - name: install required packages
         run: |
-          sudo apt-get update && sudo apt-get install -y clang-format cmake
+          sudo apt-get update && sudo apt-get install -y clang-format cmake ninja-build
 
       - name: run clang-format
         run: |
-          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STYLE_TASK=1
+          cmake -S . -B build -DPAWNDB_ENABLE_STYLE=ON
           cmake --build build --target check-clang-format

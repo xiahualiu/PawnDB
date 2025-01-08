@@ -14,60 +14,59 @@
 
 #include <array>
 #include <atomic>
+#include <thread>
 
-#include "pawndb/ds/hash.h"
+#include "pawndb/buffer.h"
+#include "pawndb/hash.h"
 #include "pawndb/params.h"
+#include "pawndb/parser.h"
 #include "pawndb/schema/demo.h"
 #include "pawndb/worker_thread.h"
 
 namespace PawnDB {
 
+using TxnTable = HashTable<txn_id_t, MAX_TRANSACTIONS>;
+
+struct MainContext {
+  Database* db;
+  std::array<std::thread, MAX_TRANSACTIONS> workers;
+  std::array<JobChannel, MAX_TRANSACTIONS> job_chs;
+  std::array<std::atomic_flag, MAX_TRANSACTIONS> running_flags;
+
+  int server_fd;
+  MainChannel main_ch;
+  TxnTable txn_table;
+  txn_id_t next_txn_id;
+};
+
 /**
  * @brief Class representing the main thread.
  */
-class MainThread {
- public:
-  /**
-   * @brief Constructs a new MainThread object.
-   *
-   * @param _db Reference to the database.
-   */
-  MainThread(Database& _db) noexcept
-      : db(_db),
-        workers(),
-        job_chs(),
-        running_flags(),
-        server_fd(),
-        main_ch(),
-        next_txn_id(0),
-        txn_table() {}
+class MainThread : public HashFunc<txn_id_t, MAX_TRANSACTIONS>,
+                   public ChannelFunc<Job>,
+                   public ChannelFunc<txn_id_t>,
+                   public ParserFunc,
+                   public BufferFunc {
+  // Prevent ambiguity with ChannelFunc functions
+  using _job_func = ChannelFunc<Job>;
+  using _txn_func = ChannelFunc<txn_id_t>;
 
+ public:
   /**
    * @brief Starts the main thread.
    *
    * This function starts the main thread and runs indefinitely.
    */
-  [[noreturn]] void start() noexcept;
+  static void start(MainContext& _ct) noexcept;
 
   /**
    * @brief Cleans up worker threads.
    *
    * This function cleans up the worker threads.
    */
-  void clean_worker() noexcept;
+  static void clean_worker(MainContext& _ct) noexcept;
 
  private:
-  using TxnTable = Hash<txn_id_t, MAX_TRANSACTIONS>;
-
-  Database& db;
-  std::array<WorkerThread, MAX_TRANSACTIONS> workers;
-  std::array<JobChannel, MAX_TRANSACTIONS> job_chs;
-  std::array<std::atomic_flag, MAX_TRANSACTIONS> running_flags;
-
-  int server_fd;
-  MainChannel main_ch;
-  txn_id_t next_txn_id;
-  TxnTable txn_table;
 };
 
 }  // namespace PawnDB

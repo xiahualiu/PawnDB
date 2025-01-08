@@ -15,8 +15,11 @@
 
 #include "pawndb/worker_thread.h"
 
+#include <sys/types.h>
+
 #include <cstring>
 
+#include "pawndb/lock.h"
 #include "pawndb/params.h"
 #include "pawndb/parser.h"
 #include "pawndb/table_types.h"
@@ -24,133 +27,134 @@
 
 namespace PawnDB {
 
-static void job_ack(const OpAck _ack, const WorkerContext& _context,
-                    Parser& _parser, Job& _job) noexcept {
-  _parser.set_ack(_ack);
-  sendto(_context.server_fd, _parser.buffer().data(), _parser.get_buffer_size(),
-         0, &_job.client_addr, _job.client_addr_len);
-  _context.job_ch->pop();
+void WorkerThread::job_ack(const OpAck _ack, const WorkerContext& _ct,
+                           ParserStruct& _parser, Job& _job) noexcept {
+  set_ack(_parser, _ack);
+  sendto(_ct.server_fd, _parser.data.data(), _parser.size, 0, &_job.client_addr,
+         _job.client_addr_len);
+  _job_func::pop(*_ct.job_ch);
 }
 
-static void process_add(const WorkerContext& _context, WorkerRuntime& _runtime,
-                        Parser& _parser, Job& _job) {
-  if (_runtime.status == TxnStatus::GROWING) {
-    _runtime.status = TxnStatus::SHRINKING;
+void WorkerThread::process_add(const WorkerContext& _ct, WorkerRuntime& _rt,
+                               ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status == TxnStatus::GROWING) {
+    _rt.status = TxnStatus::SHRINKING;
   }
-  if (_runtime.commits.full()) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::COMMIT_FULL, _context, _parser, _job);
+  if (_cmt_func::full(_rt.commits)) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
-  auto new_buffer_ref = _context.db->buffers.request();
+  auto new_buffer_ref = request(_ct.db->buffers);
   switch (table_id) {
     case tbl_id<student_table>(): {
       auto new_tuple = std::tuple<student_name, std::uint8_t>{};
       auto serializer = TpSerDes<student_table>();
-      if (!serializer.deserialize(*_job.buffer, _parser.get_data_offset(),
-                                  new_tuple)) {
-        _parser.set_buffer_size(7);
-        job_ack(OpAck::BAD_DATA, _context, _parser, _job);
+      if (!serializer.deserialize(*_job.buffer, get_data_offset(), new_tuple)) {
+        set_buffer_size(_parser, 7);
+        job_ack(OpAck::BAD_DATA, _ct, _parser, _job);
         return;
       }
       std::memcpy((*new_buffer_ref).data(), &new_tuple, sizeof(new_tuple));
       break;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
-  _runtime.commits.push(Commit{OpType::ADD_TUPLE, table_id, 0, new_buffer_ref});
-  job_ack(OpAck::SUCCESS, _context, _parser, _job);
+  _cmt_func::push(_rt.commits,
+                  {OpType::ADD_TUPLE, table_id, 0, new_buffer_ref});
+  job_ack(OpAck::SUCCESS, _ct, _parser, _job);
   return;
 }
 
-static void process_rm(const WorkerContext& _context, WorkerRuntime& _runtime,
-                       Parser& _parser, Job& _job) {
-  if (_runtime.status == TxnStatus::GROWING) {
-    _runtime.status = TxnStatus::SHRINKING;
+void WorkerThread::process_rm(const WorkerContext& _ct, WorkerRuntime& _rt,
+                              ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status == TxnStatus::GROWING) {
+    _rt.status = TxnStatus::SHRINKING;
   }
-  if (_runtime.commits.full()) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::COMMIT_FULL, _context, _parser, _job);
+  if (_cmt_func::full(_rt.commits)) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
+  auto lock_r = _lk_func::get(_rt.lock_table, table_id, tuple_key);
   if (!lock_r || lock_r.unwrap() != LockType::Exclusive) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
-  _runtime.commits.push(Commit{OpType::DELETE, table_id, tuple_key, {}});
-  job_ack(OpAck::SUCCESS, _context, _parser, _job);
+  _cmt_func::push(_rt.commits, {OpType::DELETE, table_id, tuple_key, {}});
+  job_ack(OpAck::SUCCESS, _ct, _parser, _job);
   return;
 }
 
-static void process_shared_read(const WorkerContext& _context,
-                                WorkerRuntime& _runtime, Parser& _parser,
-                                Job& _job) {
-  if (_runtime.status != TxnStatus::GROWING) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
+void WorkerThread::process_shared_read(const WorkerContext& _ct,
+                                       WorkerRuntime& _rt,
+                                       ParserStruct& _parser,
+                                       Job& _job) noexcept {
+  if (_rt.status != TxnStatus::GROWING) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  if (_runtime.lock_table.get(table_id, tuple_key)) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+  if (_lk_func::get(_rt.lock_table, table_id, tuple_key)) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
   switch (table_id) {
     case tbl_id<student_table>(): {
-      auto& table_ref = std::get<0>(_context.db->table);
+      auto& table_ref = std::get<0>(_ct.db->table);
       tbl_row_t tuple_i = 0;
       auto timeout_cnt = 0;
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
-          job_ack(OpAck::TIMEOUT, _context, _parser, _job);
+          job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
           return;
         }
-        if (!_context.running->test_and_set(std::memory_order_acquire)) {
-          _context.running->clear(std::memory_order_release);
-          job_ack(OpAck::ABORTED, _context, _parser, _job);
+        if (!_ct.running->test_and_set(std::memory_order_acquire)) {
+          _ct.running->clear(std::memory_order_release);
+          job_ack(OpAck::ABORTED, _ct, _parser, _job);
           return;
         }
-        auto wait_r = table_ref.wait_s();
+        auto wait_r = student_table_func::wait_s(table_ref);
         if (!wait_r) {
           timeout_cnt++;
           continue;
@@ -158,68 +162,69 @@ static void process_shared_read(const WorkerContext& _context,
         tuple_i = wait_r.unwrap();
         break;
       }
-      _runtime.lock_table.lock(tbl_id<student_table>(),
-                               table_ref.key_at(tuple_i), LockType::Shared);
-      _parser.set_tp_key(table_ref.key_at(tuple_i));
+      lock(_rt.lock_table, tbl_id<student_table>(),
+           table_ref.hash.table[tuple_i].key, LockType::Shared);
+      set_tp_key(_parser, table_ref.hash.table[tuple_i].key);
       auto serializer = TpSerDes<student_table>();
-      auto offset = serializer.serialize(table_ref[tuple_i], _parser.buffer(),
-                                         _parser.get_data_offset());
-      _parser.set_data_size(offset - _parser.get_data_offset());
-      _parser.set_buffer_size(offset);
-      job_ack(OpAck::SUCCESS, _context, _parser, _job);
+      auto offset = serializer.serialize(table_ref.tuples[tuple_i],
+                                         _parser.data, get_data_offset());
+      set_data_size(_parser, offset - get_data_offset());
+      set_buffer_size(_parser, offset);
+      job_ack(OpAck::SUCCESS, _ct, _parser, _job);
       return;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
 }
 
-static void process_exclusive_read(const WorkerContext& _context,
-                                   WorkerRuntime& _runtime, Parser& _parser,
-                                   Job& _job) {
-  if (_runtime.status != TxnStatus::GROWING) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
+void WorkerThread::process_exclusive_read(const WorkerContext& _ct,
+                                          WorkerRuntime& _rt,
+                                          ParserStruct& _parser,
+                                          Job& _job) noexcept {
+  if (_rt.status != TxnStatus::GROWING) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  if (_runtime.lock_table.get(table_id, tuple_key)) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+  if (_lk_func::get(_rt.lock_table, table_id, tuple_key)) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
   switch (table_id) {
     case tbl_id<student_table>(): {
-      auto& table_ref = std::get<0>(_context.db->table);
+      auto& table_ref = std::get<0>(_ct.db->table);
       tbl_row_t tuple_i = 0;
       std::uint8_t timeout_cnt = 0;
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
-          job_ack(OpAck::TIMEOUT, _context, _parser, _job);
+          job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
           return;
         }
-        if (!_context.running->test_and_set(std::memory_order_acquire)) {
-          _context.running->clear(std::memory_order_release);
-          job_ack(OpAck::ABORTED, _context, _parser, _job);
+        if (!_ct.running->test_and_set(std::memory_order_acquire)) {
+          _ct.running->clear(std::memory_order_release);
+          job_ack(OpAck::ABORTED, _ct, _parser, _job);
           return;
         }
-        auto wait_r = table_ref.wait_x();
+        auto wait_r = student_table_func::wait_x(table_ref);
         if (!wait_r) {
           timeout_cnt++;
           continue;
@@ -227,123 +232,121 @@ static void process_exclusive_read(const WorkerContext& _context,
         tuple_i = wait_r.unwrap();
         break;
       }
-      _runtime.lock_table.lock(tbl_id<student_table>(),
-                               table_ref.key_at(tuple_i), LockType::Exclusive);
-      _parser.set_tp_key(table_ref.key_at(tuple_i));
+      lock(_rt.lock_table, tbl_id<student_table>(),
+           table_ref.hash.table[tuple_i].key, LockType::Exclusive);
+      set_tp_key(_parser, table_ref.hash.table[tuple_i].key);
       auto serializer = TpSerDes<student_table>();
-      auto offset = serializer.serialize(table_ref[tuple_i], _parser.buffer(),
-                                         _parser.get_data_offset());
-      _parser.set_data_size(offset - _parser.get_data_offset());
-      _parser.set_buffer_size(offset);
-      job_ack(OpAck::SUCCESS, _context, _parser, _job);
+      auto offset = serializer.serialize(table_ref.tuples[tuple_i],
+                                         _parser.data, get_data_offset());
+      set_data_size(_parser, offset - get_data_offset());
+      set_buffer_size(_parser, offset);
+      job_ack(OpAck::SUCCESS, _ct, _parser, _job);
       return;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
 }
 
-static void process_yield(const WorkerContext& _context,
-                          WorkerRuntime& _runtime, Parser& _parser, Job& _job) {
-  if (_runtime.status != TxnStatus::GROWING) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
+void WorkerThread::process_yield(const WorkerContext& _ct, WorkerRuntime& _rt,
+                                 ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status != TxnStatus::GROWING) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
-  if (!_runtime.lock_table.get(table_id, tuple_key) ||
-      lock_r.unwrap() != LockType::Shared) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+  auto lock_r = _lk_func::get(_rt.lock_table, table_id, tuple_key);
+  if (!lock_r || lock_r.unwrap() != LockType::Shared) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
-  _runtime.lock_table.unlock(table_id, tuple_key);
+  unlock(_rt.lock_table, table_id, tuple_key);
   switch (table_id) {
     case tbl_id<student_table>(): {
-      auto& table_ref = std::get<0>(_context.db->table);
-      table_ref.release_s(tuple_key);
-      job_ack(OpAck::SUCCESS, _context, _parser, _job);
+      auto& table_ref = std::get<0>(_ct.db->table);
+      student_table_func::release_s(table_ref, tuple_key);
+      job_ack(OpAck::SUCCESS, _ct, _parser, _job);
       return;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
 }
 
-static void process_update(const WorkerContext& _context,
-                           WorkerRuntime& _runtime, Parser& _parser,
-                           Job& _job) {
-  if (_runtime.status == TxnStatus::GROWING) {
-    _runtime.status = TxnStatus::SHRINKING;
+void WorkerThread::process_update(const WorkerContext& _ct, WorkerRuntime& _rt,
+                                  ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status == TxnStatus::GROWING) {
+    _rt.status = TxnStatus::SHRINKING;
   }
-  if (_runtime.commits.full()) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::COMMIT_FULL, _context, _parser, _job);
+  if (_cmt_func::full(_rt.commits)) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
+  auto lock_r = _lk_func::get(_rt.lock_table, table_id, tuple_key);
   if (!lock_r || lock_r.unwrap() != LockType::Exclusive) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
-  auto new_buffer_ref = _context.db->buffers.request();
+  auto new_buffer_ref = request(_ct.db->buffers);
   switch (table_id) {
     case tbl_id<student_table>(): {
       auto serializer = TpSerDes<student_table>();
       auto new_tuple = std::tuple<student_name, std::uint8_t>{};
-      if (!serializer.deserialize(*new_buffer_ref, _parser.get_data_offset(),
+      if (!serializer.deserialize(*new_buffer_ref, get_data_offset(),
                                   new_tuple)) {
-        _parser.set_buffer_size(7);
-        job_ack(OpAck::BAD_DATA, _context, _parser, _job);
+        set_buffer_size(_parser, 7);
+        job_ack(OpAck::BAD_DATA, _ct, _parser, _job);
         return;
       }
       std::memcpy((*new_buffer_ref).data(), &new_tuple, sizeof(new_tuple));
       break;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
-  _runtime.commits.push(
-      Commit{OpType::UPDATE, table_id, tuple_key, new_buffer_ref});
-  job_ack(OpAck::SUCCESS, _context, _parser, _job);
+  _cmt_func::push(_rt.commits,
+                  {OpType::UPDATE, table_id, tuple_key, new_buffer_ref});
+  job_ack(OpAck::SUCCESS, _ct, _parser, _job);
   return;
 }
 
@@ -364,71 +367,71 @@ static void process_update(const WorkerContext& _context,
  * - BAD_ACCESS: Lock not held or wrong type
  * - LOCK_CONFLICT: Promotion failed
  *
- * @param _context Worker execution context
- * @param _runtime Worker runtime state
+ * @param _ct Worker execution context
+ * @param _rt Worker runtime state
  * @param _parser Request parser
  * @param _job Current job details
  */
-static void process_promote(const WorkerContext& _context,
-                            WorkerRuntime& _runtime, Parser& _parser,
-                            Job& _job) {
-  if (_runtime.status != TxnStatus::GROWING) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_PHASE, _context, _parser, _job);
+void WorkerThread::process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
+                                   ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status != TxnStatus::GROWING) {
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
     return;
   }
-  auto table_id_r = _parser.get_tbl();
+  auto table_id_r = get_tbl(_parser);
   if (!table_id_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
     return;
   }
-  auto tuple_key_r = _parser.get_tp_key();
+  auto tuple_key_r = get_tp_key(_parser);
   if (!tuple_key_r) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_TP, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_TP, _ct, _parser, _job);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = _runtime.lock_table.get(table_id, tuple_key);
+  auto lock_r = _lk_func::get(_rt.lock_table, table_id, tuple_key);
   if (!lock_r || lock_r.unwrap() != LockType::Shared) {
-    _parser.set_buffer_size(7);
-    job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+    set_buffer_size(_parser, 7);
+    job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
     return;
   }
   switch (table_id) {
     case tbl_id<student_table>(): {
-      auto& table_ref = std::get<0>(_context.db->table);
+      auto& table_ref = std::get<0>(_ct.db->table);
       auto timeout_cnt = 0;
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
-          job_ack(OpAck::TIMEOUT, _context, _parser, _job);
+          job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
           return;
         }
-        if (!_context.running->test_and_set(std::memory_order_acquire)) {
-          _context.running->clear(std::memory_order_release);
-          job_ack(OpAck::ABORTED, _context, _parser, _job);
+        if (!_ct.running->test_and_set(std::memory_order_acquire)) {
+          _ct.running->clear(std::memory_order_release);
+          job_ack(OpAck::ABORTED, _ct, _parser, _job);
           return;
         }
-        auto wait_r = table_ref.promote(tuple_key);
+        auto wait_r = student_table_func::promote(table_ref, tuple_key);
         if (wait_r != TableError::None) {
           timeout_cnt++;
           continue;
         }
         break;
       }
-      if (_runtime.lock_table.promote(table_id, tuple_key) != LockError::None) {
-        _parser.set_buffer_size(7);
-        job_ack(OpAck::BAD_ACCESS, _context, _parser, _job);
+      if (_lk_func::promote(_rt.lock_table, table_id, tuple_key) !=
+          LockError::None) {
+        set_buffer_size(_parser, 7);
+        job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
         return;
       }
-      job_ack(OpAck::SUCCESS, _context, _parser, _job);
+      job_ack(OpAck::SUCCESS, _ct, _parser, _job);
       return;
     }
     default: {
-      _parser.set_buffer_size(7);
-      job_ack(OpAck::BAD_TABLE, _context, _parser, _job);
+      set_buffer_size(_parser, 7);
+      job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
       return;
     }
   }
@@ -448,31 +451,32 @@ static void process_promote(const WorkerContext& _context,
  * - DELETE_TUPLE: Remove existing tuple
  * - UPDATE: Modify existing tuple
  *
- * @param _context Worker execution context
- * @param _runtime Worker runtime state
+ * @param _ct Worker execution context
+ * @param _rt Worker runtime state
  * @param _parser Request parser
  * @param _job Current job details
  */
-static void process_commit(const WorkerContext& _context,
-                           WorkerRuntime& _runtime, Parser& _parser,
-                           Job& _job) {
-  if (_runtime.status != TxnStatus::SHRINKING) {
-    job_ack(OpAck::SUCCESS, _context, _parser, _job);
+void WorkerThread::process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
+                                  ParserStruct& _parser, Job& _job) noexcept {
+  if (_rt.status != TxnStatus::SHRINKING) {
+    job_ack(OpAck::SUCCESS, _ct, _parser, _job);
     return;
   }
-  while (!_runtime.commits.empty()) {
-    auto commit = _runtime.commits.front();
+  while (!_cmt_func::empty(_rt.commits)) {
+    auto commit = _cmt_func::front(_rt.commits);
     switch (commit.op) {
       case OpType::ADD_TUPLE: {
         auto table_id = commit.tbl_id;
         auto& buffer = commit.buffer;
         switch (table_id) {
           case tbl_id<student_table>(): {
-            auto new_tuple = student_table::tuple_type{};
-            auto& table_ref = std::get<0>(_context.db->table);
+            auto new_tuple = student_table_func::tuple_type{};
+            auto& table_ref = std::get<0>(_ct.db->table);
             std::memcpy(&new_tuple, (*buffer).data(), sizeof(new_tuple));
-            table_ref.insert(new_tuple);
-            table_ref.notify_not_empty();
+            student_table_func::insert(table_ref, new_tuple);
+            table_ref.not_empty.notify_all();
+            table_ref.s_available.notify_all();
+            table_ref.x_available.notify_one();
             break;
           }
           default: {
@@ -486,9 +490,9 @@ static void process_commit(const WorkerContext& _context,
         auto tuple_key = commit.tp_key;
         switch (table_id) {
           case tbl_id<student_table>(): {
-            auto& table_ref = std::get<0>(_context.db->table);
-            table_ref.remove(tuple_key);
-            table_ref.notify_not_full();
+            auto& table_ref = std::get<0>(_ct.db->table);
+            student_table_func::remove(table_ref, tuple_key);
+            table_ref.not_full.notify_one();
             break;
           }
           default: {
@@ -503,10 +507,10 @@ static void process_commit(const WorkerContext& _context,
         auto& buffer = commit.buffer;
         switch (table_id) {
           case tbl_id<student_table>(): {
-            auto new_tuple = student_table::tuple_type{};
-            auto& table_ref = std::get<0>(_context.db->table);
+            auto new_tuple = student_table_func::tuple_type{};
+            auto& table_ref = std::get<0>(_ct.db->table);
             std::memcpy(&new_tuple, (*buffer).data(), sizeof(new_tuple));
-            table_ref.update(tuple_key, new_tuple);
+            student_table_func::update(table_ref, tuple_key, new_tuple);
             break;
           }
           default: {
@@ -519,9 +523,9 @@ static void process_commit(const WorkerContext& _context,
         break;
       }
     }
-    _runtime.commits.pop();
+    _cmt_func::pop(_rt.commits);
   }
-  job_ack(OpAck::SUCCESS, _context, _parser, _job);
+  job_ack(OpAck::SUCCESS, _ct, _parser, _job);
   return;
 }
 
@@ -532,19 +536,26 @@ static void process_commit(const WorkerContext& _context,
  * - Shared locks
  * - Exclusive locks
  *
- * @param _context Worker context containing transaction info
- * @param _runtime Runtime state with lock table
+ * @param _ct Worker context containing transaction info
+ * @param _rt Runtime state with lock table
  */
-static void release_locks(const WorkerContext& _context,
-                          const WorkerRuntime& _runtime) {
-  for (const auto [tbl, key, lock] : _runtime.lock_table) {
+void WorkerThread::release_locks(const WorkerContext& _ct,
+                                 const WorkerRuntime& _rt) noexcept {
+  using _hash_func = HashFunc<key_t, MAX_LOCK_PER_TRANSACTION>;
+  for (tbl_row_t i = 0; i < MAX_LOCK_PER_TRANSACTION; i++) {
+    if (!_hash_func::is_valid(_rt.lock_table.hash, i)) {
+      continue;
+    }
+    auto key = _rt.lock_table.hash.table[i].key;
+    auto lock_type = _rt.lock_table.locks[i];
+    auto [tbl, tp_key] = _lk_func::key(key);
     switch (tbl) {
       case tbl_id<student_table>(): {
-        auto& table = std::get<0>(_context.db->table);
-        if (lock == LockType::Shared) {
-          table.release_s(key);
+        auto& table = std::get<0>(_ct.db->table);
+        if (lock_type == LockType::Shared) {
+          student_table_func::release_s(table, tp_key);
         } else {
-          table.release_x(key);
+          student_table_func::release_x(table, tp_key);
         }
         break;
       }
@@ -563,14 +574,14 @@ static void release_locks(const WorkerContext& _context,
  * - Clear running flag
  * - Notify main thread
  *
- * @param _context Worker context
- * @param _runtime Runtime state
+ * @param _ct Worker context
+ * @param _rt Runtime state
  */
-static void worker_quit(const WorkerContext& _context,
-                        const WorkerRuntime& _runtime) noexcept {
-  release_locks(_context, _runtime);
-  _context.running->clear(std::memory_order_release);
-  _context.main_ch->send(std::move(_context.txn_id));
+void WorkerThread::worker_quit(const WorkerContext& _ct,
+                               const WorkerRuntime& _rt) noexcept {
+  release_locks(_ct, _rt);
+  _ct.running->clear(std::memory_order_release);
+  _txn_func::send(*_ct.main_ch, std::move(_ct.txn_id));
 }
 
 /**
@@ -582,15 +593,16 @@ static void worker_quit(const WorkerContext& _context,
  * - Handle commits
  * - Manage cleanup
  *
- * @param _context Worker thread context
+ * @param _ct Worker thread context
  */
-void worker_main(const WorkerContext&& _context) noexcept {
-  const auto context = WorkerContext(std::move(_context));
-  auto runtime = WorkerRuntime{0, Queue<Commit, MAX_COMMIT_PER_TRANSACTION>{},
-                               TxnStatus::GROWING, LockTable{}};
+void WorkerThread::worker_main(const WorkerContext&& _ct) noexcept {
+  const auto context = WorkerContext(std::move(_ct));
+  auto runtime =
+      WorkerRuntime{0, QueueData<Commit, MAX_COMMIT_PER_TRANSACTION>{},
+                    TxnStatus::GROWING, LockRecords{}};
 
   while (context.running->test_and_set(std::memory_order_acquire)) {
-    auto job_r = context.job_ch->recv();
+    auto job_r = _job_func::recv(*_ct.job_ch);
     if (!job_r) {
       runtime.timeout_cnt++;
       continue;
@@ -603,9 +615,9 @@ void worker_main(const WorkerContext&& _context) noexcept {
     }
     auto job = job_r.unwrap();
     auto& job_buffer = job.buffer;
-    auto parser = Parser{*job_buffer, job.buffer_size};
+    auto parser = ParserStruct{*job_buffer, job.buffer_size};
 
-    auto op_r = parser.get_op();
+    auto op_r = get_op(parser);
     if (!op_r) {
       job_ack(OpAck::BAD_OP, context, parser, job);
       continue;
@@ -613,7 +625,7 @@ void worker_main(const WorkerContext&& _context) noexcept {
     auto op = op_r.unwrap();
     switch (op) {
       case OpType::START_TXN:
-        parser.set_txn_id(context.txn_id);
+        set_txn_id(parser, context.txn_id);
         job_ack(OpAck::SUCCESS, context, parser, job);
         break;
       case OpType::COMMIT_TXN: {

@@ -33,7 +33,7 @@ jobs:
           sudo ./llvm.sh 18
 
       - name: configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DI_AM_CI_MACHINE=1 -DCI_MACHINE_TEST_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPAWNDB_ENABLE_TEST=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
 
       - name: build & run test apps
         run: |

@@ -28,8 +28,8 @@ jobs:
 
       - name: build and run doxygen
         run: |
-          cmake -S . -B build -DI_AM_CI_MACHINE=1 -DCI_MACHINE_DOXYGEN_TASK=1 -G Ninja
-          cmake --build build --target doxygen
+          cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_DOXYGEN=ON
+          cmake --build build --target doxygen 
       
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

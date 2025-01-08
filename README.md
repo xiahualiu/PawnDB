@@ -49,10 +49,9 @@ Hard requirements:
 * `clang` version > 16.0, or `gcc` version > 8.0.
 * `cmake` version > 3.20.
 * `ninja` build system.
-* `doxygen`.
 
-You need also `clang-format` if you want to contritbute:
-
+* `doxygen` for generating document html. (Optional)
+* `gcovr` for showing test coverage report. (Optional)
 * `clang-format` version > 18.0. (Optional)
 
 ### Build and run the standalone target
@@ -70,20 +69,30 @@ cmake --build build --target pawndb-app
 Use the following commands from the project's root directory to run the test suite.
 
 ```bash
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -DPAWNDB_ENABLE_TEST -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake --build build --target clean-coverage
 cmake --build build --target run-all-tests
+cmake --build build --target show-test-coverage
+
 ```
 
 ### Check clang-format
 
 ```bash
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -DPAWNDB_ENABLE_STYLE -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
 cmake --build build --target check-clang-format
 ```
 
 ### Apply clang-format
 
 ```bash
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -DPAWNDB_ENABLE_STYLE -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
 cmake --build build --target apply-clang-format
+```
+
+### Build Docs
+
+```bash
+cmake -S . -B build -DPAWNDB_ENABLE_DOXYGEN -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake --build build --target doxygen
 ```

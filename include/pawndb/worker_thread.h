@@ -16,11 +16,10 @@
 
 #include <atomic>
 #include <cstdint>
-#include <thread>
 
-#include "pawndb/buffer_table.h"
+#include "pawndb/buffer.h"
 #include "pawndb/channel.h"
-#include "pawndb/lock_table.h"
+#include "pawndb/lock.h"
 #include "pawndb/params.h"
 #include "pawndb/parser.h"
 #include "pawndb/schema/demo.h"
@@ -45,10 +44,10 @@ enum class TxnStatus : std::uint8_t {
  * Contains all necessary information for processing a client request.
  */
 struct Job {
-  sockaddr client_addr;          /**< Network address of the client */
-  socklen_t client_addr_len;     /**< Length of the client address structure */
-  buf_size_t buffer_size;        /**< Size of the request buffer */
-  BufferTable::BufferRef buffer; /**< Reference to the request buffer */
+  sockaddr client_addr;      /**< Network address of the client */
+  socklen_t client_addr_len; /**< Length of the client address structure */
+  buf_size_t buffer_size;    /**< Size of the request buffer */
+  BufferRef buffer;          /**< Reference to the request buffer */
 };
 
 /**
@@ -59,21 +58,21 @@ struct Job {
  * index.
  */
 struct Commit {
-  OpType op;                     /**< The type of operation to commit */
-  tp_id_t tbl_id;                /**< The ID of the table to operate on */
-  tbl_row_t tp_key;              /**< The key of the tuple to operate on */
-  BufferTable::BufferRef buffer; /**< Reference to the buffer containing data */
+  OpType op;        /**< The type of operation to commit */
+  tp_id_t tbl_id;   /**< The ID of the table to operate on */
+  tbl_row_t tp_key; /**< The key of the tuple to operate on */
+  BufferRef buffer; /**< Reference to the buffer containing data */
 };
 
 /**
  * @brief Channel for passing dead transaction IDs between threads.
  */
-using MainChannel = Channel<txn_id_t>;
+using MainChannel = ChannelData<txn_id_t>;
 
 /**
  * @brief Channel for passing jobs between threads.
  */
-using JobChannel = Channel<Job>;
+using JobChannel = ChannelData<Job>;
 
 /**
  * @brief Context structure containing worker thread state.
@@ -88,26 +87,6 @@ struct WorkerContext {
   Database* db;
   txn_id_t txn_id;
   int server_fd;
-
-  /**
-   * @brief Constructs a new WorkerContext object.
-   *
-   * @param _running Pointer to running flag
-   * @param _job_ch Pointer to job channel
-   * @param _main_ch Pointer to main channel
-   * @param _db Pointer to database
-   * @param _txn_id Transaction ID
-   * @param _server_fd Server file descriptor
-   */
-  WorkerContext(std::atomic_flag* _running, JobChannel* _job_ch,
-                MainChannel* _main_ch, Database* _db, txn_id_t _txn_id,
-                int _server_fd) noexcept
-      : running(_running),
-        job_ch(_job_ch),
-        main_ch(_main_ch),
-        db(_db),
-        txn_id(_txn_id),
-        server_fd(_server_fd) {}
 };
 
 /**
@@ -118,20 +97,10 @@ struct WorkerContext {
  */
 struct WorkerRuntime {
   std::uint8_t timeout_cnt;
-  Queue<Commit, MAX_COMMIT_PER_TRANSACTION> commits;
+  QueueData<Commit, MAX_COMMIT_PER_TRANSACTION> commits;
   TxnStatus status;
-  LockTable lock_table;
+  LockRecords lock_table;
 };
-
-/**
- * @brief Main execution function for worker threads.
- *
- * Processes database operations in a dedicated thread context.
- * Handles transaction management, locking, and client communication.
- *
- * @param _context Worker context containing thread configuration
- */
-void worker_main(const WorkerContext&& _context) noexcept;
 
 /**
  * @brief Class representing a worker thread.
@@ -140,20 +109,62 @@ void worker_main(const WorkerContext&& _context) noexcept;
  * Each worker thread operates independently and maintains its own transaction
  * context.
  */
-class WorkerThread {
+class WorkerThread : ChannelFunc<Job>,
+                     ChannelFunc<txn_id_t>,
+                     QueueFunc<Commit, MAX_COMMIT_PER_TRANSACTION>,
+                     ParserFunc,
+                     BufferFunc,
+                     LockFunc {
+  // Alias for ambiguous base class functions
+  using _job_func = ChannelFunc<Job>;
+  using _txn_func = ChannelFunc<txn_id_t>;
+  using _cmt_func = QueueFunc<Commit, MAX_COMMIT_PER_TRANSACTION>;
+  using _lk_func = LockFunc;
+
  public:
-  WorkerThread() = default;
-
   /**
-   * @brief Constructs a worker thread with given context, starting the thread.
+   * @brief Main execution function for worker threads.
    *
-   * @param _context Configuration and state for the worker thread
+   * Processes database operations in a dedicated thread context.
+   * Handles transaction management, locking, and client communication.
+   *
+   * @param _context Worker context containing thread configuration
    */
-  WorkerThread(const WorkerContext& _context) noexcept {
-    thread = std::thread(worker_main, std::move(_context));
-  }
+  static void worker_main(const WorkerContext&& _context) noexcept;
 
-  std::thread thread;
+  static void job_ack(const OpAck _ack, const WorkerContext& _ct,
+                      ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_add(const WorkerContext& _ct, WorkerRuntime& _rt,
+                          ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_rm(const WorkerContext& _ct, WorkerRuntime& _rt,
+                         ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_shared_read(const WorkerContext& _ct, WorkerRuntime& _rt,
+                                  ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_exclusive_read(const WorkerContext& _ct,
+                                     WorkerRuntime& _rt, ParserStruct& _parser,
+                                     Job& _job) noexcept;
+
+  static void process_yield(const WorkerContext& _ct, WorkerRuntime& _rt,
+                            ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_update(const WorkerContext& _ct, WorkerRuntime& _rt,
+                             ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
+                              ParserStruct& _parser, Job& _job) noexcept;
+
+  static void process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
+                             ParserStruct& _parser, Job& _job) noexcept;
+
+  static void release_locks(const WorkerContext& _ct,
+                            const WorkerRuntime& _rt) noexcept;
+
+  static void worker_quit(const WorkerContext& _ct,
+                          const WorkerRuntime& _rt) noexcept;
 };
 
 }  // namespace PawnDB

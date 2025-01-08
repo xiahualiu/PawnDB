@@ -1,0 +1,59 @@
+#ifndef PAWNDB_TYPES_PARSER_H
+#define PAWNDB_TYPES_PARSER_H
+
+#include <cstddef>
+
+#include "pawndb/params.h"
+#include "pawndb/traits/parser.h"
+#include "pawndb/types/buffer_table.h"
+
+namespace PawnDB {
+
+class Parser : public ParserTrait<Parser> {
+ public:
+  Parser(buffer_t& _buffers, std::size_t _size) noexcept
+      : buffers_(_buffers), size_(_size) {}
+
+  OpR trait_get_op() noexcept {
+    if (size_ < 1) return ParserError::ReadAfterEnd;
+    auto op = static_cast<OpType>(buffers_[0]);
+    if (op >= OpType::MAX_OP_VALUE) return ParserError::InvalidValue;
+    return op;
+  }
+
+  OpIdR trait_get_op_id() noexcept {
+    if (size_ < 2) return ParserError::ReadAfterEnd;
+    return static_cast<op_t>(buffers_[1]);
+  }
+
+  TxnIdR trait_get_txn() noexcept {
+    if (size_ < 6) return ParserError::ReadAfterEnd;
+    return *reinterpret_cast<txn_id_t*>(&buffers_[2]);
+  }
+
+  TblIdR trait_get_tbl() noexcept {
+    if (size_ < 8) return ParserError::ReadAfterEnd;
+    return static_cast<tp_id_t>(buffers_[7]);
+  }
+
+  constexpr std::size_t trait_get_key_offset() noexcept { return 8; }
+
+  void trait_set_ack(OpAck _ack) noexcept {
+    buffers_[6] = static_cast<char>(_ack);
+  }
+
+  void trait_set_txn_id(txn_id_t _txn) noexcept {
+    *reinterpret_cast<txn_id_t*>(&buffers_[2]) = _txn;
+  }
+
+  void trait_set_buffer_size(buf_size_t _size) noexcept { size_ = _size; }
+
+  std::size_t trait_get_buffer_size() noexcept { return size_; }
+
+ private:
+  buffer_t& buffers_;
+  std::size_t size_;
+};
+}  // namespace PawnDB
+
+#endif

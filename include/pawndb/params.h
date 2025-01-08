@@ -54,7 +54,7 @@ constexpr buf_size_t BUFFER_WIDTH = 32768;
 constexpr tbl_row_t BUFFER_ROWS = 64;
 
 /// @brief Each channel has 16 rows.
-constexpr tbl_row_t CHANNEL_ROWS = 16;
+constexpr tbl_row_t MAX_ITEM_PER_CHANNEL = 16;
 
 /// @brief Buffer alignment. Should be same as the system page size.
 constexpr std::size_t BUFFER_ALIGNMENT = 4096;

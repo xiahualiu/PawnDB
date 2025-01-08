@@ -12,11 +12,9 @@
 #ifndef PAWNDB_SCHEMA_DEMO_H
 #define PAWNDB_SCHEMA_DEMO_H
 
-#include <tuple>
-
-#include "pawndb/buffer_table.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/params.h"
-#include "pawndb/table_types.h"
+#include "pawndb/types/student_table.h"
 
 namespace PawnDB {
 
@@ -30,7 +28,8 @@ class Database {
    */
   Database() = default;
 
-  std::tuple<student_table> table;
+  StudentTable students;
+
   alignas(BUFFER_ALIGNMENT) BufferTable buffers;
 };
 
