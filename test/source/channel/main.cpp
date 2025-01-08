@@ -25,13 +25,13 @@ TEST_CASE("Channel Empty #1") {
 
   auto result = channel.get();
   CHECK(!result);
-  CHECK(result.getError() == ChannelError::GetNothing);
+  CHECK(result.getError() == FIFOError::GetNothing);
   channel.pop();
 }
 
 TEST_CASE("Channel Send/Get #1") {
   Channel<int> channel;
-  CHECK(channel.send(42) == ChannelError::None);
+  CHECK(channel.send(42) == FIFOError::None);
 
   auto result = channel.get();
   CHECK(result);
@@ -44,11 +44,11 @@ TEST_CASE("Channel Full #1") {
 
   // Fill channel
   for (int i = 0; i < CHANNEL_ROWS; i++) {
-    CHECK(channel.send(i) == ChannelError::None);
+    CHECK(channel.send(i) == FIFOError::None);
   }
 
   CHECK(channel.full());
-  CHECK(channel.send(42) == ChannelError::TableFull);
+  CHECK(channel.send(42) == FIFOError::TableFull);
 }
 
 TEST_CASE("Channel Full #2") {
@@ -56,12 +56,12 @@ TEST_CASE("Channel Full #2") {
 
   // Fill channel
   for (int i = 0; i < CHANNEL_ROWS; i++) {
-    CHECK(channel.send(i) == ChannelError::None);
+    CHECK(channel.send(i) == FIFOError::None);
   }
 
   CHECK(channel.full());
   int value = 42;
-  CHECK(channel.send(value) == ChannelError::TableFull);
+  CHECK(channel.send(value) == FIFOError::TableFull);
 }
 
 TEST_CASE("Channel Receive Timeout #1") {
@@ -69,7 +69,7 @@ TEST_CASE("Channel Receive Timeout #1") {
   auto result = channel.recv();
   CHECK(!result);
   channel.pop();
-  CHECK(result.getError() == ChannelError::Timeout);
+  CHECK(result.getError() == FIFOError::Timeout);
 }
 
 TEST_CASE("Channel Multi-threaded #1") {
@@ -86,7 +86,7 @@ TEST_CASE("Channel Multi-threaded #1") {
 
   std::thread producer([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    CHECK(channel.send(42) == ChannelError::None);
+    CHECK(channel.send(42) == FIFOError::None);
     channel.notify();
   });
 

@@ -1,16 +1,16 @@
-#ifndef PAWNDB_TRAITS_ITERATOR_H
-#define PAWNDB_TRAITS_ITERATOR_H
+#ifndef PAWNDB_TRAITS_CONST_ITERATOR_H
+#define PAWNDB_TRAITS_CONST_ITERATOR_H
 
 namespace PawnDB {
 
 template <typename DerivedIterator, typename T>
-class IteratorTypeTrait {
+class ConstIteratorTypeTrait {
  public:
   void next() noexcept {
     return static_cast<DerivedIterator*>(this)->trait_next();
   }
 
-  T& operator*() noexcept {
+  const T& operator*() noexcept {
     return static_cast<DerivedIterator*>(this)->trait_deref();
   }
 
@@ -34,17 +34,17 @@ class IteratorTypeTrait {
 };
 
 template <typename Derived, typename DerivedIterator>
-class IteratorTrait {
+class ConstIteratorTrait {
  protected:
-  IteratorTrait() = default;
-  ~IteratorTrait() = default;
+  ConstIteratorTrait() = default;
+  ~ConstIteratorTrait() = default;
 
  public:
-  DerivedIterator begin() noexcept {
+  DerivedIterator begin() const noexcept {
     return static_cast<const Derived*>(this)->trait_begin();
   }
 
-  DerivedIterator end() noexcept {
+  DerivedIterator end() const noexcept {
     return static_cast<const Derived*>(this)->trait_end();
   }
 };

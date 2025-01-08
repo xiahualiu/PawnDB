@@ -16,7 +16,7 @@
  * @copyright MIT License
  */
 
-#include "pawndb/main_thread.h"
+#include "pawndb/types/main_thread.h"
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -27,94 +27,47 @@
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
 #include <iostream>
 
-#include "pawndb/buffer.h"
-#include "pawndb/channel.h"
 #include "pawndb/params.h"
-#include "pawndb/parser.h"
-#include "pawndb/worker_thread.h"
+#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/job_channel.h"
+#include "pawndb/types/parser.h"
+#include "pawndb/types/ret_channel.h"
+#include "pawndb/types/worker_thread.h"
 
 namespace PawnDB {
 
-/**
- * @brief Sends an acknowledgment packet to the client
- *
- * @param _ack Acknowledgment type to send
- * @param _parser Parser containing response data
- * @param _server_fd Server socket file descriptor
- * @param _client_addr Client address structure
- * @param _client_addr_len Length of client address structure
- */
-static void packet_ack(OpAck _ack, ParserStruct& _parser, const int _server_fd,
-                       sockaddr& _client_addr,
-                       socklen_t _client_addr_len) noexcept {
-  ParserFunc::set_ack(_parser, _ack);
-  sendto(_server_fd, _parser.data.data(), _parser.size, 0, &_client_addr,
-         _client_addr_len);
-}
-
-/**
- * @brief Cleans up terminated worker threads
- *
- * Handles worker thread cleanup by:
- * - Receiving terminated transaction IDs
- * - Removing from transaction table
- * - Clearing running flags
- * - Draining job channels
- */
-void MainThread::clean_worker(MainContext& _ct) noexcept {
-  while (true) {
-    auto dead_txn_r = _txn_func::get(_ct.main_ch);
-    if (!dead_txn_r) {
-      break;
-    }
-    auto dead_txn_id = dead_txn_r.unwrap();
-    auto index_r = remove(_ct.txn_table, dead_txn_id);
-    if (!index_r) {
-      std::cerr << "Failed to remove worker" << std::endl;
-      std::terminate();
-    }
-    auto index = index_r.unwrap();
-    _ct.running_flags[index].clear();
-    while (true) {
-      auto get_r = _job_func::get(_ct.job_chs[index]);
-      if (!get_r) {
-        break;
-      }
-      auto job = get_r.unwrap();
-      auto parser = ParserStruct{*job.buffer, job.buffer_size};
-      set_ack(parser, OpAck::DEAD_TXN);
-      sendto(_ct.server_fd, parser.data.data(), parser.size, 0,
-             &job.client_addr, job.client_addr_len);
-    }
-    _ct.workers[index].join();
-    _txn_func::pop(_ct.main_ch);
-  }
-}
-
-/**
- * @brief Starts the main server thread
- *
- * - Creates Unix domain socket
- * - Binds to configured address
- * - Initializes worker threads
- * - Processes client requests
- * - Handles cleanup on shutdown
- *
- * @throws std::runtime_error on socket/bind failure
- */
-void MainThread::start(MainContext& _ct) noexcept {
+void MainThread::run(MainContext* _ct) noexcept {
   std::cout << "Server is listening on " << UNIX_SOCKET_PATH << std::endl;
+
+  // Query worker
+  WorkerTable worker_query;
+
+  // Pre-allocate worker threads and all associated resources
+  RetChannel ret_channel;
+  std::array<std::thread, MAX_TRANSACTIONS> workers;
+  std::array<std::atomic_flag, MAX_TRANSACTIONS> running_flags;
+  std::array<JobChannel, MAX_TRANSACTIONS> job_channels;
+
+  txn_id_t next_txn_id = 0;
+
   while (true) {
-    auto recv_buffer_ref = request(_ct.db->buffers);
-    auto recv_buffer = *recv_buffer_ref;
+    auto recv_buffer_r = _ct->db->buffers.request();
+    if (!recv_buffer_r) {
+      std::cout << "No recv buffer available! Retry in 3 seconds."
+                << UNIX_SOCKET_PATH << std::endl;
+      std::this_thread::sleep_for(WAIT_TIMEOUT);
+      continue;
+    }
+    auto recv_buffer_i = recv_buffer_r.unwrap();
+    auto& recv_buffer_ref = _ct->db->buffers[recv_buffer_i];
+
     auto client_addr = sockaddr();
     auto client_addr_len = socklen_t();
     ssize_t recv_size =
-        recvfrom(_ct.server_fd, recv_buffer.data(), recv_buffer.size(), 0,
-                 &client_addr, &client_addr_len);
+        recvfrom(_ct->server_fd, recv_buffer_ref.data(), recv_buffer_ref.size(),
+                 0, &client_addr, &client_addr_len);
     if (0 == recv_size) {
       return;
     }
@@ -124,41 +77,41 @@ void MainThread::start(MainContext& _ct) noexcept {
       continue;
     }
     std::cout << "Received " << recv_size << " bytes from client" << std::endl;
-    auto parser = ParserStruct{recv_buffer, static_cast<buf_size_t>(recv_size)};
-    auto op_r = get_op(parser);
-    auto op_id_r = get_op_id(parser);
+    auto recv_size_u = static_cast<std::size_t>(recv_size);
+    auto parser = Parser(recv_buffer_ref, recv_size_u);
+    auto op_r = parser.get_op();
+    auto op_id_r = parser.get_op_id();
     if (!op_r || !op_id_r) {
       std::cerr << "Failed to parse operation" << std::endl;
-      packet_ack(OpAck::BAD_OP, parser, _ct.server_fd, client_addr,
+      packet_ack(OpAck::BAD_OP, parser, _ct->server_fd, client_addr,
                  client_addr_len);
       continue;
     }
     auto op = op_r.unwrap();
     switch (op) {
       case OpType::START_TXN: {
-        clean_worker(_ct);
-        auto index_r = insert(_ct.txn_table, _ct.next_txn_id);
-        if (!index_r) {
+        clean_worker(ret_channel, worker_query, *_ct);
+        auto new_worker_entry = WorkerEntry{{}, 0, next_txn_id, false, false};
+        auto insert_r = worker_query.insert(new_worker_entry);
+        if (!insert_r) {
           std::cerr << "Failed to insert worker" << std::endl;
-          packet_ack(OpAck::BUSY, parser, _ct.server_fd, client_addr,
+          packet_ack(OpAck::BUSY, parser, _ct->server_fd, client_addr,
                      client_addr_len);
           continue;
         }
-        auto index = index_r.unwrap();
-        _ct.running_flags[index].test_and_set(std::memory_order_relaxed);
-        auto worker_context = WorkerContext{&_ct.running_flags[index],
-                                            &_ct.job_chs[index],
-                                            &_ct.main_ch,
-                                            _ct.db,
-                                            _ct.next_txn_id,
-                                            _ct.server_fd};
-        _ct.workers[index] =
-            std::thread(WorkerThread::worker_main, std::move(worker_context));
-        _ct.next_txn_id++;
-        _job_func::send(_ct.job_chs[index],
-                        {client_addr, client_addr_len,
-                         static_cast<buf_size_t>(recv_size), recv_buffer_ref});
-        _ct.job_chs[index].not_empty.notify_one();
+        auto& insert_entry = insert_r.unwrap();
+        auto insert_index = insert_entry.index;
+        // Populate the rest worker context
+        insert_entry.worker.setup_context(
+            &workers[insert_index], &running_flags[insert_index],
+            &job_channels[insert_index], &ret_channel, _ct->db, _ct->server_fd);
+        // Start worker thread
+        insert_entry.worker.start();
+        // Send first job
+        insert_entry.worker.context_.job_ch->send(
+            {recv_buffer_i, recv_size_u, client_addr, client_addr_len});
+        insert_entry.worker.context_.job_ch->notify_not_empty();
+        next_txn_id++;
         continue;
       }
       case OpType::COMMIT_TXN:
@@ -170,41 +123,40 @@ void MainThread::start(MainContext& _ct) noexcept {
       case OpType::PROMOTE:
       case OpType::UPDATE:
       case OpType::DELETE: {
-        auto txn_id_r = get_txn(parser);
+        auto txn_id_r = parser.get_txn();
         if (!txn_id_r) {
           std::cerr << "Failed to parse transaction ID" << std::endl;
-          packet_ack(OpAck::BAD_TXN, parser, _ct.server_fd, client_addr,
+          packet_ack(OpAck::BAD_TXN, parser, _ct->server_fd, client_addr,
                      client_addr_len);
           continue;
         }
         auto txn_id = txn_id_r.unwrap();
-        auto search_r = search(_ct.txn_table, txn_id);
+        auto search_r = worker_query.search(txn_id);
         if (!search_r) {
           std::cerr << "Failed to find worker" << std::endl;
-          packet_ack(OpAck::BAD_TXN, parser, _ct.server_fd, client_addr,
+          packet_ack(OpAck::BAD_TXN, parser, _ct->server_fd, client_addr,
                      client_addr_len);
           continue;
         }
-        auto index = search_r.unwrap();
-        if (!_ct.running_flags[index].test_and_set(std::memory_order_acquire)) {
-          _ct.running_flags[index].clear(std::memory_order_release);
-          packet_ack(OpAck::DEAD_TXN, parser, _ct.server_fd, client_addr,
+        auto& worker = search_r.unwrap();
+        if (!worker.worker.is_running()) {
+          std::cerr << "Worker is not running" << std::endl;
+          packet_ack(OpAck::DEAD_TXN, parser, _ct->server_fd, client_addr,
                      client_addr_len);
           continue;
         }
-        auto send_r = _job_func::send(
-            _ct.job_chs[index],
-            {client_addr, client_addr_len, static_cast<buf_size_t>(recv_size),
-             recv_buffer_ref});
-        if (ChannelError::TableFull == send_r) {
-          packet_ack(OpAck::BUSY, parser, _ct.server_fd, client_addr,
+        auto send_r = worker.worker.context_.job_ch->send(
+            {recv_buffer_i, recv_size_u, client_addr, client_addr_len});
+        if (send_r == FIFOError::Full) {
+          std::cerr << "Failed to send job to worker" << std::endl;
+          packet_ack(OpAck::BUSY, parser, _ct->server_fd, client_addr,
                      client_addr_len);
           continue;
         }
         if (op == OpType::ABORT_TXN) {
-          _ct.running_flags[index].clear(std::memory_order_release);
+          worker.worker.stop();
         }
-        _ct.job_chs[index].not_empty.notify_one();
+        worker.worker.context_.job_ch->notify_not_empty();
         continue;
       }
       default: {
@@ -212,6 +164,42 @@ void MainThread::start(MainContext& _ct) noexcept {
       }
     }
   }
+}
+
+void MainThread::clean_worker(RetChannel& _ret, WorkerTable& _query,
+                              MainContext& _ct) noexcept {
+  while (true) {
+    auto dead_txn_id_r = _ret.get();
+    if (!dead_txn_id_r) {
+      break;
+    }
+    auto dead_txn_id = dead_txn_id_r.unwrap();
+    auto worker_r = _query.search(dead_txn_id);
+    auto worker = worker_r.unwrap();
+    worker.worker.context_.running->clear(std::memory_order_relaxed);
+    while (true) {
+      auto get_r = worker.worker.context_.job_ch->get();
+      if (!get_r) {
+        break;
+      }
+      auto job = get_r.unwrap();
+      auto parser =
+          Parser(_ct.db->buffers[job.buffer_index_], job.buffer_size_);
+      packet_ack(OpAck::TIMEOUT, parser, _ct.server_fd, job.client_addr_,
+                 job.client_addr_len_);
+      worker.worker.context_.job_ch->pop();
+    }
+    worker.worker.thread_->join();
+    worker.worker.context_.job_ch->pop();
+  }
+}
+
+void MainThread::packet_ack(OpAck _ack, Parser& _parser, const int _server_fd,
+                            sockaddr& _client_addr,
+                            socklen_t _client_addr_len) noexcept {
+  _parser.set_ack(_ack);
+  sendto(_server_fd, _parser.get_buffer(), _parser.get_buffer_size(), 0,
+         &_client_addr, _client_addr_len);
 }
 
 }  // namespace PawnDB

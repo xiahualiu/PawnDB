@@ -157,14 +157,14 @@ class Result<T&, E> {
    *
    * @return A reference to the value.
    */
-  inline T&& unwrap() noexcept { return std::move(*value); }
+  inline T& unwrap() noexcept { return *value; }
 
   /**
    * @brief Unwraps the value from the Result.
    *
    * @return A const reference to the value.
    */
-  inline const T&& unwrap() const noexcept { return std::move(*value); }
+  inline const T& unwrap() const noexcept { return *value; }
 
   /**
    * @brief Gets the error from the Result.

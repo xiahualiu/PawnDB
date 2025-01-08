@@ -4,34 +4,69 @@
 #include <array>
 
 #include "pawndb/params.h"
+#include "pawndb/traits/const_iterator.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/lock_manager.h"
 #include "pawndb/traits/sized.h"
-#include "pawndb/types/lock_record_key.h"
+#include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {
 
-class LockRecords : public LockManagerTrait<LockRecords, LockRecordKey>,
+class LockRecordIterator;
+
+class LockRecords : public LockManagerTrait<LockRecords, TableTupleKey>,
+                    public ConstIteratorTrait<LockRecords, LockRecordIterator>,
                     public Sized<LockRecords>,
                     public Container<LockRecords> {
  private:
   constexpr static std::size_t N = MAX_LOCK_PER_TRANSACTION;
 
   struct LockEntry {
-    LockRecordKey key;
+    TableTupleKey key;
     LockType type;
     bool is_used;
     bool is_deleted;
   };
 
+ private:
   std::array<LockEntry, N> locks_;
   std::size_t size_;
-  LockRecordKey next_;
+  TableTupleKey next_;
 
  public:
+  class LockRecordIterator
+      : public ConstIteratorTypeTrait<LockRecordIterator, LockEntry> {
+   public:
+    LockRecordIterator(const LockRecords* table, const std::size_t idx) noexcept
+        : table_(table), idx_(idx) {}
+
+    LockRecordIterator& trait_next() noexcept {
+      idx_++;
+      advance_to_valid();
+      return *this;
+    }
+
+    bool trait_equals(const LockRecordIterator& other) const noexcept {
+      return idx_ == other.idx_;
+    }
+
+    const LockEntry& trait_deref() noexcept { return table_->locks_[idx_]; }
+
+    void advance_to_valid() noexcept {
+      while (idx_ < N && (!table_->locks_[idx_].is_used ||
+                          table_->locks_[idx_].is_deleted)) {
+        idx_++;
+      }
+    }
+
+   private:
+    const LockRecords* table_;
+    std::size_t idx_;
+  };
+
   LockRecords() noexcept : locks_(), size_(0), next_() {}
 
-  LockError trait_lock(const LockRecordKey& _key, LockType _type) noexcept {
+  LockError trait_lock(const TableTupleKey& _key, LockType _type) noexcept {
     auto idx = _key.hash() % N;
     auto start = idx;
     do {
@@ -51,7 +86,7 @@ class LockRecords : public LockManagerTrait<LockRecords, LockRecordKey>,
     return LockError::Full;
   }
 
-  LockError trait_unlock(const LockRecordKey& _key) noexcept {
+  LockError trait_unlock(const TableTupleKey& _key) noexcept {
     auto idx = _key.hash() % N;
     auto start = idx;
     do {
@@ -66,7 +101,7 @@ class LockRecords : public LockManagerTrait<LockRecords, LockRecordKey>,
     return LockError::NotFound;
   }
 
-  LockError trait_promote(const LockRecordKey& _key) noexcept {
+  LockError trait_promote(const TableTupleKey& _key) noexcept {
     auto idx = _key.hash() % N;
     auto start = idx;
     do {
@@ -83,7 +118,7 @@ class LockRecords : public LockManagerTrait<LockRecords, LockRecordKey>,
     return LockError::NotFound;
   }
 
-  LockR trait_get_lock(const LockRecordKey& _key) const noexcept {
+  LockR trait_get_lock(const TableTupleKey& _key) const noexcept {
     auto idx = _key.hash() % N;
     auto start = idx;
     do {
@@ -101,45 +136,15 @@ class LockRecords : public LockManagerTrait<LockRecords, LockRecordKey>,
   bool trait_empty() const noexcept { return size_ == 0; }
   bool trait_full() const noexcept { return size_ >= N; }
 
-  class Iterator {
-   public:
-    Iterator(const LockRecords* table, const std::size_t idx) noexcept
-        : table_(table), idx_(idx) {}
-
-    Iterator& trait_next() noexcept {
-      idx_++;
-      advance_to_valid();
-      return *this;
-    }
-
-    bool trait_equals(const Iterator& other) const noexcept {
-      return idx_ == other.idx_;
-    }
-
-    std::pair<LockRecordKey, LockType> operator*() const noexcept {
-      return std::make_pair(table_->locks_[idx_].key,
-                            table_->locks_[idx_].type);
-    }
-
-    void advance_to_valid() noexcept {
-      while (idx_ < N && (!table_->locks_[idx_].is_used ||
-                          table_->locks_[idx_].is_deleted)) {
-        idx_++;
-      }
-    }
-
-   private:
-    const LockRecords* table_;
-    std::size_t idx_;
-  };
-
-  Iterator trait_begin() const noexcept {
-    auto i = Iterator(this, 0);
-    i.advance_to_valid();
-    return i;
+  LockRecordIterator trait_begin() const noexcept {
+    LockRecordIterator it(this, 0);
+    it.advance_to_valid();
+    return it;
   }
 
-  Iterator trait_end() const noexcept { return Iterator(this, N); }
+  LockRecordIterator trait_end() const noexcept {
+    return LockRecordIterator(this, N);
+  }
 };
 
 }  // namespace PawnDB

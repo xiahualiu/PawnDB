@@ -8,13 +8,13 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
+#include "pawndb/traits/fifo.h"
 #include "pawndb/traits/sized.h"
 
 namespace PawnDB {
 
-class RetChannel : public Channel<RetChannel, txn_id_t>,
+class RetChannel : public FIFO<RetChannel, txn_id_t>,
                    public Sized<RetChannel>,
                    public Container<RetChannel> {
   std::array<txn_id_t, MAX_TRANSACTIONS> txns_;
@@ -33,29 +33,29 @@ class RetChannel : public Channel<RetChannel, txn_id_t>,
 
   GetR trait_get() noexcept {
     std::unique_lock<std::mutex> lock(mtx_);
-    if (!empty()) {
+    if (!trait_empty()) {
       return txns_[head_];
     } else {
-      return ChannelError::Empty;
+      return FIFOError::Empty;
     }
   }
 
   GetR trait_recv() noexcept { return trait_get(); }
 
-  ChannelError trait_send(const txn_id_t& _dead_txn) noexcept {
+  FIFOError trait_send(const txn_id_t& _dead_txn) noexcept {
     std::unique_lock<std::mutex> lock(mtx_);
     txns_[tail_] = _dead_txn;
     tail_ = (tail_ + 1) % MAX_TRANSACTIONS;
     count_++;
-    return ChannelError::None;
+    return FIFOError::None;
   }
 
-  ChannelError trait_send(txn_id_t&& _dead_txn) noexcept {
+  FIFOError trait_send(txn_id_t&& _dead_txn) noexcept {
     std::unique_lock<std::mutex> lock(mtx_);
     txns_[tail_] = std::move(_dead_txn);
     tail_ = (tail_ + 1) % MAX_TRANSACTIONS;
     count_++;
-    return ChannelError::None;
+    return FIFOError::None;
   }
 
   void trait_clear() noexcept {

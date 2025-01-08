@@ -4,18 +4,22 @@
 #include <cstdint>
 #include <cstring>
 
+#include "pawndb/params.h"
 #include "pawndb/traits/composite_key.h"
 
 namespace PawnDB {
 
-class LockRecordKey : public CompositeKeyTrait<LockRecordKey> {
+class TableTupleKey : public CompositeKeyTrait<TableTupleKey> {
  public:
-  LockRecordKey() noexcept : table_id_(0), tuple_key_(0) {}
+  TableTupleKey() noexcept : table_id_(0), tuple_key_(0) {}
 
-  LockRecordKey(const LockRecordKey& _other) noexcept
+  TableTupleKey(tp_id_t _table_id, tbl_row_t _tuple_key) noexcept
+      : table_id_(_table_id), tuple_key_(_tuple_key) {}
+
+  TableTupleKey(const TableTupleKey& _other) noexcept
       : table_id_(_other.table_id_), tuple_key_(_other.tuple_key_) {}
 
-  LockRecordKey& operator=(const LockRecordKey& _other) {
+  TableTupleKey& operator=(const TableTupleKey& _other) {
     table_id_ = _other.table_id_;
     tuple_key_ = _other.tuple_key_;
     return *this;
@@ -35,7 +39,7 @@ class LockRecordKey : public CompositeKeyTrait<LockRecordKey> {
 
   std::size_t trait_hash() const noexcept { return table_id_; }
 
-  bool trait_equals(const LockRecordKey& _other) const noexcept {
+  bool trait_equals(const TableTupleKey& _other) const noexcept {
     return table_id_ == _other.table_id_ && tuple_key_ == _other.tuple_key_;
   }
 

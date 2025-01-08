@@ -90,39 +90,6 @@ class LockManagerTrait {
     return static_cast<const Derived*>(this)->trait_get_lock(key);
   }
 
-  class Iterator {
-   public:
-    Iterator& operator++() noexcept {
-      return static_cast<Derived*>(this)->trait_next();
-    }
-
-    Iterator& operator++(int) noexcept {
-      auto tmp = *this;
-      static_cast<Derived*>(this)->trait_next();
-      return tmp;
-    }
-
-    bool operator==(const Iterator& other) const noexcept {
-      return static_cast<const Derived*>(this)->trait_equals(other);
-    }
-
-    bool operator!=(const Iterator& other) const noexcept {
-      return !static_cast<const Derived*>(this)->trait_equals(other);
-    }
-
-    LockEntry operator*() const noexcept {
-      return static_cast<const Derived*>(this)->trait_deref();
-    }
-  };
-
-  Iterator begin() const noexcept {
-    return static_cast<const Derived*>(this)->trait_begin();
-  }
-
-  Iterator end() const noexcept {
-    return static_cast<const Derived*>(this)->trait_end();
-  }
-
  protected:
   LockManagerTrait() = default;
   ~LockManagerTrait() = default;

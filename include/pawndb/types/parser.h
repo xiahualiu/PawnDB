@@ -36,7 +36,12 @@ class Parser : public ParserTrait<Parser> {
     return static_cast<tp_id_t>(buffers_[7]);
   }
 
-  constexpr std::size_t trait_get_key_offset() noexcept { return 8; }
+  TpKeyR trait_get_key() noexcept {
+    if (size_ < 9) return ParserError::ReadAfterEnd;
+    return static_cast<tbl_row_t>(buffers_[8]);
+  }
+
+  constexpr std::size_t trait_get_tuple_offset() const noexcept { return 9; }
 
   void trait_set_ack(OpAck _ack) noexcept {
     buffers_[6] = static_cast<char>(_ack);
@@ -46,9 +51,15 @@ class Parser : public ParserTrait<Parser> {
     *reinterpret_cast<txn_id_t*>(&buffers_[2]) = _txn;
   }
 
-  void trait_set_buffer_size(buf_size_t _size) noexcept { size_ = _size; }
+  void trait_set_key(tbl_row_t _key) noexcept {
+    buffers_[8] = static_cast<char>(_key);
+  }
+
+  void trait_set_buffer_size(std::size_t _size) noexcept { size_ = _size; }
 
   std::size_t trait_get_buffer_size() noexcept { return size_; }
+
+  char* trait_get_buffer() noexcept { return buffers_.data(); }
 
  private:
   buffer_t& buffers_;

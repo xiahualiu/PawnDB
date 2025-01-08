@@ -19,7 +19,7 @@ namespace PawnDB {
 /**
  * @brief Table operation error codes
  */
-enum class TableError {
+enum class TupleTableError {
   None,    /**< Operation successful */
   Full,    /**< Table at capacity */
   Timeout, /**< Lock wait timeout */
@@ -29,8 +29,6 @@ enum class TableError {
 /**
  * @brief CRTP interface for tuple table implementations
  * @tparam Derived Class implementing table interface
- * @tparam KeyType Type of keys for indexing
- * @tparam Tuple Type of stored tuples
  *
  * Required implementations:
  * - FetchR trait_insert(const Tuple&)
@@ -42,37 +40,14 @@ enum class TableError {
  * - void trait_yield(const KeyType&)
  * - void trait_release(const KeyType&)
  */
-template <typename Derived, typename KeyType, typename Tuple>
+template <typename Derived, typename EntryType>
 class TupleTableTrait {
  public:
+  using entry_type = EntryType;
+  using key_type = typename EntryType::key_type;
+
   /** @brief Result type for fetch operations */
-  using FetchR = Result<std::pair<Tuple*, KeyType>, TableError>;
-
-  /**
-   * @brief Insert tuple into table
-   * @param tuple Tuple to insert
-   * @return FetchR Success: {tuple,key}, Error: code
-   */
-  FetchR insert(const Tuple& tuple) noexcept {
-    return static_cast<Derived*>(this)->trait_insert(tuple);
-  }
-
-  /**
-   * @brief Remove tuple by key
-   * @param key Key of tuple to remove
-   */
-  void remove(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_remove(key);
-  }
-
-  /**
-   * @brief Write tuple at key
-   * @param key Target key
-   * @param tuple New tuple value
-   */
-  void write(const KeyType& key, const Tuple& tuple) noexcept {
-    return static_cast<Derived*>(this)->trait_write(key, tuple);
-  }
+  using FetchR = Result<EntryType&, TupleTableError>;
 
   /**
    * @brief Wait for shared lock
@@ -95,7 +70,7 @@ class TupleTableTrait {
    * @param key Key to promote
    * @return TableError None or error code
    */
-  TableError promote(const KeyType& key) noexcept {
+  TupleTableError promote(const key_type& key) noexcept {
     return static_cast<Derived*>(this)->trait_promote(key);
   }
 
@@ -103,7 +78,7 @@ class TupleTableTrait {
    * @brief Yield a shared lock
    * @param key Key to yield
    */
-  void yield(const KeyType& key) noexcept {
+  void yield(const key_type& key) noexcept {
     return static_cast<Derived*>(this)->trait_yield(key);
   }
 
@@ -111,7 +86,7 @@ class TupleTableTrait {
    * @brief Release any held lock
    * @param key Key to release
    */
-  void release(const KeyType& key) noexcept {
+  void release(const key_type& key) noexcept {
     return static_cast<Derived*>(this)->trait_release(key);
   }
 

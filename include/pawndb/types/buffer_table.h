@@ -18,7 +18,7 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/buffer_table.h"
+#include "pawndb/traits/buffer_manager.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/sized.h"
 
@@ -35,7 +35,7 @@ using buffer_t = std::array<char, BUFFER_WIDTH>;
  * - Bounds checking
  * - Size monitoring
  */
-class BufferTable : public BufferTableTrait<BufferTable, buffer_t>,
+class BufferTable : public BufferManagerTrait<BufferTable, buffer_t>,
                     public Sized<BufferTable>,
                     public Container<BufferTable> {
   static constexpr std::size_t N = BUFFER_ROWS;
@@ -59,7 +59,7 @@ class BufferTable : public BufferTableTrait<BufferTable, buffer_t>,
    * @return Success: buffer index, Error: BufferError
    */
   RequestR trait_request() noexcept {
-    if (full()) {
+    if (trait_full()) {
       return BufferError::Full;
     }
     std::lock_guard<std::mutex> lock(mutex_);

@@ -34,11 +34,11 @@ enum class FIFOError {
  * Required implementations:
  * - GetR trait_get()
  * - GetR trait_recv()
- * - ChannelError trait_send(const T&)
- * - ChannelError trait_send(T&&)
+ * - FIFOError trait_send(const T&)
+ * - FIFOError trait_send(T&&)
  */
 template <typename Derived, typename T>
-class FIFOTrait {
+class FIFO {
  public:
   using value_type = T;
   using GetR = Result<value_type, FIFOError>;
@@ -58,7 +58,7 @@ class FIFOTrait {
   /**
    * @brief Send value to channel (copy)
    * @param value Value to send
-   * @return ChannelError None or Full
+   * @return FIFOError None or Full
    */
   FIFOError send(const value_type& value) noexcept {
     return static_cast<Derived*>(this)->trait_send(value);
@@ -67,7 +67,7 @@ class FIFOTrait {
   /**
    * @brief Send value to channel (move)
    * @param value Value to move
-   * @return ChannelError None or Full
+   * @return FIFOError None or Full
    */
   FIFOError send(value_type&& value) noexcept {
     return static_cast<Derived*>(this)->trait_send(std::move(value));
@@ -105,8 +105,8 @@ class FIFOTrait {
   }
 
  protected:
-  FIFOTrait() = default;
-  ~FIFOTrait() = default;
+  FIFO() = default;
+  ~FIFO() = default;
 };
 
 }  // namespace PawnDB

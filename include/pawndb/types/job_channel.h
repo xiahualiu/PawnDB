@@ -9,20 +9,20 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
+#include "pawndb/traits/fifo.h"
 #include "pawndb/traits/sized.h"
 
 namespace PawnDB {
 
 struct Job {
   std::size_t buffer_index_;
-  socklen_t buffer_size_;
+  std::size_t buffer_size_;
   struct sockaddr client_addr_;
   socklen_t client_addr_len_;
 };
 
-class JobChannel : public Channel<JobChannel, Job>,
+class JobChannel : public FIFO<JobChannel, Job>,
                    public Sized<JobChannel>,
                    public Container<JobChannel> {
   constexpr static std::size_t MaxJobs = MAX_ITEM_PER_CHANNEL;
@@ -46,7 +46,7 @@ class JobChannel : public Channel<JobChannel, Job>,
     if (!empty()) {
       return jobs_[head_];
     } else {
-      return ChannelError::Empty;
+      return FIFOError::Empty;
     }
   }
 
@@ -57,30 +57,30 @@ class JobChannel : public Channel<JobChannel, Job>,
     if (w_r) {
       return jobs_[head_];
     } else {
-      return ChannelError::Timeout;
+      return FIFOError::Timeout;
     }
   }
 
-  ChannelError trait_send(const Job& job) noexcept {
+  FIFOError trait_send(const Job& job) noexcept {
     std::unique_lock<std::mutex> lock(mtx_);
     if (full()) {
-      return ChannelError::Full;
+      return FIFOError::Full;
     }
     jobs_[tail_] = job;
     tail_ = (tail_ + 1) % MaxJobs;
     count_++;
-    return ChannelError::None;
+    return FIFOError::None;
   }
 
-  ChannelError trait_send(Job&& job) noexcept {
+  FIFOError trait_send(Job&& job) noexcept {
     std::unique_lock<std::mutex> lock(mtx_);
     if (full()) {
-      return ChannelError::Full;
+      return FIFOError::Full;
     }
     jobs_[tail_] = std::move(job);
     tail_ = (tail_ + 1) % MaxJobs;
     count_++;
-    return ChannelError::None;
+    return FIFOError::None;
   }
 
   void trait_pop() noexcept {

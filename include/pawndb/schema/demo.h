@@ -12,8 +12,8 @@
 #ifndef PAWNDB_SCHEMA_DEMO_H
 #define PAWNDB_SCHEMA_DEMO_H
 
-#include "pawndb/types/buffer_table.h"
 #include "pawndb/params.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/types/student_table.h"
 
 namespace PawnDB {

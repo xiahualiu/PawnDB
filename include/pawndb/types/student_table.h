@@ -12,56 +12,84 @@
 #ifndef PAWNDB_TABLE_H
 #define PAWNDB_TABLE_H
 
+#include <sys/types.h>
+
 #include <array>
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
-#include <utility>
 
 #include "pawndb/params.h"
 #include "pawndb/traits/container.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/tuple_table.h"
-#include "pawndb/types/student_key.h"
 #include "pawndb/types/student_tuple.h"
+#include "pawndb/traits/sized.h"
 
 namespace PawnDB {
 
-template <tbl_row_t Rows, typename... Ts>
-struct TableStruct {};
+struct StudentTableEntry {
+  using key_type = tbl_row_t;
 
-class StudentTable
-    : public TupleTableTrait<StudentTable, StudentKey, StudentTuple>,
-      public Sized<StudentTable>,
-      public Container<StudentTable> {
+  StudentTuple tuple;
+  tbl_row_t key;
+  lk_t lock;
+  bool is_used;
+  bool is_deleted;
+};
+
+class StudentTable : public TableTrait<StudentTable, StudentTableEntry>,
+                     public TupleTableTrait<StudentTable, StudentTableEntry>,
+                     public Sized<StudentTable>,
+                     public Container<StudentTable> {
   constexpr static std::size_t Rows = 10;
 
  public:
+  using key_type = tbl_row_t;
+  using entry_type = StudentTableEntry;
+
   constexpr static std::size_t trait_id() noexcept { return 1; }
 
-  FetchR trait_insert(const StudentTuple& _tuple) noexcept {
+  TableR trait_insert(const entry_type& _entry) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    not_full_.wait(lock, [&]() { return !full(); });
-    auto idx = tuple_key_.hash() % Rows;
+    not_full_.wait(lock, [&]() { return !trait_full(); });
+    auto idx = tuple_key_ % Rows;
     auto start = idx;
     do {
       if (!table_[idx].is_used || table_[idx].is_deleted) {
+        table_[idx] = _entry;
         table_[idx].key = tuple_key_;
-        table_[idx].tuple = _tuple;
         table_[idx].lock = 0;
         table_[idx].is_used = true;
         table_[idx].is_deleted = false;
-        tuple_key_.next();
+        tuple_key_++;
         size_++;
-        return FetchR{std::pair(&table_[idx].tuple, tuple_key_)};
+        return table_[idx];
       }
       idx = (idx + 1) % Rows;
     } while (idx != start);
     return TableError::Full;
   }
 
-  void trait_remove(const StudentKey& _key) noexcept {
+  TableR trait_search(const key_type& _key) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    auto idx = _key.hash() % Rows;
+    auto idx = _key % Rows;
+    auto start = idx;
+    do {
+      if (!table_[idx].is_used) {
+        return TableError::NotFound;
+      }
+      if (table_[idx].key == _key && !table_[idx].is_deleted) {
+        return table_[idx];
+      }
+      idx = (idx + 1) % Rows;
+    } while (idx != start);
+    return TableError::NotFound;
+  }
+
+  void trait_remove(const key_type& _key) noexcept {
+    auto lock = std::unique_lock<std::mutex>(mutex_);
+    auto idx = _key % Rows;
     auto start = idx;
     do {
       if (!table_[idx].is_used) {
@@ -76,17 +104,16 @@ class StudentTable
     } while (idx != start);
   }
 
-  void trait_write(const StudentKey& _key,
-                   const StudentTuple& _tuple) noexcept {
+  void trait_write(const entry_type& _entry) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    auto idx = _key.hash() % Rows;
+    auto idx = _entry.key % Rows;
     auto start = idx;
     do {
       if (!table_[idx].is_used) {
         return;
       }
-      if (table_[idx].key == _key && !table_[idx].is_deleted) {
-        table_[idx].tuple = _tuple;
+      if (table_[idx].key == _entry.key && !table_[idx].is_deleted) {
+        table_[idx] = _entry;
         return;
       }
       idx = (idx + 1) % Rows;
@@ -95,14 +122,15 @@ class StudentTable
 
   FetchR trait_wait_shared() noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    FetchR result = TableError::Timeout;
-    if (not_empty_.wait_for(lock, WAIT_TIMEOUT, [&]() { return !empty(); })) {
+    FetchR result = TupleTableError::Timeout;
+    if (not_empty_.wait_for(lock, WAIT_TIMEOUT,
+                            [&]() { return !trait_empty(); })) {
       if (s_available_.wait_for(lock, WAIT_TIMEOUT, [&]() {
             for (tbl_row_t i = 0; i < Rows; i++) {
               if (table_[i].is_used && !table_[i].is_deleted &&
                   table_[i].lock >= 0) {
                 table_[i].lock++;
-                result = std::pair(&table_[i].tuple, table_[i].key);
+                result = table_[i];
                 return true;
               }
             }
@@ -116,15 +144,16 @@ class StudentTable
 
   FetchR trait_wait_exclusive() noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    FetchR result = TableError::Timeout;
+    FetchR result = TupleTableError::Timeout;
 
-    if (not_empty_.wait_for(lock, WAIT_TIMEOUT, [&]() { return !empty(); })) {
+    if (not_empty_.wait_for(lock, WAIT_TIMEOUT,
+                            [&]() { return !trait_empty(); })) {
       if (x_available_.wait_for(lock, WAIT_TIMEOUT, [&]() {
             for (tbl_row_t i = 0; i < Rows; i++) {
               if (table_[i].is_used && !table_[i].is_deleted &&
                   table_[i].lock == 0) {
                 table_[i].lock = -1;  // Set exclusive lock
-                result = std::pair(&table_[i].tuple, table_[i].key);
+                result = table_[i];
                 return true;
               }
             }
@@ -136,28 +165,28 @@ class StudentTable
     return result;
   }
 
-  TableError trait_promote(const StudentKey& _key) noexcept {
+  TupleTableError trait_promote(const key_type& _key) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    auto idx = _key.hash() % Rows;
+    auto idx = _key % Rows;
     auto start = idx;
     do {
       if (table_[idx].key == _key && !table_[idx].is_deleted) {
         if (!x_available_.wait_for(lock, WAIT_TIMEOUT, [&]() {
               return table_[idx].lock == 1;  // Still has our shared lock
             })) {
-          return TableError::Timeout;
+          return TupleTableError::Timeout;
         }
         table_[idx].lock = -1;
-        return TableError::None;
+        return TupleTableError::None;
       }
       idx = (idx + 1) % Rows;
     } while (idx != start);
-    return TableError::NotFound;
+    return TupleTableError::NotFound;
   }
 
-  void trait_yield(const StudentKey& _key) noexcept {
+  void trait_yield(const key_type& _key) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    auto idx = _key.hash() % Rows;
+    auto idx = _key % Rows;
     auto start = idx;
     do {
       if (table_[idx].key == _key && !table_[idx].is_deleted) {
@@ -168,9 +197,9 @@ class StudentTable
     } while (idx != start);
   }
 
-  void trait_release(const StudentKey& _key) noexcept {
+  void trait_release(const key_type& _key) noexcept {
     auto lock = std::unique_lock<std::mutex>(mutex_);
-    auto idx = _key.hash() % Rows;
+    auto idx = _key % Rows;
     auto start = idx;
 
     do {
@@ -197,24 +226,16 @@ class StudentTable
   std::size_t trait_size() const noexcept { return size_; }
 
  private:
-  struct Entry {
-    StudentTuple tuple;
-    StudentKey key;
-    lk_t lock;
-    bool is_used;
-    bool is_deleted;
-  };
-
   std::mutex mutex_;
   std::condition_variable not_empty_;
   std::condition_variable not_full_;
   std::condition_variable s_available_;
   std::condition_variable x_available_;
 
-  std::array<Entry, Rows> table_;
+  std::array<StudentTableEntry, Rows> table_;
 
-  std::size_t size_{0};
-  StudentKey tuple_key_;
+  std::size_t size_;
+  key_type tuple_key_;
 };
 }  // namespace PawnDB
 

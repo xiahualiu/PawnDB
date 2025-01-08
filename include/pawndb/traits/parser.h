@@ -65,8 +65,13 @@ class ParserTrait {
     return static_cast<const Derived*>(this)->trait_get_tbl();
   }
 
-  constexpr std::size_t get_key_offset() noexcept {
-    return static_cast<const Derived*>(this)->trait_get_key_offset();
+  using TpKeyR = Result<tbl_row_t, ParserError>;
+  TblIdR get_key() noexcept {
+    return static_cast<const Derived*>(this)->trait_get_key();
+  }
+
+  constexpr std::size_t get_tuple_offset() noexcept {
+    return static_cast<const Derived*>(this)->trait_get_tuple_offset();
   }
 
   void set_ack(OpAck ack) noexcept {
@@ -77,12 +82,20 @@ class ParserTrait {
     static_cast<Derived*>(this)->trait_set_txn_id(txn);
   }
 
-  void set_buffer_size(buf_size_t size) noexcept {
+  void set_buffer_size(std::size_t size) noexcept {
     static_cast<Derived*>(this)->trait_set_buffer_size(size);
+  }
+
+  void set_key(tbl_row_t key) noexcept {
+    static_cast<Derived*>(this)->trait_set_key(key);
   }
 
   std::size_t get_buffer_size() noexcept {
     static_cast<Derived*>(this)->trait_get_buffer_size();
+  }
+
+  char* get_buffer() noexcept {
+    static_cast<Derived*>(this)->trait_get_buffer();
   }
 
  protected:
