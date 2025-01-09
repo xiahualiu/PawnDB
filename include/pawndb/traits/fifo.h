@@ -79,24 +79,23 @@ class FIFO {
    */
   void clear() noexcept { static_cast<Derived*>(this)->trait_clear(); }
 
-
   /**
    * @brief Removes an element from the channel.
-   * 
-   * This function calls the `trait_pop` method of the derived class to 
-   * remove an element from the channel. It is marked as `noexcept` to 
+   *
+   * This function calls the `trait_pop` method of the derived class to
+   * remove an element from the channel. It is marked as `noexcept` to
    * indicate that it does not throw any exceptions.
    */
   void pop() noexcept { static_cast<Derived*>(this)->trait_pop(); }
 
   /**
    * @brief Notifies that the channel is not empty.
-   * 
+   *
    * This function is intended to be called when the channel transitions
    * from empty to not empty. It delegates the actual notification logic
    * to the derived class by calling `trait_notify_not_empty()` on the
    * derived class instance.
-   * 
+   *
    * @note This function is `noexcept`, meaning it guarantees not to throw
    * any exceptions.
    */

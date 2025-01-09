@@ -17,10 +17,10 @@
 
 namespace PawnDB {
 
-
 /**
  * @class Result
- * @brief A class that represents a result which can either hold a value or an error.
+ * @brief A class that represents a result which can either hold a value or an
+ * error.
  *
  * @tparam T The type of the value.
  * @tparam E The type of the error, which must be an enum.
@@ -30,11 +30,12 @@ namespace PawnDB {
  * - T cannot be a reference type.
  * - E must be an enum type.
  *
- * The Result class provides methods to construct a result with either a value or an error,
- * check if the result is successful or an error, unwrap the value, and get the error.
+ * The Result class provides methods to construct a result with either a value
+ * or an error, check if the result is successful or an error, unwrap the value,
+ * and get the error.
  *
- * @note The default constructor is deleted to ensure that a Result object is always initialized
- * with either a value or an error.
+ * @note The default constructor is deleted to ensure that a Result object is
+ * always initialized with either a value or an error.
  */
 template <typename T, typename E>
 class Result {
@@ -109,9 +110,6 @@ class Result {
   E error;
 };
 
-
-
-
 template <typename T, typename E>
 class Result<T&, E> {
   static_assert(!std::is_same_v<T, E>, "T and E cannot be the same type!");
@@ -129,7 +127,8 @@ class Result<T&, E> {
    *
    * @param _value The value to construct the Result with.
    */
-  Result(const T& _value) noexcept : value(&_value), error(E::None) {}
+  Result(const T& _value) noexcept
+      : value(const_cast<T*>(&_value)), error(E::None) {}
 
   /**
    * @brief Constructs a Result with an error.
@@ -155,16 +154,9 @@ class Result<T&, E> {
   /**
    * @brief Unwraps the value from the Result.
    *
-   * @return A reference to the value.
-   */
-  inline T& unwrap() noexcept { return *value; }
-
-  /**
-   * @brief Unwraps the value from the Result.
-   *
    * @return A const reference to the value.
    */
-  inline const T& unwrap() const noexcept { return *value; }
+  inline T& unwrap() const noexcept { return *value; }
 
   /**
    * @brief Gets the error from the Result.

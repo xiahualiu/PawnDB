@@ -54,52 +54,15 @@ class BufferTable : public BufferManagerTrait<BufferTable, buffer_t>,
  public:
   BufferTable() noexcept : buffers_(), size_(0), next_(0) {}
 
-  /**
-   * @brief Request a free buffer
-   * @return Success: buffer index, Error: BufferError
-   */
-  RequestR trait_request() noexcept {
-    if (trait_full()) {
-      return BufferError::Full;
-    }
-    std::lock_guard<std::mutex> lock(mutex_);
-    while (buffers_[next_].is_used) {
-      next_ = (next_ + 1) % N;
-    }
-    buffers_[next_].is_used = true;
-    size_++;
-    return next_++;
-  }
-
-  /**
-   * @brief Release a buffer
-   * @param index Buffer to release
-   * @return BufferError None or error code
-   */
-  RequestR trait_release(std::size_t index) noexcept {
-    if (index >= N) return BufferError::OutOfRange;
-    std::lock_guard<std::mutex> lock(mutex_);
-    if (buffers_[index].is_used) {
-      buffers_[index].is_used = false;
-      size_--;
-      return BufferError::None;
-    } else {
-      return BufferError::NotUsed;
-    }
-  }
-
-  /**
-   * @brief Access buffer by index
-   * @param index Buffer index
-   * @return Reference to buffer
-   */
-  buffer_t& trait_get(std::size_t index) noexcept {
-    return buffers_[index].buffer;
-  }
-
+  // BufferManagerTrait
+  RequestR trait_request() noexcept;
+  RequestR trait_release(std::size_t index) noexcept;
+  buffer_t& trait_get(std::size_t index) noexcept;
+  // Sized
+  std::size_t trait_size() const noexcept { return size_; }
+  // Container
   bool trait_empty() const noexcept { return size_ == 0; }
   bool trait_full() const noexcept { return size_ >= N; }
-  std::size_t trait_size() const noexcept { return size_; }
   constexpr std::size_t trait_capacity() const noexcept { return N; }
 };
 

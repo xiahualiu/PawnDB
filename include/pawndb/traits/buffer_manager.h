@@ -32,14 +32,14 @@ template <typename Derived, typename BufferType>
 class BufferManagerTrait {
  public:
   /**
- * @brief Buffer operation error codes
- */
-enum class BufferError {
+   * @brief Buffer operation error codes
+   */
+  enum class BufferError {
     None,       /**< Operation successful */
     Full,       /**< No free buffers */
     OutOfRange, /**< Invalid buffer index */
     NotUsed     /**< Buffer not allocated */
-};
+  };
 
   using RequestR = Result<std::size_t, BufferError>;
 

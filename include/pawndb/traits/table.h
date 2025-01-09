@@ -36,7 +36,7 @@ class TableTrait {
     return static_cast<Derived*>(this)->trait_remove(_key);
   }
 
-  TableError write(const entry_type& _entry) noexcept {
+  TableR write(const entry_type& _entry) noexcept {
     return static_cast<Derived*>(this)->trait_write(_entry);
   }
 

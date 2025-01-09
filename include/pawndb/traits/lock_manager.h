@@ -47,11 +47,10 @@ enum class LockError {
  * - LockError trait_promote(const KeyType&)
  * - LockR trait_get_lock(const KeyType&) const
  */
-template <typename Derived, typename KeyType>
+template <typename Derived, typename KeyType, typename LockEntryType>
 class LockManagerTrait {
  public:
-  using LockEntry = std::pair<KeyType, LockType>;
-  using LockR = Result<LockType, LockError>;
+  using LockR = Result<LockEntryType&, LockError>;
 
   /**
    * @brief Acquire lock on key

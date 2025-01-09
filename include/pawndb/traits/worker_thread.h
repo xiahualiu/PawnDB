@@ -6,44 +6,38 @@ namespace PawnDB {
  * @brief Worker thread operation error codes
  */
 enum class WorkerError {
-    None,         /**< Operation successful */
-    InitFailed,   /**< Initialization failed */
-    JobFull,      /**< Job queue full */
-    Terminated    /**< Thread terminated */
+  None,       /**< Operation successful */
+  InitFailed, /**< Initialization failed */
+  JobFull,    /**< Job queue full */
+  Terminated  /**< Thread terminated */
 };
 
-template<typename Derived, typename Context, typename JobType>
+template <typename Derived, typename Context, typename JobType>
 class WorkerThread {
-public:
+ public:
+  WorkerError initialize(const Context&& context) noexcept {
+    return static_cast<Derived*>(this)->trait_initialize(context);
+  }
 
-    WorkerError initialize(const Context&& context) noexcept {
-        return static_cast<Derived*>(this)->trait_initialize(context);
-    }
+  WorkerError process_job(const JobType& job) noexcept {
+    return static_cast<Derived*>(this)->trait_process_job(job);
+  }
 
+  WorkerError cleanup() noexcept {
+    return static_cast<Derived*>(this)->trait_cleanup();
+  }
 
-    WorkerError process_job(const JobType& job) noexcept {
-        return static_cast<Derived*>(this)->trait_process_job(job);
-    }
+  bool is_running() const noexcept {
+    return static_cast<const Derived*>(this)->trait_is_running();
+  }
 
-    WorkerError cleanup() noexcept {
-        return static_cast<Derived*>(this)->trait_cleanup();
-    }
+  void terminate() noexcept { static_cast<Derived*>(this)->trait_terminate(); }
 
-
-    bool is_running() const noexcept {
-        return static_cast<const Derived*>(this)->trait_is_running();
-    }
-
-    void terminate() noexcept {
-        static_cast<Derived*>(this)->trait_terminate();
-    }
-
-protected:
-    WorkerThread() = default;
-    ~WorkerThread() = default;
-
+ protected:
+  WorkerThread() = default;
+  ~WorkerThread() = default;
 };
 
-} // namespace PawnDB
+}  // namespace PawnDB
 
-#endif // PAWNDB_TRAITS_WORKER_THREAD_H
+#endif  // PAWNDB_TRAITS_WORKER_THREAD_H

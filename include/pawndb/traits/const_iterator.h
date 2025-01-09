@@ -27,9 +27,9 @@ class ConstIteratorTypeTrait {
   }
 
   DerivedIterator operator++(int) noexcept {
-    auto tmp = *this;
+    auto tmp = this;
     static_cast<DerivedIterator*>(this)->trait_next();
-    return tmp;
+    return *reinterpret_cast<DerivedIterator*>(tmp);
   }
 };
 

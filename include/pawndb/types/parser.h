@@ -14,29 +14,29 @@ class Parser : public ParserTrait<Parser> {
   Parser(buffer_t& _buffers, std::size_t _size) noexcept
       : buffers_(_buffers), size_(_size) {}
 
-  OpR trait_get_op() noexcept {
+  OpR trait_get_op() const noexcept {
     if (size_ < 1) return ParserError::ReadAfterEnd;
     auto op = static_cast<OpType>(buffers_[0]);
     if (op >= OpType::MAX_OP_VALUE) return ParserError::InvalidValue;
     return op;
   }
 
-  OpIdR trait_get_op_id() noexcept {
+  OpIdR trait_get_op_id() const noexcept {
     if (size_ < 2) return ParserError::ReadAfterEnd;
     return static_cast<op_t>(buffers_[1]);
   }
 
-  TxnIdR trait_get_txn() noexcept {
+  TxnIdR trait_get_txn() const noexcept {
     if (size_ < 6) return ParserError::ReadAfterEnd;
     return *reinterpret_cast<txn_id_t*>(&buffers_[2]);
   }
 
-  TblIdR trait_get_tbl() noexcept {
+  TblIdR trait_get_tbl() const noexcept {
     if (size_ < 8) return ParserError::ReadAfterEnd;
     return static_cast<tp_id_t>(buffers_[7]);
   }
 
-  TpKeyR trait_get_key() noexcept {
+  TpKeyR trait_get_key() const noexcept {
     if (size_ < 9) return ParserError::ReadAfterEnd;
     return static_cast<tbl_row_t>(buffers_[8]);
   }
@@ -57,7 +57,7 @@ class Parser : public ParserTrait<Parser> {
 
   void trait_set_buffer_size(std::size_t _size) noexcept { size_ = _size; }
 
-  std::size_t trait_get_buffer_size() noexcept { return size_; }
+  std::size_t trait_get_buffer_size() const noexcept { return size_; }
 
   char* trait_get_buffer() noexcept { return buffers_.data(); }
 

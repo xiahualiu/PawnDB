@@ -46,31 +46,31 @@ template <typename Derived>
 class ParserTrait {
  public:
   using OpR = Result<OpType, ParserError>;
-  OpR get_op() noexcept {
+  OpR get_op() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_op();
   }
 
   using OpIdR = Result<op_t, ParserError>;
-  OpIdR get_op_id() noexcept {
+  OpIdR get_op_id() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_op_id();
   }
 
   using TxnIdR = Result<txn_id_t, ParserError>;
-  TxnIdR get_txn() noexcept {
+  TxnIdR get_txn() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_txn();
   }
 
   using TblIdR = Result<tp_id_t, ParserError>;
-  TblIdR get_tbl() noexcept {
+  TblIdR get_tbl() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_tbl();
   }
 
   using TpKeyR = Result<tbl_row_t, ParserError>;
-  TblIdR get_key() noexcept {
+  TblIdR get_key() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_key();
   }
 
-  constexpr std::size_t get_tuple_offset() noexcept {
+  constexpr std::size_t get_tuple_offset() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_tuple_offset();
   }
 
@@ -90,12 +90,12 @@ class ParserTrait {
     static_cast<Derived*>(this)->trait_set_key(key);
   }
 
-  std::size_t get_buffer_size() noexcept {
-    static_cast<Derived*>(this)->trait_get_buffer_size();
+  std::size_t get_buffer_size() const noexcept {
+    return static_cast<const Derived*>(this)->trait_get_buffer_size();
   }
 
   char* get_buffer() noexcept {
-    static_cast<Derived*>(this)->trait_get_buffer();
+    return static_cast<Derived*>(this)->trait_get_buffer();
   }
 
  protected:

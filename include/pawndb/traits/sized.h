@@ -37,7 +37,6 @@ class Sized {
  protected:
   Sized() = default;
   ~Sized() = default;
-
 };
 
 }  // namespace PawnDB

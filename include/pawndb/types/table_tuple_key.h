@@ -35,8 +35,6 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey> {
     return {table_id_, tuple_key_};
   }
 
-  std::size_t trait_next() const noexcept { return 0; }
-
   std::size_t trait_hash() const noexcept { return table_id_; }
 
   bool trait_equals(const TableTupleKey& _other) const noexcept {

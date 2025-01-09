@@ -15,7 +15,7 @@
 
 #include <iostream>
 
-#include "pawndb/main_thread.h"
+#include "pawndb/types/main_thread.h"
 #include "pawndb/schema/demo.h"
 
 using namespace PawnDB;
@@ -23,6 +23,7 @@ using namespace PawnDB;
 static __attribute__((no_destroy)) auto database = Database();
 
 int main() {
+  std::cout << "Starting PawnDB server..." << std::endl;
   // Create server socket must be UDP
   int server_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
   if (-1 == server_fd) {
@@ -49,20 +50,11 @@ int main() {
   }
 
   // Start main thread in a separate thread
-  auto main_thread = std::thread{[&]() {
-    auto _main_thread = MainThread(&database, server_fd);
-    _main_thread.start();
-  }};
+  auto main_thread = MainThread(&database, server_fd);
+  main_thread.start();
 
-  // Sleep for a while and then clean up
   std::this_thread::sleep_for(std::chrono::seconds(60));
-  std::cout << "Shutting down server..." << std::endl;
 
-  // Kill main thread by closing the socket
-  shutdown(server_fd, SHUT_RDWR);
-  close(server_fd);
-  unlink(UNIX_SOCKET_PATH);
-
-  main_thread.join();  // Wait for main thread to finish
+  main_thread.stop();
   return 0;
 }

@@ -19,8 +19,8 @@ namespace PawnDB {
  * @brief Serialization operation error codes
  */
 enum class SerializerError {
-  None,        /**< Operation successful */
-  TypeMismatch, /**< Type verification failed */
+  None,           /**< Operation successful */
+  TypeMismatch,   /**< Type verification failed */
   CheckSumFailed, /**< Checksum verification failed */
 };
 
@@ -42,10 +42,10 @@ class SerializerTrait {
    * @brief Serialize value to buffer
    * @param buffer Target buffer
    * @param offset Buffer write position
-   * @return Bytes write to the buffer 
+   * @return Bytes write to the buffer
    */
   std::size_t serialize(char* buffer, std::size_t offset) const noexcept {
-    static_cast<const Derived*>(this)->trait_serialize(buffer, offset);
+    return static_cast<const Derived*>(this)->trait_serialize(buffer, offset);
   }
 
   /**
@@ -61,7 +61,6 @@ class SerializerTrait {
  protected:
   SerializerTrait() = default;
   ~SerializerTrait() = default;
-
 };
 
 }  // namespace PawnDB
