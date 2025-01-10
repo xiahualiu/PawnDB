@@ -1,5 +1,7 @@
 #include "pawndb/types/student_tuple.h"
 
+#include "pawndb/params.h"
+
 namespace PawnDB {
 
 // Required trait implementations
@@ -7,17 +9,15 @@ void StudentTuple::trait_set_checksum() noexcept {
   checksum_ = trait_cal_checksum();
 }
 
-StudentTuple::checksum_type StudentTuple::trait_val_checksum() const noexcept {
+cksum_t StudentTuple::trait_val_checksum() const noexcept {
   return checksum_ == trait_cal_checksum();
 }
 
-void StudentTuple::trait_set_tickstamp(
-    const tickstamp_type _tickstamp) noexcept {
+void StudentTuple::trait_set_tickstamp(const tick_t _tickstamp) noexcept {
   this->tickstamp_ = _tickstamp;
 }
 
-StudentTuple::tickstamp_type StudentTuple::trait_read_tickstamp()
-    const noexcept {
+tick_t StudentTuple::trait_read_tickstamp() const noexcept {
   return tickstamp_;
 }
 
@@ -28,7 +28,7 @@ std::size_t StudentTuple::trait_serialize(char* buffer,
   buffer_ptr += sizeof(name_);
   std::memcpy(buffer_ptr, &age_, sizeof(age_));
   buffer_ptr += sizeof(age_);
-  std::memcpy(buffer_ptr, const_cast<const checksum_type*>(&checksum_),
+  std::memcpy(buffer_ptr, const_cast<const cksum_t*>(&checksum_),
               sizeof(checksum_));
   return sizeof(name_) + sizeof(age_) + sizeof(checksum_);
 }
@@ -40,8 +40,7 @@ StudentTuple::SerializeR StudentTuple::trait_deserialize(
   buffer_ptr += sizeof(name_);
   std::memcpy(&age_, buffer_ptr, sizeof(age_));
   buffer_ptr += sizeof(age_);
-  std::memcpy(const_cast<checksum_type*>(&checksum_), buffer_ptr,
-              sizeof(checksum_));
+  std::memcpy(const_cast<cksum_t*>(&checksum_), buffer_ptr, sizeof(checksum_));
   if (!trait_val_checksum()) {
     return SerializerError::CheckSumFailed;
   } else {
@@ -49,12 +48,12 @@ StudentTuple::SerializeR StudentTuple::trait_deserialize(
   }
 }
 
-StudentTuple::checksum_type StudentTuple::trait_cal_checksum() const noexcept {
-  checksum_type result = 0;
+cksum_t StudentTuple::trait_cal_checksum() const noexcept {
+  cksum_t result = 0;
   for (char c : name_) {
-    result += static_cast<checksum_type>(c);
+    result += static_cast<cksum_t>(c);
   }
-  result += static_cast<checksum_type>(age_);
+  result += static_cast<cksum_t>(age_);
   return result;
 }
 

@@ -21,7 +21,7 @@ CommitTable::TableR CommitTable::trait_insert(
 }
 
 CommitTable::TableR CommitTable::trait_search(
-    const TableTupleKey& _key) const noexcept {
+    const TableTupleKey& _key) noexcept {
   auto idx = _key.hash() % N;
   auto start = idx;
   do {

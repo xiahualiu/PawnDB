@@ -12,7 +12,9 @@
 #ifndef PAWNDB_TRAITS_TUPLE_H
 #define PAWNDB_TRAITS_TUPLE_H
 
-#include <cstdint>
+#include <ctime>
+
+#include "pawndb/params.h"
 
 namespace PawnDB {
 
@@ -23,15 +25,12 @@ namespace PawnDB {
  * Required implementations:
  * - void trait_set_checksum()
  * - bool trait_val_checksum() const
- * - void trait_set_tickstamp(tickstamp_type)
- * - tickstamp_type trait_read_tickstamp() const
+ * - void trait_set_tickstamp(tick_t)
+ * - tick_t trait_read_tickstamp() const
  */
 template <typename Derived>
 class TupleTrait {
  public:
-  using checksum_type = std::uint32_t;
-  using tickstamp_type = std::uint32_t;
-
   /**
    * @brief Set tuple checksum
    */
@@ -51,7 +50,7 @@ class TupleTrait {
    * @brief Set tuple timestamp
    * @param tickstamp Timestamp value
    */
-  void set_tickstamp(const tickstamp_type tickstamp) noexcept {
+  void set_tickstamp(const tick_t tickstamp) noexcept {
     static_cast<Derived*>(this)->trait_set_tickstamp(tickstamp);
   }
 
@@ -59,7 +58,7 @@ class TupleTrait {
    * @brief Read tuple timestamp
    * @return Current timestamp
    */
-  tickstamp_type read_tickstamp() const noexcept {
+  tick_t read_tickstamp() const noexcept {
     return static_cast<const Derived*>(this)->trait_read_tickstamp();
   }
 

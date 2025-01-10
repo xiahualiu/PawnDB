@@ -36,24 +36,28 @@ WorkerTable::TableR WorkerTable::trait_search(
   return TableError::NotFound;
 }
 
-void WorkerTable::trait_remove(const WorkerTable::key_type& _key) noexcept {
+TableError WorkerTable::trait_remove(
+    const WorkerTable::key_type& _key) noexcept {
   auto idx = _key % MAX_TRANSACTIONS;
   auto start = idx;
   do {
     if (!table_[idx].is_used) {
-      return;
+      return TableError::NotFound;
     }
     if (table_[idx].key == _key && !table_[idx].is_deleted) {
       table_[idx].is_deleted = true;
       size_--;
-      return;
+      return TableError::None;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
   } while (idx != start);
+  return TableError::NotFound;
 }
 
-void WorkerTable::trait_write(const WorkerTable::entry_type& _entry) noexcept {
+WorkerTable::TableR WorkerTable::trait_write(
+    const WorkerTable::entry_type& _entry) noexcept {
   table_[_entry.index] = _entry;
+  return table_[_entry.index];
 }
 
 }  // namespace PawnDB

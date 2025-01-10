@@ -5,7 +5,6 @@
 
 #include "pawndb/params.h"
 #include "pawndb/traits/parser.h"
-#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 
@@ -59,7 +58,7 @@ class Parser : public ParserTrait<Parser> {
 
   std::size_t trait_get_buffer_size() const noexcept { return size_; }
 
-  char* trait_get_buffer() noexcept { return buffers_.data(); }
+  char* trait_get_buffer() noexcept { return &buffers_[0]; }
 
  private:
   buffer_t& buffers_;

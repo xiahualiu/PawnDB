@@ -15,8 +15,8 @@
 
 #include <iostream>
 
-#include "pawndb/types/main_thread.h"
 #include "pawndb/schema/demo.h"
+#include "pawndb/types/main_thread.h"
 
 using namespace PawnDB;
 

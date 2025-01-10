@@ -14,16 +14,15 @@
 #include <vector>
 
 #include "doctest/doctest.h"
-#include "pawndb/buffer.h"
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 
-TEST_CASE("BufferRef Constructor #1") {
+TEST_CASE("BufferRef #1") {
   BufferTable table = {};
-
-  auto ref1 = BufferFunc::request(table);
-  auto ref1_index = ref1._test_index();
-  CHECK(table.ref_counts[ref1_index] == 1);
+  auto ref1 = table.request();
+  CHECK(ref1);
+  table.release(ref1.unwrap());
 }
 
 TEST_CASE("BufferRef Copy #1") {

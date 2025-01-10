@@ -12,11 +12,12 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/fifo.h"
 #include "pawndb/traits/sized.h"
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 
 struct Job {
-  std::size_t buffer_index_;
+  BufferRC buffer;
   std::size_t buffer_size_;
   struct sockaddr client_addr_;
   socklen_t client_addr_len_;

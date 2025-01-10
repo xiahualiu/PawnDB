@@ -10,6 +10,7 @@
 #include "pawndb/traits/parser.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/table.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {
@@ -19,7 +20,7 @@ struct CommitEntry {
 
   TableTupleKey key;
   OpType op;
-  std::size_t buffer_index;
+  BufferRC buffer;
   bool is_used;
   bool is_deleted;
 };
@@ -41,7 +42,7 @@ class CommitTable : public TableTrait<CommitTable, CommitEntry>,
  public:
   // TableTrait
   TableR trait_insert(const CommitEntry& _entry) noexcept;
-  TableR trait_search(const TableTupleKey& _key) const noexcept;
+  TableR trait_search(const TableTupleKey& _key) noexcept;
   TableError trait_remove(const TableTupleKey& _key) noexcept;
   TableError trait_write(const CommitEntry& _entry) noexcept;
   // Iterator

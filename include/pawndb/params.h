@@ -12,6 +12,7 @@
 #ifndef PAWNDB_PARAMS_H
 #define PAWNDB_PARAMS_H
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 
@@ -41,13 +42,17 @@ using op_t = std::uint8_t;
 /// item is fewer than 127.
 using lk_t = std::int8_t;
 
-/// @brief Buffer size type, uint16_t is enough if the max buffer size is
-/// fewer than 65,535. For most systems, the biggest UDP packet size is 65535
-/// on the lo interface.
-using buf_size_t = std::uint16_t;
-
 /// @brief Each buffer entry has 32768 bytes.
-constexpr buf_size_t BUFFER_WIDTH = 32768;
+constexpr std::size_t BUFFER_WIDTH = 32768;
+
+/// @brief Buffer type, each buffer has 32768 bytes.
+using buffer_t = std::array<char, BUFFER_WIDTH>;
+
+/// @brief Tick type, uint32_t is enough for most cases.
+using tick_t = std::uint32_t;
+
+/// @brief Checksum type, uint32_t is enough for most cases.
+using cksum_t = std::uint32_t;
 
 /// @brief Buffer pool has 64 rows. It must be big enough because buffer pool
 /// full is UB in PawnDB.

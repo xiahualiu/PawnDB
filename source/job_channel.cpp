@@ -46,10 +46,9 @@ FIFOError JobChannel::trait_send(Job&& job) noexcept {
 
 void JobChannel::trait_pop() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
-  if (!empty()) {
-    head_ = (head_ + 1) % MaxJobs;
-    count_--;
-  }
+  jobs_[head_].~Job();
+  head_ = (head_ + 1) % MaxJobs;
+  count_--;
 }
 
 void JobChannel::trait_clear() noexcept {

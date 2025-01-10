@@ -59,17 +59,20 @@ class CompositeKeyTrait {
 
   /**
    * @brief Compare keys for equality
-   * @param other Key to compare with
-   * @return true if keys equal
+   * @param other Key to compare
+   * @return True if keys are equal
    */
-  bool equals(const Derived& other) const noexcept {
+  bool operator==(const Derived& other) const noexcept {
     return static_cast<const Derived*>(this)->trait_equals(other);
   }
 
-  bool operator==(const Derived& other) const noexcept { return equals(other); }
-
+  /**
+   * @brief Compare keys for inequality
+   * @param other Key to compare
+   * @return True if keys are not equal
+   */
   bool operator!=(const Derived& other) const noexcept {
-    return !equals(other);
+    return !static_cast<const Derived*>(this)->trait_equals(other);
   }
 
  protected:

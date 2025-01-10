@@ -40,7 +40,6 @@ void WorkerThread::job_ack(const OpAck _ack, const WorkerContext& _ct,
   _parser.set_ack(_ack);
   sendto(_ct.server_fd, _parser.get_buffer(), _parser.get_buffer_size(), 0,
          &_job.client_addr_, _job.client_addr_len_);
-  _ct.db->buffers.release(_job.buffer_index_);
   _ct.job_ch->pop();
 }
 
@@ -52,14 +51,12 @@ void WorkerThread::process_add(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (_rt.commit_table.full()) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -67,42 +64,34 @@ void WorkerThread::process_add(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (!new_buffer_index_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BUSY, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
-  auto new_buffer_index = new_buffer_index_r.unwrap();
-  auto& new_buffer_ref = _ct.db->buffers[new_buffer_index];
-  auto job_buffer = _ct.db->buffers[_job.buffer_index_];
+  auto new_buffer = new_buffer_index_r.unwrap();
+  auto job_buffer = _job.buffer;
   auto tuple_key = tbl_row_t(0);
   switch (table_id) {
     case tbl_id<StudentTable>(): {
       auto new_tuple = StudentTuple{};
-      auto bytes_read_r =
-          new_tuple.deserialize(job_buffer.data(), _parser.get_tuple_offset());
+      auto bytes_read_r = new_tuple.deserialize(job_buffer.to_array().data(),
+                                                _parser.get_tuple_offset());
       if (!bytes_read_r) {
         _parser.set_buffer_size(7);
         job_ack(OpAck::BAD_DATA, _ct, _parser, _job);
-        _ct.db->buffers.release(_job.buffer_index_);
         return;
       }
       auto new_entry = StudentTableEntry{new_tuple, 0, 0, false, false};
-      std::memcpy(new_buffer_ref.data(), &new_entry, sizeof(new_entry));
+      std::memcpy(new_buffer.to_array().data(), &new_entry, sizeof(new_entry));
       break;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
-  _rt.commit_table.insert({{table_id, tuple_key},
-                           OpType::ADD_TUPLE,
-                           new_buffer_index,
-                           false,
-                           false});
+  _rt.commit_table.insert(
+      {{table_id, tuple_key}, OpType::ADD_TUPLE, new_buffer, false, false});
   job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-  _ct.db->buffers.release(_job.buffer_index_);
   return;
 }
 
@@ -114,36 +103,31 @@ void WorkerThread::process_rm(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (_rt.commit_table.full()) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto tuple_key_r = _parser.get_key();
   if (!tuple_key_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TP, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
   auto lock_record_key = TableTupleKey{table_id, tuple_key};
-  auto lock_r = _rt.lock_table.get_lock(lock_record_key);
+  const auto lock_r = _rt.lock_table.get_lock(lock_record_key);
   if (!lock_r || lock_r.unwrap().type != LockType::Exclusive) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
-  _rt.commit_table.insert({lock_record_key, OpType::DELETE, 0, 0, false});
+  _rt.commit_table.insert({lock_record_key, OpType::DELETE, {}, 0, false});
   job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-  _ct.db->buffers.release(_job.buffer_index_);
   return;
 }
 
@@ -153,14 +137,12 @@ void WorkerThread::process_shared_read(const WorkerContext& _ct,
   if (_rt.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -171,13 +153,11 @@ void WorkerThread::process_shared_read(const WorkerContext& _ct,
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         if (!_ct.running->test_and_set(std::memory_order_acquire)) {
           _ct.running->clear(std::memory_order_release);
           job_ack(OpAck::ABORTED, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         auto wait_r = table_ref.wait_shared();
@@ -190,7 +170,6 @@ void WorkerThread::process_shared_read(const WorkerContext& _ct,
                                 LockType::Shared)) {
           _parser.set_buffer_size(7);
           job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
         }
         auto student_entry = wait_r.unwrap();
         _parser.set_key(student_entry.key);
@@ -198,14 +177,12 @@ void WorkerThread::process_shared_read(const WorkerContext& _ct,
                                                     _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset);
         job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-        _ct.db->buffers.release(_job.buffer_index_);
         return;
       }
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
@@ -217,14 +194,12 @@ void WorkerThread::process_exclusive_read(const WorkerContext& _ct,
   if (_rt.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -235,13 +210,11 @@ void WorkerThread::process_exclusive_read(const WorkerContext& _ct,
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         if (!_ct.running->test_and_set(std::memory_order_acquire)) {
           _ct.running->clear(std::memory_order_release);
           job_ack(OpAck::ABORTED, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         auto wait_r = table_ref.wait_exclusive();
@@ -254,7 +227,6 @@ void WorkerThread::process_exclusive_read(const WorkerContext& _ct,
                                 LockType::Exclusive)) {
           _parser.set_buffer_size(7);
           job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
         }
         auto student_entry = wait_r.unwrap();
         _parser.set_key(student_entry.key);
@@ -262,14 +234,12 @@ void WorkerThread::process_exclusive_read(const WorkerContext& _ct,
                                                     _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset);
         job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-        _ct.db->buffers.release(_job.buffer_index_);
         return;
       }
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
@@ -280,21 +250,18 @@ void WorkerThread::process_yield(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (_rt.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto tuple_key_r = _parser.get_key();
   if (!tuple_key_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TP, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -303,7 +270,6 @@ void WorkerThread::process_yield(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (!lock_r || lock_r.unwrap().type != LockType::Shared) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   _rt.lock_table.unlock({table_id, tuple_key});
@@ -312,13 +278,11 @@ void WorkerThread::process_yield(const WorkerContext& _ct, WorkerRuntime& _rt,
       auto& table_ref = _ct.db->students;
       table_ref.release(tuple_key);
       job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
@@ -332,21 +296,18 @@ void WorkerThread::process_update(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (_rt.commit_table.full()) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::COMMIT_FULL, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto tuple_key_r = _parser.get_key();
   if (!tuple_key_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TP, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -355,44 +316,39 @@ void WorkerThread::process_update(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (!lock_r || lock_r.unwrap().type != LockType::Exclusive) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
-  auto new_buffer_index_r = _ct.db->buffers.request();
-  if (!new_buffer_index_r) {
+  auto new_buffer_r = _ct.db->buffers.request();
+  if (!new_buffer_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BUSY, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   switch (table_id) {
     case tbl_id<StudentTable>(): {
       auto new_tuple = StudentTuple{};
-      if (!new_tuple.deserialize(_ct.db->buffers[_job.buffer_index_].data(),
+      if (!new_tuple.deserialize(_job.buffer.to_array().data(),
                                  _parser.get_tuple_offset())) {
         _parser.set_buffer_size(7);
         job_ack(OpAck::BAD_DATA, _ct, _parser, _job);
-        _ct.db->buffers.release(_job.buffer_index_);
         return;
       }
-      std::memcpy(_ct.db->buffers[new_buffer_index_r.unwrap()].data(),
-                  &new_tuple, sizeof(new_tuple));
+      std::memcpy(new_buffer_r.unwrap().to_array().data(), &new_tuple,
+                  sizeof(new_tuple));
       break;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
   _rt.commit_table.insert({{table_id, tuple_key},
                            OpType::UPDATE,
-                           new_buffer_index_r.unwrap(),
+                           new_buffer_r.unwrap(),
                            false,
                            false});
   job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-  _ct.db->buffers.release(_job.buffer_index_);
   return;
 }
 
@@ -423,21 +379,18 @@ void WorkerThread::process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (_rt.status != TxnStatus::GROWING) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_PHASE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id_r = _parser.get_tbl();
   if (!table_id_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto tuple_key_r = _parser.get_key();
   if (!tuple_key_r) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_TP, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto table_id = table_id_r.unwrap();
@@ -446,7 +399,6 @@ void WorkerThread::process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
   if (!lock_r || lock_r.unwrap().type != LockType::Shared) {
     _parser.set_buffer_size(7);
     job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   switch (table_id) {
@@ -456,13 +408,11 @@ void WorkerThread::process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           job_ack(OpAck::TIMEOUT, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         if (!_ct.running->test_and_set(std::memory_order_acquire)) {
           _ct.running->clear(std::memory_order_release);
           job_ack(OpAck::ABORTED, _ct, _parser, _job);
-          _ct.db->buffers.release(_job.buffer_index_);
           return;
         }
         auto wait_r = table_ref.promote(tuple_key);
@@ -475,17 +425,14 @@ void WorkerThread::process_promote(const WorkerContext& _ct, WorkerRuntime& _rt,
       if (_rt.lock_table.promote({table_id, tuple_key}) != LockError::None) {
         _parser.set_buffer_size(7);
         job_ack(OpAck::BAD_ACCESS, _ct, _parser, _job);
-        _ct.db->buffers.release(_job.buffer_index_);
         return;
       }
       job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
     default: {
       _parser.set_buffer_size(7);
       job_ack(OpAck::BAD_TABLE, _ct, _parser, _job);
-      _ct.db->buffers.release(_job.buffer_index_);
       return;
     }
   }
@@ -495,7 +442,6 @@ void WorkerThread::process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
                                   Parser& _parser, Job& _job) noexcept {
   if (_rt.status != TxnStatus::SHRINKING) {
     job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-    _ct.db->buffers.release(_job.buffer_index_);
     return;
   }
   auto commit_it = _rt.commit_table.begin();
@@ -505,12 +451,13 @@ void WorkerThread::process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
     switch (commit.op) {
       case OpType::ADD_TUPLE: {
         auto [table_id, tuple_key] = commit.key.trait_disassemble();
-        auto& buffer = _ct.db->buffers[commit.buffer_index];
+        auto& buffer = (*commit_it).buffer;
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::entry_type{};
             auto& table_ref = _ct.db->students;
-            std::memcpy(&new_tuple, buffer.data(), sizeof(new_tuple));
+            std::memcpy(&new_tuple, buffer.to_array().data(),
+                        sizeof(new_tuple));
             table_ref.insert(new_tuple);
             table_ref.notify_not_empty();
             table_ref.notify_s();
@@ -540,12 +487,13 @@ void WorkerThread::process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
       }
       case OpType::UPDATE: {
         auto [table_id, tuple_key] = commit.key.trait_disassemble();
-        auto& buffer = _ct.db->buffers[commit.buffer_index];
+        auto& buffer = (*commit_it).buffer;
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::entry_type{};
             auto& table_ref = _ct.db->students;
-            std::memcpy(&new_tuple, buffer.data(), sizeof(new_tuple));
+            std::memcpy(&new_tuple, buffer.to_array().data(),
+                        sizeof(new_tuple));
             table_ref.write(new_tuple);
             break;
           }
@@ -559,11 +507,9 @@ void WorkerThread::process_commit(const WorkerContext& _ct, WorkerRuntime& _rt,
         break;
       }
     }
-    _ct.db->buffers.release(commit.buffer_index);
     commit_it++;
   }
   job_ack(OpAck::SUCCESS, _ct, _parser, _job);
-  _ct.db->buffers.release(_job.buffer_index_);
   return;
 }
 
@@ -623,12 +569,11 @@ void WorkerThread::worker_main(const WorkerContext&& _ct) noexcept {
       return;
     }
     auto job = job_r.unwrap();
-    auto parser = Parser(_ct.db->buffers[job.buffer_index_], job.buffer_size_);
+    auto parser = Parser(job.buffer.to_array(), job.buffer_size_);
 
     auto op_r = parser.get_op();
     if (!op_r) {
       job_ack(OpAck::BAD_OP, context, parser, job);
-      _ct.db->buffers.release(job.buffer_index_);
       continue;
     }
     auto op = op_r.unwrap();
@@ -636,7 +581,6 @@ void WorkerThread::worker_main(const WorkerContext&& _ct) noexcept {
       case OpType::START_TXN:
         parser.set_txn_id(_ct.txn_id);
         job_ack(OpAck::SUCCESS, context, parser, job);
-        _ct.db->buffers.release(job.buffer_index_);
         break;
       case OpType::COMMIT_TXN: {
         process_commit(context, runtime, parser, job);

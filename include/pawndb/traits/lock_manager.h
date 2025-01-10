@@ -50,7 +50,7 @@ enum class LockError {
 template <typename Derived, typename KeyType, typename LockEntryType>
 class LockManagerTrait {
  public:
-  using LockR = Result<LockEntryType&, LockError>;
+  using LockR = Result<const LockEntryType&, LockError>;
 
   /**
    * @brief Acquire lock on key

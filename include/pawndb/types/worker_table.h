@@ -37,8 +37,15 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
  public:
   TableR trait_insert(const entry_type& _entry) noexcept;
   TableR trait_search(const key_type& _key) noexcept;
-  void trait_remove(const key_type& _key) noexcept;
-  void trait_write(const entry_type& _entry) noexcept;
+  TableError trait_remove(const key_type& _key) noexcept;
+  TableR trait_write(const entry_type& _entry) noexcept;
+
+  std::size_t trait_size() const noexcept { return size_; }
+  std::size_t constexpr trait_capacity() const noexcept {
+    return MAX_TRANSACTIONS;
+  }
+  bool trait_empty() const noexcept { return size_ == 0; }
+  bool trait_full() const noexcept { return size_ >= MAX_TRANSACTIONS; }
 
  public:
 };

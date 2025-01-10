@@ -82,6 +82,18 @@ class WorkerThread : public ThreadTrait<WorkerThread> {
     *thread_ = std::thread(worker_main, context_);
   }
 
+  void trait_stop() noexcept {
+    context_.running->clear(std::memory_order_relaxed);
+  }
+
+  bool trait_is_running() const noexcept {
+    auto result = context_.running->test_and_set(std::memory_order_acquire);
+    if (!result) {
+      context_.running->clear(std::memory_order_release);
+    }
+    return result;
+  }
+
   void setup_context(std::thread* _td, std::atomic_flag* _running,
                      JobChannel* _job_ch, RetChannel* _main_ch, Database* _db,
                      int _server_fd) noexcept {
@@ -91,18 +103,6 @@ class WorkerThread : public ThreadTrait<WorkerThread> {
     context_.main_ch = _main_ch;
     context_.db = _db;
     context_.server_fd = _server_fd;
-  }
-
-  bool is_running() const noexcept {
-    auto result = context_.running->test_and_set(std::memory_order_acquire);
-    if (!result) {
-      context_.running->clear(std::memory_order_release);
-    }
-    return result;
-  }
-
-  void trait_stop() noexcept {
-    context_.running->clear(std::memory_order_relaxed);
   }
 
   static void worker_main(const WorkerContext&& _context) noexcept;

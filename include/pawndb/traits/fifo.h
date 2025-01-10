@@ -1,15 +1,4 @@
-/**
- * @file fifo.h
- * @brief CRTP interface for thread-safe channel communication
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Thread-safe send/receive
- * - Blocking and non-blocking operations
- * - Move semantics support
- * - Timeout handling
- */
+
 #ifndef PAWNDB_TRAITS_CHANNEL_H
 #define PAWNDB_TRAITS_CHANNEL_H
 
@@ -27,15 +16,18 @@ enum class FIFOError {
 };
 
 /**
- * @brief CRTP interface for channel implementations
- * @tparam Derived Class implementing the channel interface
- * @tparam T Type of values transmitted through channel
+ * @brief CRTP base class implementing FIFO queue interface
+ * @tparam Derived The derived class implementing the trait methods
+ * @tparam T Type of elements stored in the FIFO queue
  *
- * Required implementations:
- * - GetR trait_get()
- * - GetR trait_recv()
- * - FIFOError trait_send(const T&)
- * - FIFOError trait_send(T&&)
+ * Required trait implementations:
+ * - trait_get()
+ * - trait_recv()
+ * - trait_send(const value_type&)
+ * - trait_send(value_type&&)
+ * - trait_clear()
+ * - trait_pop()
+ * - trait_notify_not_empty()
  */
 template <typename Derived, typename T>
 class FIFO {
@@ -44,60 +36,47 @@ class FIFO {
   using GetR = Result<value_type, FIFOError>;
 
   /**
-   * @brief Non-blocking get operation
-   * @return GetR Success: value, Error: Empty
+   * @brief Get next value from FIFO without blocking
+   * @return Result containing either value or error
    */
   GetR get() noexcept { return static_cast<Derived*>(this)->trait_get(); }
 
   /**
-   * @brief Blocking receive with timeout
-   * @return GetR Success: value, Error: Timeout
+   * @brief Get next value from FIFO with blocking
+   * @return Result containing either value or error
    */
   GetR recv() noexcept { return static_cast<Derived*>(this)->trait_recv(); }
 
   /**
-   * @brief Send value to channel (copy)
-   * @param value Value to send
-   * @return FIFOError None or Full
+   * @brief Send value to FIFO
+   * @param value The value to send
+   * @return Error status of the operation
    */
   FIFOError send(const value_type& value) noexcept {
     return static_cast<Derived*>(this)->trait_send(value);
   }
 
   /**
-   * @brief Send value to channel (move)
-   * @param value Value to move
-   * @return FIFOError None or Full
+   * @brief Send value to FIFO using move semantics
+   * @param value The value to send
+   * @return Error status of the operation
    */
   FIFOError send(value_type&& value) noexcept {
     return static_cast<Derived*>(this)->trait_send(std::move(value));
   }
 
   /**
-   * @brief Clear all contents from channel
-   * @details Thread-safe removal of all elements
+   * @brief Clear all elements from FIFO
    */
   void clear() noexcept { static_cast<Derived*>(this)->trait_clear(); }
 
   /**
-   * @brief Removes an element from the channel.
-   *
-   * This function calls the `trait_pop` method of the derived class to
-   * remove an element from the channel. It is marked as `noexcept` to
-   * indicate that it does not throw any exceptions.
+   * @brief Remove next element from FIFO
    */
   void pop() noexcept { static_cast<Derived*>(this)->trait_pop(); }
 
   /**
-   * @brief Notifies that the channel is not empty.
-   *
-   * This function is intended to be called when the channel transitions
-   * from empty to not empty. It delegates the actual notification logic
-   * to the derived class by calling `trait_notify_not_empty()` on the
-   * derived class instance.
-   *
-   * @note This function is `noexcept`, meaning it guarantees not to throw
-   * any exceptions.
+   * @brief Signal that FIFO is not empty
    */
   void notify_not_empty() noexcept {
     static_cast<Derived*>(this)->trait_notify_not_empty();

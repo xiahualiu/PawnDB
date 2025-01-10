@@ -64,15 +64,14 @@ static void clean_worker(RetChannel& _ret, WorkerTable& _query,
         break;
       }
       auto job = get_r.unwrap();
-      auto parser =
-          Parser(_ct.db->buffers[job.buffer_index_], job.buffer_size_);
+      auto parser = Parser(job.buffer.to_array(), job.buffer_size_);
       packet_ack(OpAck::TIMEOUT, parser, _ct.server_fd, job.client_addr_,
                  job.client_addr_len_);
-      _ct.db->buffers.release(job.buffer_index_);
       worker.worker.context_.job_ch->pop();
     }
     worker.worker.thread_->join();
     worker.worker.context_.job_ch->pop();
+    _query.remove(dead_txn_id);
   }
 }
 
@@ -98,14 +97,12 @@ static void run(MainContext&& _ct) noexcept {
       std::this_thread::sleep_for(WAIT_TIMEOUT);
       continue;
     }
-    auto recv_buffer_i = recv_buffer_r.unwrap();
-    auto& recv_buffer_ref = _ct.db->buffers[recv_buffer_i];
-
+    auto recv_buffer = recv_buffer_r.unwrap();
     auto client_addr = sockaddr();
     auto client_addr_len = socklen_t();
     ssize_t recv_size =
-        recvfrom(_ct.server_fd, recv_buffer_ref.data(), recv_buffer_ref.size(),
-                 0, &client_addr, &client_addr_len);
+        recvfrom(_ct.server_fd, recv_buffer.to_array().data(), BUFFER_WIDTH, 0,
+                 &client_addr, &client_addr_len);
     if (0 == recv_size) {
       return;
     }
@@ -116,32 +113,36 @@ static void run(MainContext&& _ct) noexcept {
     }
     std::cout << "Received " << recv_size << " bytes from client" << std::endl;
     auto recv_size_u = static_cast<std::size_t>(recv_size);
-    auto parser = Parser(recv_buffer_ref, recv_size_u);
+    auto parser = Parser(recv_buffer.to_array(), recv_size_u);
     auto op_r = parser.get_op();
     auto op_id_r = parser.get_op_id();
     if (!op_r || !op_id_r) {
       std::cerr << "Failed to parse operation" << std::endl;
       packet_ack(OpAck::BAD_OP, parser, _ct.server_fd, client_addr,
                  client_addr_len);
-      _ct.db->buffers.release(recv_buffer_i);
       continue;
     }
     auto op = op_r.unwrap();
     switch (op) {
       case OpType::START_TXN: {
         clean_worker(ret_channel, worker_query, _ct);
+        if (worker_query.full()) {
+          std::cerr << "Worker table is full" << std::endl;
+          packet_ack(OpAck::BUSY, parser, _ct.server_fd, client_addr,
+                     client_addr_len);
+          continue;
+        }
         auto new_worker_entry = WorkerEntry{{}, 0, next_txn_id, false, false};
         auto insert_r = worker_query.insert(new_worker_entry);
         if (!insert_r) {
           std::cerr << "Failed to insert worker" << std::endl;
           packet_ack(OpAck::BUSY, parser, _ct.server_fd, client_addr,
                      client_addr_len);
-          _ct.db->buffers.release(recv_buffer_i);
           continue;
         }
         auto& insert_entry = insert_r.unwrap();
         auto insert_index = insert_entry.index;
-        // Populate the rest worker context
+        // Populate the worker context and start the worker thread
         insert_entry.worker.setup_context(
             &workers[insert_index], &running_flags[insert_index],
             &job_channels[insert_index], &ret_channel, _ct.db, _ct.server_fd);
@@ -149,7 +150,7 @@ static void run(MainContext&& _ct) noexcept {
         insert_entry.worker.start();
         // Send first job
         insert_entry.worker.context_.job_ch->send(
-            {recv_buffer_i, recv_size_u, client_addr, client_addr_len});
+            {recv_buffer, recv_size_u, client_addr, client_addr_len});
         insert_entry.worker.context_.job_ch->notify_not_empty();
         next_txn_id++;
         continue;
@@ -168,7 +169,6 @@ static void run(MainContext&& _ct) noexcept {
           std::cerr << "Failed to parse transaction ID" << std::endl;
           packet_ack(OpAck::BAD_TXN, parser, _ct.server_fd, client_addr,
                      client_addr_len);
-          _ct.db->buffers.release(recv_buffer_i);
           continue;
         }
         auto txn_id = txn_id_r.unwrap();
@@ -177,7 +177,6 @@ static void run(MainContext&& _ct) noexcept {
           std::cerr << "Failed to find worker" << std::endl;
           packet_ack(OpAck::BAD_TXN, parser, _ct.server_fd, client_addr,
                      client_addr_len);
-          _ct.db->buffers.release(recv_buffer_i);
           continue;
         }
         auto& worker = search_r.unwrap();
@@ -185,16 +184,14 @@ static void run(MainContext&& _ct) noexcept {
           std::cerr << "Worker is not running" << std::endl;
           packet_ack(OpAck::DEAD_TXN, parser, _ct.server_fd, client_addr,
                      client_addr_len);
-          _ct.db->buffers.release(recv_buffer_i);
           continue;
         }
         auto send_r = worker.worker.context_.job_ch->send(
-            {recv_buffer_i, recv_size_u, client_addr, client_addr_len});
+            {recv_buffer, recv_size_u, client_addr, client_addr_len});
         if (send_r == FIFOError::Full) {
           std::cerr << "Failed to send job to worker" << std::endl;
           packet_ack(OpAck::BUSY, parser, _ct.server_fd, client_addr,
                      client_addr_len);
-          _ct.db->buffers.release(recv_buffer_i);
           continue;
         }
         if (op == OpType::ABORT_TXN) {

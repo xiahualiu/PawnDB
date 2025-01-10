@@ -1,4 +1,5 @@
 #include "pawndb/types/student_table.h"
+
 #include "pawndb/traits/table.h"
 
 namespace PawnDB {
@@ -59,7 +60,8 @@ TableError StudentTable::trait_remove(const key_type& _key) noexcept {
   return TableError::NotFound;
 }
 
-StudentTable::TableR StudentTable::trait_write(const entry_type& _entry) noexcept {
+StudentTable::TableR StudentTable::trait_write(
+    const entry_type& _entry) noexcept {
   auto lock = std::unique_lock<std::mutex>(mutex_);
   auto idx = _entry.key % Rows;
   auto start = idx;

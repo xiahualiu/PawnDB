@@ -13,7 +13,6 @@
 #define PAWNDB_RESULT_H
 
 #include <type_traits>
-#include <utility>
 
 namespace PawnDB {
 
@@ -89,14 +88,7 @@ class Result {
    *
    * @return A reference to the value.
    */
-  inline T&& unwrap() noexcept { return std::move(value); }
-
-  /**
-   * @brief Unwraps the value from the Result.
-   *
-   * @return A const reference to the value.
-   */
-  inline const T&& unwrap() const noexcept { return std::move(value); }
+  inline T& unwrap() noexcept { return value; }
 
   /**
    * @brief Gets the error from the Result.
@@ -127,8 +119,7 @@ class Result<T&, E> {
    *
    * @param _value The value to construct the Result with.
    */
-  Result(const T& _value) noexcept
-      : value(const_cast<T*>(&_value)), error(E::None) {}
+  Result(T& _value) noexcept : value(&_value), error(E::None) {}
 
   /**
    * @brief Constructs a Result with an error.
@@ -169,6 +160,7 @@ class Result<T&, E> {
   T* value;
   E error;
 };
+
 }  // namespace PawnDB
 
 #endif  // PAWNDB_RESULT_H
