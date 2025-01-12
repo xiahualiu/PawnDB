@@ -9,24 +9,24 @@
 #include "pawndb/params.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/sized.h"
-#include "pawndb/traits/table.h"
+#include "pawndb/traits/hash_table.h"
 #include "pawndb/types/worker_thread.h"
 
 namespace PawnDB {
 
 struct WorkerEntry {
-  using key_type = txn_id_t;
+  using key_t = txn_id_t;
 
   WorkerThread worker;
   std::size_t index;
-  key_type key;
+  key_t key;
   bool is_used;
   bool is_deleted;
 };
 
-class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
-                    public Sized<WorkerTable>,
-                    public Container<WorkerTable> {
+class WorkerTable : public HashTableTrait<WorkerTable, WorkerEntry>,
+                    public SizedTrait<WorkerTable>,
+                    public ContainerTrait<WorkerTable> {
  private:
   using key_type = WorkerEntry::key_type;
   using entry_type = WorkerEntry;

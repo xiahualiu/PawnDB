@@ -2,19 +2,83 @@
 
 namespace PawnDB {
 
-BufferTable::RequestR BufferTable::trait_request() noexcept {
+BufferTable::BufferTable() noexcept
+    : size_(0),
+      next_(0) {
+  for (auto &entry : buffers_) {
+    entry.is_used = 0;
+  }
+}
+
+BufferTable::request_r BufferTable::trait_request() noexcept {
   if (trait_full()) {
     return BufferError::Full;
   }
   std::lock_guard<std::mutex> lock(mutex_);
-  while (buffers_[next_].ref_count > 0) {
+  while (buffers_[next_].is_used > 0) {
     next_ = (next_ + 1) % N;
   }
-  buffers_[next_].ref_count = 1;
-  auto result = BufferRC{this, next_};
+  auto result = BufferRef{this, next_};
+  buffers_[next_].is_used = 1;
   next_ = (next_ + 1) % N;
   size_++;
   return result;
+}
+
+bool BufferTable::trait_empty() const noexcept {
+  return size_ == 0;
+}
+
+bool BufferTable::trait_full() const noexcept {
+  return size_ >= N;
+}
+
+// Sized
+std::size_t BufferTable::trait_size() const noexcept {
+  return size_;
+}
+
+// Test functions
+std::uint8_t BufferTable::_test_is_used(std::size_t _i) const noexcept {
+  return buffers_[_i].is_used;
+}
+
+BufferRef::BufferRef(BufferTable *_table, std::size_t _index) noexcept
+    : table_(_table),
+      index_(_index) {}
+
+BufferRef::BufferRef(const BufferRef &_other) noexcept
+    : table_(_other.table_),
+      index_(_other.index_) {}
+
+BufferRef &BufferRef::operator=(const BufferRef &_other) noexcept {
+  table_ = _other.table_;
+  index_ = _other.index_;
+  return *this;
+}
+
+BufferRef BufferRef::trait_clone() const noexcept {
+  return BufferRef{table_, index_};
+}
+
+void BufferRef::trait_copy(const BufferRef &_other) noexcept {
+  table_ = _other.table_;
+  index_ = _other.index_;
+}
+
+buffer_t &BufferRef::trait_buffer() const noexcept {
+  return table_->buffers_[index_].buffer;
+}
+
+void BufferRef::trait_release() noexcept {
+  std::lock_guard<std::mutex> lock(table_->mutex_);
+  table_->buffers_[index_].is_used = false;
+  table_->size_--;
+}
+
+// Test functions
+std::size_t BufferRef::_test_index() const noexcept {
+  return index_;
 }
 
 }  // namespace PawnDB

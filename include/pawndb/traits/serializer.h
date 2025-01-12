@@ -2,17 +2,7 @@
 #define PAWNDB_TRAITS_SERIALIZER_H
 
 #include "pawndb/result.h"
-
-/**
- * @file serializer.h
- * @brief CRTP interface for data serialization
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Error handling
- * - Size calculations
- */
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 /**
@@ -36,26 +26,27 @@ enum class SerializerError {
 template <typename Derived>
 class SerializerTrait {
  public:
-  using SerializeR = Result<std::size_t, SerializerError>;
+  /** @brief Serialize operation result type */
+  using serial_r = Result<std::size_t, SerializerError>;
 
   /**
    * @brief Serialize value to buffer
-   * @param buffer Target buffer
-   * @param offset Buffer write position
+   * @param _buffer Target buffer
+   * @param _offset Buffer write position
    * @return Bytes write to the buffer
    */
-  std::size_t serialize(char* buffer, std::size_t offset) const noexcept {
-    return static_cast<const Derived*>(this)->trait_serialize(buffer, offset);
+  serial_r serialize(BufferRef _buffer, std::size_t _offset) const noexcept {
+    return static_cast<const Derived*>(this)->trait_serialize(_buffer, _offset);
   }
 
   /**
    * @brief Deserialize value from buffer
-   * @param buffer Source buffer
-   * @param offset Buffer read position
+   * @param _buffer Source buffer
+   * @param _offset Buffer read position
    * @return SerializeR Success: bytes read, Error: code
    */
-  SerializeR deserialize(const char* buffer, std::size_t offset) noexcept {
-    return static_cast<Derived*>(this)->trait_deserialize(buffer, offset);
+  serial_r deserialize(const BufferRef _buffer, std::size_t _offset) noexcept {
+    return static_cast<Derived*>(this)->trait_deserialize(_buffer, _offset);
   }
 
  protected:

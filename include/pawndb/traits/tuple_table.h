@@ -1,15 +1,3 @@
-/**
- * @file tuple_table.h
- * @brief CRTP interface for tuple storage with locking
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Tuple storage and retrieval
- * - Shared/exclusive locking
- * - Lock promotion/yielding
- * - Thread safety
- */
 #ifndef PAWNDB_TRAITS_TUPLE_TABLE_H
 #define PAWNDB_TRAITS_TUPLE_TABLE_H
 
@@ -44,16 +32,16 @@ template <typename Derived, typename EntryType>
 class TupleTableTrait {
  public:
   using entry_type = EntryType;
-  using key_type = typename EntryType::key_type;
+  using key_t = typename EntryType::key_t;
 
   /** @brief Result type for fetch operations */
-  using FetchR = Result<EntryType&, TupleTableError>;
+  using ttable_r = Result<EntryType&, TupleTableError>;
 
   /**
    * @brief Wait for shared lock
    * @return FetchR Success: {tuple,key}, Error: Timeout
    */
-  FetchR wait_shared() noexcept {
+  ttable_r wait_shared() noexcept {
     return static_cast<Derived*>(this)->trait_wait_shared();
   }
 
@@ -61,58 +49,44 @@ class TupleTableTrait {
    * @brief Wait for exclusive lock
    * @return FetchR Success: {tuple,key}, Error: Timeout
    */
-  FetchR wait_exclusive() noexcept {
+  ttable_r wait_exclusive() noexcept {
     return static_cast<Derived*>(this)->trait_wait_exclusive();
   }
 
   /**
    * @brief Promote shared to exclusive lock
-   * @param key Key to promote
+   * @param _key Key to promote
    * @return TableError None or error code
    */
-  TupleTableError promote(const key_type& key) noexcept {
-    return static_cast<Derived*>(this)->trait_promote(key);
-  }
-
-  /**
-   * @brief Yield a shared lock
-   * @param key Key to yield
-   */
-  void yield(const key_type& key) noexcept {
-    return static_cast<Derived*>(this)->trait_yield(key);
+  TupleTableError promote(const key_t& _key) noexcept {
+    return static_cast<Derived*>(this)->trait_promote(_key);
   }
 
   /**
    * @brief Release any held lock
-   * @param key Key to release
+   * @param _key Key to release
    */
-  void release(const key_type& key) noexcept {
-    return static_cast<Derived*>(this)->trait_release(key);
+  void release(const key_t& _key) noexcept {
+    return static_cast<Derived*>(this)->trait_release(_key);
   }
 
   /**
-   * @brief Notify shared lock waiters
+   * @brief Notify new lock can be acquired, usually done after a transaction is
+   * finished.
    */
-  void notify_s() noexcept {
-    return static_cast<Derived*>(this)->trait_notify_s();
+  void notify_lock() noexcept {
+    return static_cast<Derived*>(this)->trait_notify_lock();
   }
 
   /**
-   * @brief Notify exclusive lock waiters
-   */
-  void notify_x() noexcept {
-    return static_cast<Derived*>(this)->trait_notify_x();
-  }
-
-  /**
-   * @brief Notify table not empty waiters
+   * @brief Notify table not empty
    */
   void notify_not_empty() noexcept {
     return static_cast<Derived*>(this)->trait_notify_not_empty();
   }
 
   /**
-   * @brief Notify table not full waiters
+   * @brief Notify table not full
    */
   void notify_not_full() noexcept {
     return static_cast<Derived*>(this)->trait_notify_not_full();

@@ -1,45 +1,89 @@
-#ifndef PAWNDB_TYPES_U8_KEY_H
-#define PAWNDB_TYPES_U8_KEY_H
+#ifndef PAWNDB_TYPES_TABLE_TUPLE_KEY_H
+#define PAWNDB_TYPES_TABLE_TUPLE_KEY_H
 
 #include <cstdint>
 #include <cstring>
 
 #include "pawndb/params.h"
 #include "pawndb/traits/composite_key.h"
+#include "pawndb/traits/copy.h"
+#include "pawndb/traits/eq.h"
+#include "pawndb/traits/hash.h"
 
 namespace PawnDB {
 
-class TableTupleKey : public CompositeKeyTrait<TableTupleKey> {
+/**
+ * @brief Composite key combining table ID and tuple key
+ *
+ * Combines table identifier and tuple key into a single entity.
+ * Implements composite key, copy, and hash operations.
+ */
+class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
+                      public CopyTrait<TableTupleKey>,
+                      public HashTrait<TableTupleKey>,
+                      public EqTrait<TableTupleKey> {
  public:
-  TableTupleKey() noexcept : table_id_(0), tuple_key_(0) {}
+  /** @brief Default constructor */
+  constexpr TableTupleKey() noexcept : table_id_(0), tuple_key_(0) {}
 
-  TableTupleKey(tp_id_t _table_id, tbl_row_t _tuple_key) noexcept
-      : table_id_(_table_id), tuple_key_(_tuple_key) {}
+  /**
+   * @brief Construct key from components
+   * @param table_id Table identifier
+   * @param tuple_key Tuple key
+   */
+  TableTupleKey(tp_id_t table_id, tbl_row_t tuple_key) noexcept;
 
-  TableTupleKey(const TableTupleKey& _other) noexcept
-      : table_id_(_other.table_id_), tuple_key_(_other.tuple_key_) {}
+  /**
+   * @brief Copy constructor
+   * @param other Source key to copy
+   */
+  TableTupleKey(const TableTupleKey& other) noexcept;
 
-  TableTupleKey& operator=(const TableTupleKey& _other) {
-    table_id_ = _other.table_id_;
-    tuple_key_ = _other.tuple_key_;
-    return *this;
-  }
+  /**
+   * @brief Copy assignment
+   * @param other Source key to copy
+   * @return Reference to this
+   */
+  TableTupleKey& operator=(const TableTupleKey& other);
 
-  void trait_assemble(std::uint8_t _table_id,
-                      std::uint8_t _tuple_key) noexcept {
-    table_id_ = _table_id;
-    tuple_key_ = _tuple_key;
-  }
+  // Not movable
+  TableTupleKey(TableTupleKey&& other) noexcept = delete;
+  TableTupleKey& operator=(TableTupleKey&& other) noexcept = delete;
 
-  std::pair<std::uint8_t, std::uint8_t> trait_disassemble() const noexcept {
-    return {table_id_, tuple_key_};
-  }
+  // CompositeKeyTrait implementation
+  /**
+   * @brief Assemble key from components
+   * @param table_id Table identifier
+   * @param tuple_key Tuple key
+   */
+  void trait_assemble(std::uint8_t table_id, std::uint8_t tuple_key) noexcept;
 
-  std::size_t trait_hash() const noexcept { return table_id_; }
+  /**
+   * @brief Disassemble key into components
+   * @return Pair of {table_id, tuple_key}
+   */
+  std::pair<std::uint8_t, std::uint8_t> trait_disassemble() const noexcept;
 
-  bool trait_equals(const TableTupleKey& _other) const noexcept {
-    return table_id_ == _other.table_id_ && tuple_key_ == _other.tuple_key_;
-  }
+  // HashTrait implementation
+  /** @brief Compute hash value */
+  std::size_t trait_hash() const noexcept;
+
+  /**
+   * @brief Compare for equality
+   * @param other Key to compare with
+   * @return true if keys are equal
+   */
+  bool trait_equals(const TableTupleKey& other) const noexcept;
+
+  // CopyTrait implementation
+  /** @brief Create clone of this key */
+  TableTupleKey trait_clone() const noexcept;
+
+  /**
+   * @brief Copy from another key
+   * @param other Source key to copy from
+   */
+  void trait_copy(const TableTupleKey& other) noexcept;
 
  private:
   std::uint8_t table_id_;

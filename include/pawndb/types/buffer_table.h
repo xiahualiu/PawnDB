@@ -20,28 +20,40 @@
 #include "pawndb/params.h"
 #include "pawndb/traits/buffer_manager.h"
 #include "pawndb/traits/container.h"
+#include "pawndb/traits/copy.h"
+#include "pawndb/traits/sized.h"
 
 namespace PawnDB {
 
-class BufferRC;
+class BufferRef;
 
 /**
  * @brief Fixed-size thread-safe buffer pool
  *
- * Manages a pool of fixed-size character buffers with:
- * - Thread-safe allocation/deallocation
- * - Usage tracking
- * - Bounds checking
- * - Size monitoring
+ * Features:
+ * - Thread-safe buffer allocation/deallocation
+ * - Reference counting and usage tracking
+ * - Fixed-size buffer storage (BUFFER_ROWS * BUFFER_SIZE)
+ * - O(1) allocation via next-fit strategy
+ *
+ * Implemented traits:
+ * - BufferManagerTrait: Buffer allocation
+ * - Sized: Size tracking
+ * - Container: Capacity operations
  */
-class BufferTable : public BufferManagerTrait<BufferTable, BufferRC>,
-                    public Container<BufferTable> {
+class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
+                    public SizedTrait<BufferTable>,
+                    public ContainerTrait<BufferTable> {
+ private:
+  /** @brief Fixed number of buffers in pool */
   static constexpr std::size_t N = BUFFER_ROWS;
 
- private:
+  /**
+   * @brief Buffer table entry containing buffer and metadata
+   */
   struct BufferTableEntry {
-    buffer_t buffer;        /**< Fixed-size buffer */
-    std::uint8_t ref_count; /**< Usage tracking */
+    buffer_t buffer; /**< Fixed-size character buffer */
+    bool is_used;    /**< Usage tracking flag */
   };
 
   std::array<BufferTableEntry, N> buffers_; /**< Buffer storage */
@@ -49,88 +61,90 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRC>,
   std::size_t next_;                        /**< Next free buffer hint */
   std::mutex mutex_;                        /**< Thread safety lock */
 
-  friend class BufferRC;
+  friend class BufferRef; /**< Allow buffer access */
 
  public:
-  BufferTable() noexcept : buffers_(), size_(0), next_(0) {}
+  /** @brief Initialize empty buffer pool */
+  BufferTable() noexcept;
 
-  // BufferManagerTrait
-  RequestR trait_request() noexcept;
-  // Container
-  bool trait_empty() const noexcept { return size_ == 0; }
-  bool trait_full() const noexcept { return size_ >= N; }
-  constexpr std::size_t trait_capacity() const noexcept { return N; }
+  // Not copyable
+  BufferTable(const BufferTable& other) noexcept = delete;
+  BufferTable& operator=(const BufferTable& other) noexcept = delete;
+
+  // Not movable
+  BufferTable(BufferTable&& other) noexcept = delete;
+  BufferTable& operator=(BufferTable&& other) noexcept = delete;
+
+  // BufferManagerTrait Implementation
+  /** @brief Request new buffer allocation
+   *  @return Result with buffer reference or error */
+  request_r trait_request() noexcept;
+
+  /** @brief Check if pool is empty */
+  bool trait_empty() const noexcept;
+
+  /** @brief Check if pool is full */
+  bool trait_full() const noexcept;
+
+  // Sized Implementation
+  /** @brief Get count of used buffers */
+  std::size_t trait_size() const noexcept;
+
+  /** @brief Test helper to check buffer usage
+   *  @param i Buffer index
+   *  @return Usage flag value */
+  std::uint8_t _test_is_used(std::size_t i) const noexcept;
 };
 
-class BufferRC {
+/**
+ * @brief Buffer reference wrapper
+ */
+class BufferRef : public CopyTrait<BufferRef>,
+                  public BufferRefTrait<BufferRef> {
  private:
-  BufferTable* table_;
-  std::size_t index_;
+  BufferTable* table_; /**< Owner table reference */
+  std::size_t index_;  /**< Buffer index */
 
  public:
-  BufferRC() = default;
+  /** @brief Default constructor - creates invalid reference */
+  constexpr BufferRef() noexcept : table_(nullptr), index_(0) {}
 
-  BufferRC(BufferTable* _table, std::size_t _index) noexcept
-      : table_(_table), index_(_index) {}
+  /** @brief Constructor with table and index
+   *  @param table Owner buffer table
+   *  @param index Buffer index */
+  BufferRef(BufferTable* table, std::size_t index) noexcept;
 
-  ~BufferRC() noexcept {
-    if (table_ == nullptr) return;
-    std::lock_guard<std::mutex> lock(table_->mutex_);
-    table_->buffers_[index_].ref_count--;
-    if (table_->buffers_[index_].ref_count == 0) {
-      table_->size_--;
-    }
-  }
+  /** @brief Copy constructor
+   *  @param other Source reference to copy */
+  BufferRef(const BufferRef& other) noexcept;
 
-  BufferRC(const BufferRC& _other) noexcept
-      : table_(_other.table_), index_(_other.index_) {
-    if (table_ == nullptr) return;
-    std::lock_guard<std::mutex> lock(table_->mutex_);
-    table_->buffers_[index_].ref_count++;
-  }
+  /** @brief Copy assignment
+   *  @param other Source reference to copy
+   *  @return Reference to this */
+  BufferRef& operator=(const BufferRef& other) noexcept;
 
-  BufferRC(BufferRC&& _other) noexcept
-      : table_(_other.table_), index_(_other.index_) {
-    _other.table_ = nullptr;
-    _other.index_ = 0;
-  }
+  // Not movable
+  BufferRef(BufferRef&& other) noexcept = delete;
+  BufferRef& operator=(BufferRef&& other) noexcept = delete;
 
-  BufferRC& operator=(const BufferRC& _other) noexcept {
-    // Release the current stored buffer
-    if (table_ != nullptr) {
-      std::lock_guard<std::mutex> lock(table_->mutex_);
-      table_->buffers_[_other.index_].ref_count--;
-    }
-    // Copy the other buffer
-    table_ = _other.table_;
-    index_ = _other.index_;
-    // Increase the reference count, since we are now sharing the buffer
-    if (table_ != nullptr) {
-      std::lock_guard<std::mutex> lock(table_->mutex_);
-      table_->buffers_[index_].ref_count++;
-    }
-    return *this;
-  }
+  // CopyTrait Implementation
+  /** @brief Create clone of this reference */
+  BufferRef trait_clone() const noexcept;
 
-  BufferRC& operator=(BufferRC&& _other) noexcept {
-    // Release the current stored buffer
-    if (table_ != nullptr) {
-      std::lock_guard<std::mutex> lock(table_->mutex_);
-      table_->buffers_[index_].ref_count--;
-    }
-    // Move the other buffer
-    table_ = _other.table_;
-    index_ = _other.index_;
-    _other.table_ = nullptr;
-    _other.index_ = 0;
-    return *this;
-  }
+  /** @brief Copy from another reference
+   *  @param other Source reference */
+  void trait_copy(const BufferRef& other) noexcept;
 
-  buffer_t& to_array() noexcept { return table_->buffers_[index_].buffer; }
+  // BufferEntryTrait Implementation
+  /** @brief Get underlying buffer */
+  buffer_t& trait_buffer() const noexcept;
 
-  const buffer_t& to_array() const noexcept {
-    return table_->buffers_[index_].buffer;
-  }
+  /** @brief Release buffer back to pool */
+  void trait_release() noexcept;
+
+  /** @brief Test helper to get buffer index
+   *  @return Buffer index */
+  std::size_t _test_index() const noexcept;
 };
 
 }  // namespace PawnDB

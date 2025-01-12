@@ -5,53 +5,39 @@ namespace PawnDB {
 
 /**
  * @brief CRTP base class for iterator implementation
- * @tparam DerivedIterator The derived iterator class
+ * @tparam DerivedIter The derived iterator class
  * @tparam DerefType Type of elements being iterated
+ * @note It can be a const iterator by passing a const type to DerefType
  *
  * Required implementations:
  * - trait_next()
  * - trait_deref()
- * - trait_equals(const DerivedIterator&)
  */
-template <typename DerivedIterator, typename DerefType>
-class IteratorTypeTrait {
+template <typename DerivedIter, typename DerefType>
+class IterTypeTrait {
  public:
   /** @brief Advance iterator to next element */
   void next() noexcept {
-    return static_cast<DerivedIterator*>(this)->trait_next();
+    return static_cast<DerivedIter*>(this)->trait_next();
   }
 
   /** @brief Dereference operator
    *  @return Reference to current element */
   DerefType& operator*() noexcept {
-    return static_cast<DerivedIterator*>(this)->trait_deref();
-  }
-
-  /** @brief Equality comparison
-   *  @param other Iterator to compare with
-   *  @return true if iterators are equal */
-  bool operator==(const DerivedIterator& other) const noexcept {
-    return static_cast<const DerivedIterator*>(this)->trait_equals(other);
-  }
-
-  /** @brief Inequality comparison
-   *  @param other Iterator to compare with
-   *  @return true if iterators are not equal */
-  bool operator!=(const DerivedIterator& other) const noexcept {
-    return !static_cast<const DerivedIterator*>(this)->trait_equals(other);
+    return static_cast<DerivedIter*>(this)->trait_deref();
   }
 
   /** @brief Pre-increment operator
    *  @return Reference to incremented iterator */
-  DerivedIterator& operator++() noexcept {
-    return static_cast<DerivedIterator*>(this)->trait_next();
+  DerivedIter& operator++() noexcept {
+    return static_cast<DerivedIter*>(this)->trait_next();
   }
 
   /** @brief Post-increment operator
    *  @return Copy of iterator before increment */
-  DerivedIterator operator++(int) noexcept {
+  DerivedIter operator++(int) noexcept {
     auto tmp = *this;
-    static_cast<DerivedIterator*>(this)->trait_next();
+    static_cast<DerivedIter*>(this)->trait_next();
     return tmp;
   }
 };
@@ -59,24 +45,24 @@ class IteratorTypeTrait {
 /**
  * @brief CRTP base class for iterable containers
  * @tparam Derived The derived container class
- * @tparam DerivedIterator The iterator type
+ * @tparam DerivedIter The iterator type
  *
  * Required implementations:
  * - trait_begin()
  * - trait_end()
  */
-template <typename Derived, typename DerivedIterator>
-class IteratorTrait {
+template <typename Derived, typename DerivedIter>
+class IterTrait {
  protected:
-  IteratorTrait() = default;
-  ~IteratorTrait() = default;
+  IterTrait() = default;
+  ~IterTrait() = default;
 
  public:
-  DerivedIterator begin() noexcept {
+  DerivedIter begin() noexcept {
     return static_cast<const Derived*>(this)->trait_begin();
   }
 
-  DerivedIterator end() noexcept {
+  DerivedIter end() noexcept {
     return static_cast<const Derived*>(this)->trait_end();
   }
 };

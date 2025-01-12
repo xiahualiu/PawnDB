@@ -1,14 +1,3 @@
-/**
- * @brief CRTP interface for size-aware containers
- * @tparam Derived Class implementing the size interface
- * @tparam SizeType Type used for size values
- *
- * Required implementations:
- * - SizeType trait_size() const
- * - SizeType trait_capacity() const
- * - bool trait_empty() const
- * - bool trait_full() const
- */
 #ifndef PAWNDB_TRAITS_SIZED_H
 #define PAWNDB_TRAITS_SIZED_H
 
@@ -20,11 +9,11 @@ namespace PawnDB {
  * @brief CRTP interface for classes that provide size information
  * @tparam Derived Class implementing the size interface
  *
- * Any class inheriting from Sized must implement:
- * - size_t user_size() const noexcept
+ * Required trait implementation:
+ * - trait_size() -> std::size_t : Current element count
  */
 template <typename Derived>
-class Sized {
+class SizedTrait {
  public:
   /**
    * @brief Get current size
@@ -35,8 +24,8 @@ class Sized {
   }
 
  protected:
-  Sized() = default;
-  ~Sized() = default;
+  SizedTrait() = default;
+  ~SizedTrait() = default;
 };
 
 }  // namespace PawnDB

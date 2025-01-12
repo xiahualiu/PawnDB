@@ -1,14 +1,3 @@
-/**
- * @file tuple.h
- * @brief CRTP interface for tuple implementations
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Checksum validation
- * - Timestamp tracking
- * - Type safety
- */
 #ifndef PAWNDB_TRAITS_TUPLE_H
 #define PAWNDB_TRAITS_TUPLE_H
 
@@ -25,7 +14,7 @@ namespace PawnDB {
  * Required implementations:
  * - void trait_set_checksum()
  * - bool trait_val_checksum() const
- * - void trait_set_tickstamp(tick_t)
+ * - void trait_set_tickstamp(const tick_t)
  * - tick_t trait_read_tickstamp() const
  */
 template <typename Derived>
@@ -48,10 +37,10 @@ class TupleTrait {
 
   /**
    * @brief Set tuple timestamp
-   * @param tickstamp Timestamp value
+   * @param _ts Timestamp value
    */
-  void set_tickstamp(const tick_t tickstamp) noexcept {
-    static_cast<Derived*>(this)->trait_set_tickstamp(tickstamp);
+  void set_tickstamp(const tick_t _ts) noexcept {
+    static_cast<Derived*>(this)->trait_set_tickstamp(_ts);
   }
 
   /**

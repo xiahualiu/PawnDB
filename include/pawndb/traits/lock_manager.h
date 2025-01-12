@@ -1,92 +1,94 @@
-/**
- * @file lock_table.h
- * @brief CRTP interface for lock management
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Shared/exclusive locking
- * - Lock promotion
- * - Key-based locking
- * - Error handling
- */
-#ifndef PAWNDB_TRAITS_LOCK_TABLE_H
-#define PAWNDB_TRAITS_LOCK_TABLE_H
-
-#include <cstdint>
+#ifndef PAWNDB_TRAITS_LOCK_MANAGER_H
+#define PAWNDB_TRAITS_LOCK_MANAGER_H
 
 #include "pawndb/result.h"
+#include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {
 
-/**
- * @brief Lock types supported by table
- */
-enum class LockType : std::uint8_t {
-  Shared,   /**< Multiple readers allowed */
-  Exclusive /**< Single writer access */
-};
 /**
  * @brief Lock operation error codes
  */
 enum class LockError {
   None,        /**< Operation successful */
   NotFound,    /**< Lock not found */
-  Full,        /**< Table at capacity */
-  LockConflict /**< Lock request conflicts */
+  AlreadyHeld, /**< Lock already exists */
+  Conflict,    /**< Lock conflicts */
+  InvalidType, /**< Invalid lock type */
+  Full         /**< No more locks available */
+};
+
+enum class LockType {
+  SHARED,   /**< Shared read lock */
+  EXCLUSIVE /**< Exclusive write lock */
 };
 
 /**
- * @brief CRTP interface for lock table implementations
- * @tparam Derived Class implementing lock interface
- * @tparam KeyType Type of keys used for locking
- *
- * Required implementations:
- * - LockError trait_lock(const KeyType&, LockType)
- * - LockError trait_unlock(const KeyType&)
- * - LockError trait_promote(const KeyType&)
- * - LockR trait_get_lock(const KeyType&) const
+ * @brief CRTP interface for lock implementations
+ * @tparam Derived The derived lock class
  */
-template <typename Derived, typename KeyType, typename LockEntryType>
+template <typename Derived>
+class LockTrait {
+ public:
+  /** @brief Get lock type */
+  LockType lock_type() const noexcept {
+    return static_cast<const Derived*>(this)->trait_lock_type();
+  }
+
+  /** @brief Get table-tuple key */
+  const TableTupleKey& key() const noexcept {
+    return static_cast<const Derived*>(this)->trait_key();
+  }
+
+ protected:
+  LockTrait() = default;
+  ~LockTrait() = default;
+};
+
+/**
+ * @brief CRTP interface for lock manager implementations
+ */
+template <typename Derived, typename KeyType>
 class LockManagerTrait {
  public:
-  using LockR = Result<const LockEntryType&, LockError>;
+  /** @brief Result type for lock operations */
+  using LockR = Result<LockType, LockError>;
 
   /**
-   * @brief Acquire lock on key
-   * @param key Key to lock
-   * @param type Lock type (shared/exclusive)
-   * @return LockError None or error code
+   * @brief Add new lock
+   * @param key Table-tuple key
+   * @param type Lock type
+   * @return Result with lock or error
    */
-  LockError lock(const KeyType& key, LockType type) noexcept {
-    return static_cast<Derived*>(this)->trait_lock(key, type);
+  LockError add_lock(const KeyType& key, LockType type) noexcept {
+    return static_cast<Derived*>(this)->trait_add_lock(key, type);
   }
 
   /**
-   * @brief Release lock on key
-   * @param key Key to unlock
-   * @return LockError None or NotFound
+   * @brief Remove existing lock
+   * @param key Table-tuple key
+   * @return Error status
    */
-  LockError unlock(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_unlock(key);
+  LockError rm_lock(const KeyType& key) noexcept {
+    return static_cast<Derived*>(this)->trait_rm_lock(key);
   }
 
   /**
    * @brief Promote shared lock to exclusive
-   * @param key Key to promote
-   * @return LockError None or error code
+   * @param key Table-tuple key
+   * @return Result with lock or error
    */
-  LockError promote(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_promote(key);
+  LockError promote_lock(const KeyType& key) noexcept {
+    return static_cast<Derived*>(this)->trait_promote_lock(key);
   }
 
   /**
-   * @brief Get current lock type for key
-   * @param key Key to check
-   * @return LockR Success: lock type, Error: NotFound
+   * @brief Get lock information
+   * @param key Table-tuple key
+   * @return Result with lock or error
    */
-  LockR get_lock(const KeyType& key) const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_lock(key);
+  LockR get_lock(const KeyType& key) noexcept {
+    return static_cast<Derived*>(this)->trait_get_lock(key);
   }
 
  protected:
@@ -96,4 +98,4 @@ class LockManagerTrait {
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TRAITS_LOCK_TABLE_H
+#endif  // PAWNDB_TRAITS_LOCK_MANAGER_H

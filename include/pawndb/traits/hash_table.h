@@ -3,8 +3,12 @@
 
 #include "pawndb/result.h"
 
+
 namespace PawnDB {
 
+/**
+ * @brief Table operation error codes
+ */
 enum class TableError {
   None,     /**< Operation successful */
   NotFound, /**< Key not found */
@@ -13,9 +17,9 @@ enum class TableError {
 };
 
 /**
- * @brief CRTP interface for table implementations
+ * @brief CRTP interface for hash table implementations
  * @tparam Derived Class implementing table interface
- * @tparam EntryType Type of table entries
+ * @tparam EntryType Type of table entries, must implement HashTrait
  *
  * Required trait implementations:
  * - trait_insert(const entry_type&) -> TableR
@@ -24,19 +28,23 @@ enum class TableError {
  * - trait_write(const entry_type&) -> TableR
  */
 template <typename Derived, typename EntryType>
-class TableTrait {
+class HashTableTrait {
  public:
+  /** @brief Entry type alias */
   using entry_type = EntryType;
-  using key_type = typename EntryType::key_type;
 
-  using TableR = Result<EntryType&, TableError>;
+  /** @brief Key type alias */
+  using key_t = typename EntryType::key_t;
+
+  /** @brief Table operation result type */
+  using table_r = Result<EntryType&, TableError>;
 
   /**
    * @brief Insert new entry into table
    * @param _entry Entry to insert
    * @return Result containing reference to inserted entry or error
    */
-  TableR insert(const entry_type& _entry) noexcept {
+  table_r insert(const entry_type& _entry) noexcept {
     return static_cast<Derived*>(this)->trait_insert(_entry);
   }
 
@@ -45,7 +53,7 @@ class TableTrait {
    * @param _key Key to search for
    * @return Result containing reference to found entry or error
    */
-  TableR search(const key_type& _key) noexcept {
+  table_r search(const key_t& _key) noexcept {
     return static_cast<Derived*>(this)->trait_search(_key);
   }
 
@@ -54,7 +62,7 @@ class TableTrait {
    * @param _key Key of entry to remove
    * @return Error status of operation
    */
-  TableError remove(const key_type& _key) noexcept {
+  TableError remove(const key_t& _key) noexcept {
     return static_cast<Derived*>(this)->trait_remove(_key);
   }
 
@@ -63,13 +71,13 @@ class TableTrait {
    * @param _entry Entry with updated values
    * @return Result containing reference to updated entry or error
    */
-  TableR write(const entry_type& _entry) noexcept {
+  table_r write(const entry_type& _entry) noexcept {
     return static_cast<Derived*>(this)->trait_write(_entry);
   }
 
  protected:
-  TableTrait() = default;
-  ~TableTrait() = default;
+  HashTableTrait() = default;
+  ~HashTableTrait() = default;
 };
 
 }  // namespace PawnDB

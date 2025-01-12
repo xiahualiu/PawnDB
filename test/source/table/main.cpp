@@ -11,253 +11,253 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "doctest/doctest.h"
-#include "pawndb/table.h"
+#include "pawndb/traits/tuple_table.h"
+#include "pawndb/types/student_table.h"
+#include "pawndb/types/student_tuple.h"
 
 namespace PawnDB {
 
 TEST_CASE("Table Basic Operations #1") {
-  Table<10, int, int> table;
-  CHECK(table._test_empty());
+  StudentTable table;
+  CHECK(table.empty());
 }
 
 TEST_CASE("Table Insert #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto id_r = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto id_r = table.insert(student);
   CHECK(id_r);
-  CHECK(!table._test_empty());
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_tuple(id_r.unwrap()) == tuple);
-  CHECK(table.key_at(id_r.unwrap()) == 0);
-  CHECK(!table._test_full());
+  CHECK(!table.empty());
+  CHECK(table.size() == 1);
+  CHECK(id_r.unwrap().key == 0);
+  CHECK(id_r.unwrap().tuple == student.tuple);
+  CHECK(!table.full());
 }
 
 TEST_CASE("Table Insert #2") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(!table._test_full());
-  CHECK(table.insert(tuple));
-  CHECK(!table._test_empty());
-  CHECK(table._test_full());
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(!table.full());
+  CHECK(table.insert(student));
+  CHECK(!table.empty());
+  CHECK(table.full());
 }
 
 TEST_CASE("Table Lock #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_s();
+  auto wait_r = table.wait_shared();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 1);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == 1);
 }
 
 TEST_CASE("Table Lock #2") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_x();
+  auto wait_r = table.wait_exclusive();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == -1);
 }
 
 TEST_CASE("Table Lock #3") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_s();
+  auto wait_r = table.wait_shared();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 1);
-  auto wait_r2 = table.wait_x();
-  CHECK(wait_r2.getError() == TableError::Timeout);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == 1);
+  auto wait_r2 = table.wait_exclusive();
+  CHECK(wait_r2.getError() == TupleTableError::Timeout);
 }
 
 TEST_CASE("Table Lock #4") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_x();
+  auto wait_r = table.wait_exclusive();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
-  auto wait_r2 = table.wait_s();
-  CHECK(wait_r2.getError() == TableError::Timeout);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == -1);
+  auto wait_r2 = table.wait_exclusive();
+  CHECK(wait_r2.getError() == TupleTableError::Timeout);
+}
+
+TEST_CASE("Table Lock #5") {
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
+  CHECK(insert_result);
+  auto wait_r = table.wait_exclusive();
+  CHECK(wait_r);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == -1);
+  auto wait_r2 = table.wait_shared();
+  CHECK(wait_r2.getError() == TupleTableError::Timeout);
+}
+
+TEST_CASE("Table Lock #6") {
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
+  CHECK(insert_result);
+  auto wait_r = table.wait_shared();
+  CHECK(wait_r);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == 1);
+  auto wait_r2 = table.wait_shared();
+  CHECK(wait_r2);
 }
 
 TEST_CASE("Table Lock Release #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_s();
-  auto wait_r2 = table.wait_s();
+  auto wait_r = table.wait_shared();
+  auto wait_r2 = table.wait_shared();
   CHECK(wait_r);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
   CHECK(wait_r2);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 2);
-  auto key = table.key_at(wait_r.unwrap());
-  table.release_s(key);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 1);
-  table.release_s(key);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 0);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r2.unwrap().lock == 2);
+  table.release(wait_r2.unwrap().key);
+  CHECK(wait_r.unwrap().lock == 1);
+  table.release(wait_r2.unwrap().key);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == 0);
 }
 
 TEST_CASE("Table Lock Release #2") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-
-  auto wait_r = table.wait_x();
-  auto wait_r2 = table.wait_s();
+  auto wait_r = table.wait_exclusive();
+  auto wait_r2 = table.wait_shared();
   CHECK(wait_r);
-  CHECK(wait_r2.getError() == TableError::Timeout);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_size() == 1);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
-  auto key = table.key_at(wait_r.unwrap());
-  table.release_x(key);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 0);
-  auto wait_r3 = table.wait_s();
+  CHECK(wait_r2.getError() == TupleTableError::Timeout);
+  CHECK(wait_r.unwrap().tuple == student.tuple);
+  CHECK(table.size() == 1);
+  CHECK(wait_r.unwrap().lock == -1);
+  table.release(wait_r.unwrap().key);
+  CHECK(wait_r.unwrap().lock == 0);
+  auto wait_r3 = table.wait_shared();
   CHECK(wait_r3);
 }
 
 TEST_CASE("Table Timeout #1") {
-  Table<10, int, std::string> table;
-  auto wait_result = table.wait_s();
-  CHECK(wait_result.getError() == TableError::Timeout);
+  StudentTable table;
+  auto wait_result = table.wait_shared();
+  CHECK(wait_result.getError() == TupleTableError::Timeout);
 }
 
 TEST_CASE("Table Timeout #2") {
-  Table<10, int, std::string> table;
-  auto wait_result = table.wait_x();
-  CHECK(wait_result.getError() == TableError::Timeout);
+  StudentTable table;
+  auto wait_result = table.wait_exclusive();
+  CHECK(wait_result.getError() == TupleTableError::Timeout);
 }
 
 TEST_CASE("Table Remove #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
-  auto key = table.key_at(insert_result.unwrap());
-  table.remove(key);
-  CHECK(table._test_empty());
-}
-
-TEST_CASE("Table Update #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
-  CHECK(insert_result);
-  auto key = table.key_at(insert_result.unwrap());
-  auto new_tuple = std::make_tuple(42, true);
-  table.update(key, new_tuple);
-  CHECK(table._test_get_tuple(key) == new_tuple);
+  table.remove(insert_result.unwrap().key);
+  CHECK(table.empty());
 }
 
 TEST_CASE("Table Notify #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, false);
-  auto insert_result = table.insert(tuple);
+  StudentTable table;
+  StudentTableEntry student = {{"Brian", 25}, 42, 0, false, false};
+  auto insert_result = table.insert(student);
   CHECK(insert_result);
   table.notify_not_empty();
   table.notify_not_full();
-  table.notify_s_available();
-  table.notify_x_available();
+  table.notify_s();
+  table.notify_x();
 }
 
 TEST_CASE("Table Lock Promotion #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, true);
-  auto idx = table.insert(tuple);
-  CHECK(idx);
-  auto wait_r = table.wait_s();
+  StudentTable table;
+  StudentTableEntry student = {{}, 42, 0, false, false};
+  auto table_r = table.insert(student);
+  CHECK(table_r);
+  auto wait_r = table.wait_shared();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 1);
-  auto key = table.key_at(wait_r.unwrap());
-  CHECK(table.promote(key) == TableError::None);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
+  CHECK(wait_r.unwrap().key == 42);
+  CHECK(wait_r.unwrap().lock == 1);
+  CHECK(table.promote(wait_r.unwrap().key) == TupleTableError::None);
+  CHECK(wait_r.unwrap().lock == -1);
 }
 
 TEST_CASE("Table Lock Promotion #2") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, true);
-  auto idx = table.insert(tuple);
-  CHECK(idx);
-  auto wait_r = table.wait_x();
+  StudentTable table;
+  StudentTableEntry student = {{}, 42, 0, false, false};
+  auto table_r = table.insert(student);
+  CHECK(table_r);
+  auto wait_r = table.wait_exclusive();
   CHECK(wait_r);
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
-  auto key = table.key_at(wait_r.unwrap());
-  CHECK(table.promote(key) == TableError::None);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == -1);
+  CHECK(wait_r.unwrap().key == 42);
+  CHECK(wait_r.unwrap().lock == -1);
+  CHECK(table.promote(wait_r.unwrap().key) == TupleTableError::None);
+  CHECK(wait_r.unwrap().lock == -1);
 }
 
 TEST_CASE("Table Lock Promotion #3") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, true);
-  auto idx = table.insert(tuple);
-  CHECK(idx);
-  auto wait_r = table.wait_s();
-  auto wait_r2 = table.wait_s();
-  CHECK(wait_r);
-  CHECK(wait_r2);
-  CHECK(wait_r.unwrap() == wait_r2.unwrap());
-  CHECK(table._test_get_tuple(wait_r.unwrap()) == tuple);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 2);
-  auto key = table.key_at(wait_r.unwrap());
-  CHECK(table.promote(key) == TableError::Timeout);
-  CHECK(table._test_get_lock(wait_r.unwrap()) == 2);
-}
-
-TEST_CASE("Table Index #1") {
-  Table<10, int, bool> table;
-  auto tuple = std::make_tuple(42, true);
-  auto idx = table.insert(tuple);
-  CHECK(idx);
-  CHECK(table[idx.unwrap()] == tuple);
+  StudentTable table;
+  StudentTableEntry student = {{}, 42, 0, false, false};
+  auto table_r = table.insert(student);
+  CHECK(table_r);
+  auto wait1_r = table.wait_shared();
+  auto wait2_r = table.wait_shared();
+  CHECK(wait1_r);
+  CHECK(wait2_r);
+  CHECK(wait1_r.unwrap().key == 42);
+  CHECK(wait2_r.unwrap().lock == 2);
+  CHECK(table.promote(wait1_r.unwrap().key) == TupleTableError::Timeout);
+  CHECK(wait1_r.unwrap().lock == 2);
 }
 
 }  // namespace PawnDB

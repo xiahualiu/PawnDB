@@ -2,7 +2,106 @@
 
 namespace PawnDB {
 
-CommitTable::TableR CommitTable::trait_insert(
+CommitEntry::CommitEntry(const TableTupleKey& _key, OpType _op,
+                         const BufferRef& _buffer) noexcept
+    : buffer(_buffer), key(_key), op(_op), is_used(true), is_deleted(false) {}
+
+CommitEntry::CommitEntry(const CommitEntry& other) noexcept
+    : buffer(other.buffer),
+      key(other.key),
+      op(other.op),
+      is_used(other.is_used),
+      is_deleted(other.is_deleted) {}
+
+CommitEntry& CommitEntry::operator=(const CommitEntry& other) noexcept {
+  buffer = other.buffer;
+  key = other.key;
+  op = other.op;
+  is_used = other.is_used;
+  is_deleted = other.is_deleted;
+  return *this;
+}
+
+std::size_t CommitEntry::trait_hash() const noexcept {
+  return key.hash();
+}
+
+CommitEntry CommitEntry::trait_clone() const noexcept {
+  return CommitEntry(*this);
+}
+
+void CommitEntry::trait_copy(const CommitEntry& other) noexcept {
+  *this = other;
+}
+
+/** @brief Get buffer reference */
+BufferRef& CommitEntry::trait_buffer() noexcept {
+  return buffer;
+}
+
+/** @brief Get table-tuple key */
+const TableTupleKey& CommitEntry::trait_key() const noexcept {
+  return key;
+}
+
+/** @brief Get operation type */
+OpType CommitEntry::trait_op() const noexcept {
+  return op;
+}
+
+CommitIt::CommitIt(const CommitTable* table, std::size_t index) noexcept
+    : table_(table), index_(index) {}
+
+CommitIt::CommitIt(const CommitIt& other) noexcept {
+  trait_copy(other);
+}
+
+CommitIt& CommitIt::operator=(const CommitIt& other) noexcept {
+  trait_copy(other);
+  return *this;
+}
+
+CommitIt& CommitIt::trait_next() noexcept {
+  if (index_ < table_->N) {
+    ++index_;
+    advance_to_valid();
+  }
+  return *this;
+}
+
+const CommitEntry& CommitIt::trait_deref() const noexcept {
+  return table_->entries_[index_];
+}
+
+bool CommitIt::trait_equals(const CommitIt& other) const noexcept {
+  return table_ == other.table_ && index_ == other.index_;
+}
+
+void CommitIt::advance_to_valid() noexcept {
+  while (index_ < table_->N && (!table_->entries_[index_].is_used ||
+                                table_->entries_[index_].is_deleted)) {
+    ++index_;
+  }
+}
+
+CommitError CommitTable::trait_add_commit(const CommitEntry& _entry) noexcept {
+  if (trait_full()) {
+    return CommitError::Full;
+  }
+
+  auto result = trait_insert(_entry);
+  if (!result) {
+    switch (result.getError()) {
+      case TableError::Full: return CommitError::Full;
+      case TableError::Conflict: return CommitError::AlreadyExists;
+      default: return CommitError::Unknown;
+    }
+  }
+
+  return CommitError::None;
+}
+
+CommitTable::table_r CommitTable::trait_insert(
     const CommitEntry& _entry) noexcept {
   if (size_ >= N) return TableError::Full;
   auto idx = _entry.key.hash() % N;
@@ -20,7 +119,7 @@ CommitTable::TableR CommitTable::trait_insert(
   return TableError::Full;
 }
 
-CommitTable::TableR CommitTable::trait_search(
+CommitTable::table_r CommitTable::trait_search(
     const TableTupleKey& _key) noexcept {
   auto idx = _key.hash() % N;
   auto start = idx;
@@ -65,36 +164,26 @@ TableError CommitTable::trait_write(const CommitEntry& _entry) noexcept {
   return TableError::NotFound;
 }
 
-CommitTableIterator CommitTable::trait_begin() const noexcept {
-  auto it = CommitTableIterator(this, 0);
+CommitIt CommitTable::trait_begin() const noexcept {
+  auto it = CommitIt(this, 0);
   it.advance_to_valid();
   return it;
 }
 
-CommitTableIterator CommitTable::trait_end() const noexcept {
-  return CommitTableIterator(this, N);
+CommitIt CommitTable::trait_end() const noexcept {
+  return CommitIt(this, N);
 }
 
-CommitTableIterator& CommitTableIterator::trait_next() noexcept {
-  index_++;
-  advance_to_valid();
-  return *this;
+std::size_t CommitTable::trait_size() const noexcept {
+  return size_;
 }
 
-bool CommitTableIterator::trait_equals(
-    const CommitTableIterator& other) const noexcept {
-  return index_ == other.index_;
+bool CommitTable::trait_empty() const noexcept {
+  return size_ == 0;
 }
 
-const CommitEntry& CommitTableIterator::trait_deref() const noexcept {
-  return table_->entries_[index_];
-}
-
-void CommitTableIterator::advance_to_valid() noexcept {
-  while (index_ < CommitTable::N && (!table_->entries_[index_].is_used ||
-                                     table_->entries_[index_].is_deleted)) {
-    index_++;
-  }
+bool CommitTable::trait_full() const noexcept {
+  return size_ >= N;
 }
 
 }  // namespace PawnDB

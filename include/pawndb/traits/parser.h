@@ -27,73 +27,87 @@ enum class OpType : std::uint8_t {
  * @brief Operation acknowledgment status codes
  */
 enum class OpAck : std::uint8_t {
-  SUCCESS = 1,
-  DEAD_TXN,
-  BAD_OP,
-  BAD_TXN,
-  BAD_TABLE,
-  BAD_TP,
-  BAD_ACCESS,
-  BAD_PHASE,
-  BAD_DATA,
-  COMMIT_FULL,
-  ABORTED,
-  TIMEOUT,
-  BUSY,
+  SUCCESS = 1, /**< Operation successful */
+  DEAD_TXN,    /**< Transaction is dead */
+  BAD_OP,      /**< Invalid operation */
+  BAD_TXN,     /**< Invalid transaction */
+  BAD_TABLE,   /**< Invalid table */
+  BAD_TP,      /**< Invalid tuple */
+  BAD_ACCESS,  /**< Access violation */
+  BAD_PHASE,   /**< Invalid phase */
+  BAD_DATA,    /**< Invalid data */
+  COMMIT_FULL, /**< Commit table full */
+  ABORTED,     /**< Transaction aborted */
+  TIMEOUT,     /**< Operation timeout */
+  BUSY,        /**< Resource busy */
 };
 
 /**
  * @brief Parser error codes
  */
 enum class ParserError {
-  None,
-  ReadAfterEnd,
-  InvalidValue,
+  None,         /**< No error */
+  ReadAfterEnd, /**< Read past end of input */
+  InvalidValue, /**< Invalid value encountered */
 };
 
 /**
  * @brief CRTP base class for operation parsing
- * @tparam Derived The derived parser class */
+ * @tparam Derived The derived parser class
+ *
+ * Required trait implementations:
+ * - trait_get_op() -> OpR
+ * - trait_get_op_id() -> OpIdR
+ * - trait_get_txn() -> TxnIdR
+ * - trait_get_tbl() -> TblIdR
+ * - trait_get_key() -> TpKeyR
+ * - trait_set_ack(OpAck)
+ */
 template <typename Derived>
 class ParserTrait {
  public:
-  using OpR = Result<OpType, ParserError>;
+  /** @brief Operation type result */
+  using op_r = Result<OpType, ParserError>;
+
+  /** @brief Operation ID result */
+  using op_id_r = Result<op_t, ParserError>;
+
+  /** @brief Transaction ID result */
+  using txn_id_r = Result<txn_id_t, ParserError>;
+
+  /** @brief Table ID result */
+  using tbl_id_r = Result<tp_id_t, ParserError>;
+
+  /** @brief Table ID result */
+  using tp_key_r = Result<tbl_row_t, ParserError>;
 
   /** @brief Get operation type
    *  @return Result containing operation type or error */
-  OpR get_op() const noexcept {
+  op_r get_op() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_op();
   }
 
-  using OpIdR = Result<op_t, ParserError>;
-
   /** @brief Get operation ID
    *  @return Result containing operation ID or error */
-  OpIdR get_op_id() const noexcept {
+  op_id_r get_op_id() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_op_id();
   }
 
-  using TxnIdR = Result<txn_id_t, ParserError>;
-
   /** @brief Get transaction ID
    *  @return Result containing transaction ID or error */
-  TxnIdR get_txn() const noexcept {
+  txn_id_t get_txn() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_txn();
   }
 
-  using TblIdR = Result<tp_id_t, ParserError>;
-
   /** @brief Get table ID
    *  @return Result containing table ID or error */
-  TblIdR get_tbl() const noexcept {
+  tbl_id_r get_tbl() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_tbl();
   }
 
-  using TpKeyR = Result<tbl_row_t, ParserError>;
-
   /** @brief Get tuple key
    *  @return Result containing tuple key or error */
-  TblIdR get_key() const noexcept {
+  tp_key_r get_key() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_key();
   }
 
@@ -104,27 +118,27 @@ class ParserTrait {
   }
 
   /** @brief Set operation acknowledgment status
-   *  @param ack Acknowledgment status */
-  void set_ack(OpAck ack) noexcept {
-    static_cast<Derived*>(this)->trait_set_ack(ack);
+   *  @param _ack Acknowledgment status */
+  void set_ack(OpAck _ack) noexcept {
+    static_cast<Derived*>(this)->trait_set_ack(_ack);
   }
 
   /** @brief Set transaction id
-   * @param txn Transaction id */
-  void set_txn_id(txn_id_t txn) noexcept {
-    static_cast<Derived*>(this)->trait_set_txn_id(txn);
+   * @param _txn Transaction id */
+  void set_txn_id(txn_id_t _txn) noexcept {
+    static_cast<Derived*>(this)->trait_set_txn_id(_txn);
   }
 
   /** @brief Set buffer size for parsing
-   * @param size Buffer size */
-  void set_buffer_size(std::size_t size) noexcept {
-    static_cast<Derived*>(this)->trait_set_buffer_size(size);
+   * @param _size Buffer size */
+  void set_buffer_size(std::size_t _size) noexcept {
+    static_cast<Derived*>(this)->trait_set_buffer_size(_size);
   }
 
   /** @brief Set key field in the buffer
-   * @param key Key value */
-  void set_key(tbl_row_t key) noexcept {
-    static_cast<Derived*>(this)->trait_set_key(key);
+   * @param _key Key value */
+  void set_key(tbl_row_t _key) noexcept {
+    static_cast<Derived*>(this)->trait_set_key(_key);
   }
 
   /** @brief Get buffer size
@@ -135,7 +149,7 @@ class ParserTrait {
 
   /** @brief Get buffer
    * @return Buffer */
-  char* get_buffer() noexcept {
+  buffer_t& get_buffer() noexcept {
     return static_cast<Derived*>(this)->trait_get_buffer();
   }
 

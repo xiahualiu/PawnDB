@@ -1,25 +1,22 @@
 #ifndef PAWNDB_TRAITS_CONTAINER_H
 #define PAWNDB_TRAITS_CONTAINER_H
 
-#include <cstddef>
-
 namespace PawnDB {
 
 /**
  * @brief CRTP interface for container implementations
  * @tparam Derived Class implementing container interface
+ *
+ * Provides common container operations like capacity checking and empty/full status.
+ *
+ * Required trait implementations:
+ * - trait_capacity() -> constexpr std::size_t
+ * - trait_empty() -> bool
+ * - trait_full() -> bool
  */
 template <typename Derived>
-class Container {
+class ContainerTrait {
  public:
-  /**
-   * @brief Get container capacity
-   * @return Maximum number of elements
-   */
-  constexpr std::size_t capacity() const noexcept {
-    return static_cast<const Derived*>(this)->trait_capacity();
-  }
-
   /**
    * @brief Check if container is empty
    * @return true if no elements present
@@ -37,8 +34,8 @@ class Container {
   }
 
  protected:
-  Container() = default;
-  ~Container() = default;
+  ContainerTrait() = default;
+  ~ContainerTrait() = default;
 };
 
 }  // namespace PawnDB
