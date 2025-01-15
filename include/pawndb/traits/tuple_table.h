@@ -71,11 +71,19 @@ class TupleTableTrait {
   }
 
   /**
-   * @brief Notify new lock can be acquired, usually done after a transaction is
-   * finished.
+   * @brief Notify new shared lock can be acquired, usually done after a
+   * transaction is finished.
    */
-  void notify_lock() noexcept {
-    return static_cast<Derived*>(this)->trait_notify_lock();
+  void notify_shared() noexcept {
+    return static_cast<Derived*>(this)->trait_notify_shared();
+  }
+
+  /**
+   * @brief Notify new shared lock can be acquired, usually done after a
+   * transaction is finished.
+   */
+  void notify_exclusive() noexcept {
+    return static_cast<Derived*>(this)->trait_notify_exclusive();
   }
 
   /**

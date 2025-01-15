@@ -16,8 +16,8 @@ class JobTrait {
  public:
   /** @brief Get buffer reference
    *  @return Reference to job buffer */
-  BufferRef& buffer() noexcept {
-    return static_cast<Derived*>(this)->trait_buffer();
+  BufferRef buffer() const noexcept {
+    return static_cast<const Derived*>(this)->trait_buffer();
   }
 
   /** @brief Get buffer size
@@ -29,7 +29,7 @@ class JobTrait {
   /** @brief Get client address
    *  @return Reference to client sockaddr */
   const struct sockaddr& c_addr() const noexcept {
-    return static_cast<Derived*>(this)->trait_c_addr();
+    return static_cast<const Derived*>(this)->trait_c_addr();
   }
 
   /** @brief Get client address length

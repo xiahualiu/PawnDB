@@ -19,7 +19,7 @@ namespace PawnDB {
  * Implements composite key, copy, and hash operations.
  */
 class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
-                      public CopyTrait<TableTupleKey>,
+                      private CopyTrait<TableTupleKey>,
                       public HashTrait<TableTupleKey>,
                       public EqTrait<TableTupleKey> {
  public:
@@ -33,22 +33,9 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
    */
   TableTupleKey(tp_id_t table_id, tbl_row_t tuple_key) noexcept;
 
-  /**
-   * @brief Copy constructor
-   * @param other Source key to copy
-   */
+  // Copyable
   TableTupleKey(const TableTupleKey& other) noexcept;
-
-  /**
-   * @brief Copy assignment
-   * @param other Source key to copy
-   * @return Reference to this
-   */
   TableTupleKey& operator=(const TableTupleKey& other);
-
-  // Not movable
-  TableTupleKey(TableTupleKey&& other) noexcept = delete;
-  TableTupleKey& operator=(TableTupleKey&& other) noexcept = delete;
 
   // CompositeKeyTrait implementation
   /**
@@ -68,21 +55,17 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
   /** @brief Compute hash value */
   std::size_t trait_hash() const noexcept;
 
-  /**
-   * @brief Compare for equality
+  /** @brief Compare for equality
    * @param other Key to compare with
-   * @return true if keys are equal
-   */
+   * @return true if keys are equal */
   bool trait_equals(const TableTupleKey& other) const noexcept;
 
   // CopyTrait implementation
   /** @brief Create clone of this key */
   TableTupleKey trait_clone() const noexcept;
 
-  /**
-   * @brief Copy from another key
-   * @param other Source key to copy from
-   */
+  /** @brief Copy from another key
+   * @param other Source key to copy from */
   void trait_copy(const TableTupleKey& other) noexcept;
 
  private:

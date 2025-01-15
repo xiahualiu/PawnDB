@@ -6,8 +6,6 @@
 
 namespace PawnDB {
 
-RetChannel::RetChannel() noexcept : txns_(), head_(0), tail_(0), count_(0) {}
-
 RetChannel::queue_r RetChannel::trait_get() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
   if (!trait_empty()) {

@@ -3,7 +3,6 @@
 
 #include "pawndb/result.h"
 
-
 namespace PawnDB {
 
 /**
@@ -22,10 +21,10 @@ enum class TableError {
  * @tparam EntryType Type of table entries, must implement HashTrait
  *
  * Required trait implementations:
- * - trait_insert(const entry_type&) -> TableR
- * - trait_search(const key_type&) -> TableR
+ * - trait_insert(const entry_type&) -> table_r
+ * - trait_search(const key_type&) -> table_r
  * - trait_remove(const key_type&) -> TableError
- * - trait_write(const entry_type&) -> TableR
+ * - trait_write(const entry_type&) -> table_r
  */
 template <typename Derived, typename EntryType>
 class HashTableTrait {
@@ -71,8 +70,13 @@ class HashTableTrait {
    * @param _entry Entry with updated values
    * @return Result containing reference to updated entry or error
    */
-  table_r write(const entry_type& _entry) noexcept {
+  TableError write(const entry_type& _entry) noexcept {
     return static_cast<Derived*>(this)->trait_write(_entry);
+  }
+
+  /** @brief Clear the hash table */
+  void clear() noexcept {
+    static_cast<Derived*>(this)->trait_clear();
   }
 
  protected:

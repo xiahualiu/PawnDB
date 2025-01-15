@@ -19,12 +19,17 @@ template <typename Derived>
 class BufferRefTrait {
  public:
   /** @brief Get reference to underlying buffer */
-  buffer_t& buffer() noexcept {
-    return static_cast<Derived*>(this)->trait_buffer();
+  buffer_t& buffer() const noexcept {
+    return static_cast<const Derived*>(this)->trait_buffer();
   }
 
   /** @brief Release buffer resources */
   void release() noexcept { static_cast<Derived*>(this)->trait_release(); }
+
+  /** @brief Check if buffer is null */
+  bool null() const noexcept {
+    return static_cast<const Derived*>(this)->trait_null();
+  }
 
  protected:
   BufferRefTrait() = default;

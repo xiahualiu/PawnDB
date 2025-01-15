@@ -35,8 +35,8 @@ class IterTypeTrait {
 
   /** @brief Post-increment operator
    *  @return Copy of iterator before increment */
-  DerivedIter operator++(int) noexcept {
-    auto tmp = *this;
+  DerivedIter& operator++(int) noexcept {
+    auto& tmp = *static_cast<DerivedIter*>(this);
     static_cast<DerivedIter*>(this)->trait_next();
     return tmp;
   }
@@ -58,11 +58,11 @@ class IterTrait {
   ~IterTrait() = default;
 
  public:
-  DerivedIter begin() noexcept {
+  DerivedIter begin() const noexcept {
     return static_cast<const Derived*>(this)->trait_begin();
   }
 
-  DerivedIter end() noexcept {
+  DerivedIter end() const noexcept {
     return static_cast<const Derived*>(this)->trait_end();
   }
 };

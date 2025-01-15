@@ -51,6 +51,10 @@ class TupleTrait {
     return static_cast<const Derived*>(this)->trait_read_tickstamp();
   }
 
+  tbl_row_t key() const noexcept {
+    return static_cast<const Derived*>(this)->trait_key();
+  }
+
  protected:
   TupleTrait() = default;
   ~TupleTrait() = default;

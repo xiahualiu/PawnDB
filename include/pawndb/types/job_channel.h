@@ -26,36 +26,23 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for job passing
  */
-class Job : public JobTrait<Job>, public CopyTrait<Job> {
+class Job : public JobTrait<Job>, private CopyTrait<Job> {
  public:
   /** @brief Initialize empty job */
   constexpr Job() noexcept
-      : buffer(), buffer_size_(0), client_addr_(), client_addr_len_(0) {}
+      : buffer_(), buffer_size_(0), client_addr_(), client_addr_len_(0) {}
 
   /** @brief Initialize job with buffer and client address */
   Job(BufferRef _buffer, std::size_t _buffer_size, const struct sockaddr& _addr,
       socklen_t _addr_len) noexcept;
 
-  /** @brief Copy constructor */
+  // Copyable
   Job(const Job& other) noexcept;
-
-  /** @brief Copy constructor */
   Job& operator=(const Job& other) noexcept;
-
-  // Not movable
-  Job(Job&& other) noexcept = delete;
-  Job& operator=(Job&& other) noexcept = delete;
-
-  // CopyTrait Implementation
-  /** @brief Create deep copy */
-  Job trait_clone() const noexcept;
-
-  /** @brief Copy from other job */
-  void trait_copy(const Job& other) noexcept;
 
   // JobTrait Implementation
   /** @brief Get buffer reference */
-  BufferRef& trait_buffer() noexcept;
+  BufferRef trait_buffer() const noexcept;
 
   /** @brief Get buffer size */
   std::size_t trait_buffer_size() const noexcept;
@@ -66,11 +53,18 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
   /** @brief Get address length */
   socklen_t trait_c_addr_len() const noexcept;
 
+  // CopyTrait Implementation
+  /** @brief Create deep copy */
+  Job trait_clone() const noexcept;
+
+  /** @brief Copy from other job */
+  void trait_copy(const Job& other) noexcept;
+
  private:
-  BufferRef buffer;
-  std::size_t buffer_size_;
-  struct sockaddr client_addr_;
-  socklen_t client_addr_len_;
+  BufferRef buffer_;            /**< Request data buffer */
+  std::size_t buffer_size_;     /**< Request data size */
+  struct sockaddr client_addr_; /**< Client address */
+  socklen_t client_addr_len_;   /**< Address length */
 };
 
 /**
@@ -90,14 +84,8 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
 class JobChannel : public QueueTrait<JobChannel, Job>,
                    public SizedTrait<JobChannel>,
                    public ContainerTrait<JobChannel> {
+  /** @brief Maximum jobs per channel */
   constexpr static std::size_t MaxJobs = MAX_ITEM_PER_CHANNEL;
-
-  std::array<Job, MaxJobs> jobs_;     /**< Job storage */
-  std::size_t head_;                  /**< Read position */
-  std::size_t tail_;                  /**< Write position */
-  std::size_t count_;                 /**< Current job count */
-  std::mutex mtx_;                    /**< Thread safety */
-  std::condition_variable not_empty_; /**< Empty signal */
 
  public:
   /** @brief Initialize empty channel */
@@ -106,10 +94,6 @@ class JobChannel : public QueueTrait<JobChannel, Job>,
   // Non-copyable
   JobChannel(const JobChannel& other) noexcept = delete;
   JobChannel& operator=(const JobChannel& other) noexcept = delete;
-
-  // Non-movable
-  JobChannel(JobChannel&& other) noexcept = delete;
-  JobChannel& operator=(JobChannel&& other) noexcept = delete;
 
   // QueueTrait Implementation
   /** @brief Non-blocking get */
@@ -140,6 +124,14 @@ class JobChannel : public QueueTrait<JobChannel, Job>,
 
   /** @brief Check if empty */
   bool trait_empty() const noexcept;
+
+ private:
+  std::array<Job, MaxJobs> jobs_;     /**< Job storage */
+  std::size_t head_;                  /**< Read position */
+  std::size_t tail_;                  /**< Write position */
+  std::size_t count_;                 /**< Current job count */
+  std::mutex mtx_;                    /**< Thread safety */
+  std::condition_variable not_empty_; /**< Empty signal */
 };
 
 }  // namespace PawnDB

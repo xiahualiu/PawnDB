@@ -6,20 +6,20 @@ BufferTable::BufferTable() noexcept
     : size_(0),
       next_(0) {
   for (auto &entry : buffers_) {
-    entry.is_used = 0;
+    entry.is_used_ = 0;
   }
 }
 
 BufferTable::request_r BufferTable::trait_request() noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
   if (trait_full()) {
     return BufferError::Full;
   }
-  std::lock_guard<std::mutex> lock(mutex_);
-  while (buffers_[next_].is_used > 0) {
+  while (buffers_[next_].is_used_ > 0) {
     next_ = (next_ + 1) % N;
   }
   auto result = BufferRef{this, next_};
-  buffers_[next_].is_used = 1;
+  buffers_[next_].is_used_ = 1;
   next_ = (next_ + 1) % N;
   size_++;
   return result;
@@ -40,7 +40,7 @@ std::size_t BufferTable::trait_size() const noexcept {
 
 // Test functions
 std::uint8_t BufferTable::_test_is_used(std::size_t _i) const noexcept {
-  return buffers_[_i].is_used;
+  return buffers_[_i].is_used_;
 }
 
 BufferRef::BufferRef(BufferTable *_table, std::size_t _index) noexcept
@@ -66,13 +66,17 @@ void BufferRef::trait_copy(const BufferRef &_other) noexcept {
   index_ = _other.index_;
 }
 
+bool BufferRef::trait_null() const noexcept {
+  return table_ == nullptr;
+}
+
 buffer_t &BufferRef::trait_buffer() const noexcept {
-  return table_->buffers_[index_].buffer;
+  return table_->buffers_[index_].buffer_;
 }
 
 void BufferRef::trait_release() noexcept {
   std::lock_guard<std::mutex> lock(table_->mutex_);
-  table_->buffers_[index_].is_used = false;
+  table_->buffers_[index_].is_used_ = false;
   table_->size_--;
 }
 

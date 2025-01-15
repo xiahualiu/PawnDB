@@ -24,8 +24,9 @@ namespace PawnDB {
  * - Non-blocking operations
  */
 class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
-                   public SizedTrait<RetChannel>,
+                   private SizedTrait<RetChannel>,
                    public ContainerTrait<RetChannel> {
+ private:
   std::array<txn_id_t, MAX_TRANSACTIONS> txns_;
   std::size_t head_ = 0;
   std::size_t tail_ = 0;
@@ -34,15 +35,11 @@ class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
 
  public:
   /** @brief Default constructor */
-  RetChannel() noexcept;
+  constexpr RetChannel() noexcept : txns_{}, head_(0), tail_(0), count_(0) {}
 
   // Non-copyable
   RetChannel(const RetChannel& other) noexcept = delete;
   RetChannel& operator=(const RetChannel& other) noexcept = delete;
-
-  // Non-movable
-  RetChannel(RetChannel&& other) noexcept = delete;
-  RetChannel& operator=(RetChannel&& other) noexcept = delete;
 
   // Queue operations
   /** @brief Get next transaction without blocking */

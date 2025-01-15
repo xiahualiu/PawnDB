@@ -4,20 +4,20 @@ namespace PawnDB {
 
 Job::Job(BufferRef _buffer, std::size_t _buffer_size,
          const struct sockaddr& _addr, socklen_t _addr_len) noexcept
-    : buffer(_buffer),
+    : buffer_(_buffer),
       buffer_size_(_buffer_size),
       client_addr_(_addr),
       client_addr_len_(_addr_len) {}
 
 Job::Job(const Job& other) noexcept {
-  buffer = other.buffer;
+  buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
   client_addr_ = other.client_addr_;
   client_addr_len_ = other.client_addr_len_;
 }
 
 Job& Job::operator=(const Job& other) noexcept {
-  buffer = other.buffer;
+  buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
   client_addr_ = other.client_addr_;
   client_addr_len_ = other.client_addr_len_;
@@ -29,14 +29,14 @@ Job Job::trait_clone() const noexcept {
 }
 
 void Job::trait_copy(const Job& other) noexcept {
-  buffer = other.buffer;
+  buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
   client_addr_ = other.client_addr_;
   client_addr_len_ = other.client_addr_len_;
 }
 
-BufferRef& Job::trait_buffer() noexcept {
-  return buffer;
+BufferRef Job::trait_buffer() const noexcept {
+  return buffer_;
 }
 
 std::size_t Job::trait_buffer_size() const noexcept {

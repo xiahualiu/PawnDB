@@ -37,11 +37,11 @@ class CommitEntry : public CommitTrait<CommitEntry>,
 
   /** @brief Default constructor creates invalid entry */
   constexpr CommitEntry() noexcept
-      : buffer(),
-        key(),
-        op(OpType::MAX_OP_VALUE),
-        is_used(false),
-        is_deleted(false) {}
+      : buffer_(),
+        key_(),
+        op_(OpType::MAX_OP_VALUE),
+        is_used_(false),
+        is_deleted_(false) {}
 
   /**
    * @brief Construct entry with values
@@ -52,15 +52,9 @@ class CommitEntry : public CommitTrait<CommitEntry>,
   CommitEntry(const TableTupleKey& key, OpType op,
               const BufferRef& buffer) noexcept;
 
-  /** @brief Copy constructor */
+  // Copyable
   CommitEntry(const CommitEntry& other) noexcept;
-
-  /** @brief Copy assignment */
   CommitEntry& operator=(const CommitEntry& other) noexcept;
-
-  // Not movable
-  CommitEntry(CommitEntry&& other) noexcept = delete;
-  CommitEntry& operator=(CommitEntry&& other) noexcept = delete;
 
   // HashTrait Implementation
   /** @brief Compute hash based on key */
@@ -75,7 +69,7 @@ class CommitEntry : public CommitTrait<CommitEntry>,
 
   // CommitTrait Implementation
   /** @brief Get buffer reference */
-  BufferRef& trait_buffer() noexcept;
+  BufferRef trait_buffer() const noexcept;
 
   /** @brief Get table-tuple key */
   const TableTupleKey& trait_key() const noexcept;
@@ -84,11 +78,11 @@ class CommitEntry : public CommitTrait<CommitEntry>,
   OpType trait_op() const noexcept;
 
  private:
-  BufferRef buffer;  /**< Associated buffer */
-  TableTupleKey key; /**< Table-tuple key */
-  OpType op;         /**< Operation type */
-  bool is_used;      /**< Entry in use flag */
-  bool is_deleted;   /**< Entry deleted flag */
+  BufferRef buffer_;  /**< Associated buffer */
+  TableTupleKey key_; /**< Table-tuple key */
+  OpType op_;         /**< Operation type */
+  bool is_used_;      /**< Entry in use flag */
+  bool is_deleted_;   /**< Entry deleted flag */
 
   friend class CommitIt;
   friend class CommitTable;
@@ -109,18 +103,12 @@ class CommitEntry : public CommitTrait<CommitEntry>,
  * - Container: Capacity operations
  */
 class CommitTable : public CommitManagerTrait<CommitTable, CommitEntry>,
-                    private HashTableTrait<CommitTable, CommitEntry>,
+                    public HashTableTrait<CommitTable, CommitEntry>,
                     public IterTrait<CommitTable, CommitIt>,
-                    public SizedTrait<CommitTable>,
-                    public ContainerTrait<CommitTable> {
- private:
+                    private SizedTrait<CommitTable>,
+                    private ContainerTrait<CommitTable> {
   /** @brief Maximum entries per transaction */
   static constexpr std::size_t N = MAX_COMMIT_PER_TRANSACTION;
-
-  std::array<CommitEntry, N> entries_; /**< Entry storage */
-  std::size_t size_;                   /**< Current entry count */
-
-  friend class CommitIt; /**< Allow iterator access */
 
  public:
   /** @brief Default constructor initializes empty table */
@@ -129,16 +117,6 @@ class CommitTable : public CommitManagerTrait<CommitTable, CommitEntry>,
   // Not copyable
   CommitTable(const CommitTable& other) noexcept = delete;
   CommitTable& operator=(const CommitTable& other) noexcept = delete;
-
-  // Not movable
-  CommitTable(CommitTable&& other) noexcept = delete;
-  CommitTable& operator=(CommitTable&& other) noexcept = delete;
-
-  // CommitManagerTrait Implementation
-  /** @brief Add new commit entry
-   *  @param entry Entry to add
-   *  @return Error status */
-  CommitError trait_add_commit(const CommitEntry& entry) noexcept;
 
   // HashTableTrait Implementation
   /** @brief Insert new commit entry
@@ -161,12 +139,8 @@ class CommitTable : public CommitManagerTrait<CommitTable, CommitEntry>,
    *  @return Error status */
   TableError trait_write(const CommitEntry& entry) noexcept;
 
-  // IterTrait Implementation
-  /** @brief Get iterator to first entry */
-  CommitIt trait_begin() const noexcept;
-
-  /** @brief Get iterator to end position */
-  CommitIt trait_end() const noexcept;
+  /** @brief Clear the commit table */
+  void trait_clear() noexcept;
 
   // Sized Implementation
   /** @brief Get number of entries */
@@ -178,6 +152,25 @@ class CommitTable : public CommitManagerTrait<CommitTable, CommitEntry>,
 
   /** @brief Check if table is full */
   bool trait_full() const noexcept;
+
+  // CommitManagerTrait Implementation
+  /** @brief Add new commit entry
+   *  @param entry Entry to add
+   *  @return Error status */
+  CommitError trait_add_commit(const CommitEntry& entry) noexcept;
+
+  // IterTrait Implementation
+  /** @brief Get iterator to first entry */
+  CommitIt trait_begin() const noexcept;
+
+  /** @brief Get iterator to end position */
+  CommitIt trait_end() const noexcept;
+
+ private:
+  std::array<CommitEntry, N> entries_; /**< Entry storage */
+  std::size_t size_;                   /**< Current entry count */
+
+  friend class CommitIt; /**< Allow iterator access */
 };
 
 /**

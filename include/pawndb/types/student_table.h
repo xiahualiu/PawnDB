@@ -32,7 +32,7 @@ namespace PawnDB {
  */
 class StudentTableEntry : public TupleTrait<StudentTableEntry>,
                           public SerializerTrait<StudentTableEntry>,
-                          public CopyTrait<StudentTableEntry>,
+                          private CopyTrait<StudentTableEntry>,
                           public HashTrait<StudentTableEntry> {
  public:
   using key_t = tbl_row_t;                       /**< Key type alias */
@@ -49,15 +49,9 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
         is_used_(false),
         is_deleted_(false) {}
 
-  /** @brief Copy constructor */
+  // Copyable
   StudentTableEntry(const StudentTableEntry& other) noexcept;
-
-  /** @brief Copy assignment */
   StudentTableEntry& operator=(const StudentTableEntry& other) noexcept;
-
-  // Not movable
-  StudentTableEntry(StudentTableEntry&& other) noexcept = delete;
-  StudentTableEntry& operator=(StudentTableEntry&& other) noexcept = delete;
 
   // TupleTrait Implementation
   /** @brief Set entry checksum */
@@ -72,6 +66,9 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
   /** @brief Get entry timestamp */
   tick_t trait_read_tickstamp() const noexcept;
 
+  /** @brief Get entry key */
+  tbl_row_t trait_key() const noexcept;
+
   // SerializerTrait Implementation
   /** @brief Serialize entry */
   serial_r trait_serialize(BufferRef buffer, std::size_t offset) const noexcept;
@@ -79,19 +76,19 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
   /** @brief Deserialize entry */
   serial_r trait_deserialize(BufferRef buffer, std::size_t offset) noexcept;
 
-  // CopyTrait Implementation
-  /** @brief Clone entry */
-  StudentTableEntry trait_clone() const noexcept;
-
-  /** @brief Copy entry */
-  void trait_copy(const StudentTableEntry& other) noexcept;
-
   // HashTrait Implementation
   std::size_t trait_hash() const noexcept;
 
  private:
   /** @brief Compute checksum */
   cksum_t compute_checksum() const noexcept;
+
+  // CopyTrait Implementation
+  /** @brief Clone entry */
+  StudentTableEntry trait_clone() const noexcept;
+
+  /** @brief Copy entry */
+  void trait_copy(const StudentTableEntry& other) noexcept;
 
   volatile cksum_t checksum_;          /**< Entry checksum */
   tick_t tickstamp_;                   /**< Entry timestamp */
@@ -115,40 +112,40 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
  */
 class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
                      public TupleTableTrait<StudentTable, StudentTableEntry>,
-                     public SizedTrait<StudentTable>,
-                     public ContainerTrait<StudentTable> {
+                     private SizedTrait<StudentTable>,
+                     private ContainerTrait<StudentTable> {
   constexpr static std::size_t Rows = 10;
 
  public:
-  using key_type = tbl_row_t;
-  using entry_type = StudentTableEntry;
+  using key_t = tbl_row_t;
+  using entry_t = StudentTableEntry;
 
-  StudentTable() noexcept : table_(), size_(0), tuple_key_(0) {}
+  StudentTable() noexcept : table_{}, size_(0), tuple_key_(0) {}
 
-  constexpr static std::size_t trait_id() noexcept {
-    return 1;
-  }
+  // Non-copyable
+  StudentTable(const StudentTable& other) noexcept = delete;
+  StudentTable& operator=(const StudentTable& other) noexcept = delete;
 
   // HashTableTrait Implementation
   /** @brief Insert new student record
    *  @param _entry Entry to insert
    *  @return Result containing inserted entry or error */
-  table_r trait_insert(const entry_type& _entry) noexcept;
+  table_r trait_insert(const entry_t& _entry) noexcept;
 
   /** @brief Search for student by key
    *  @param _key Key to search for
    *  @return Result containing found entry or error */
-  table_r trait_search(const key_type& _key) noexcept;
+  table_r trait_search(const key_t& _key) noexcept;
 
   /** @brief Remove student record
    *  @param _key Key of record to remove
    *  @return Error status */
-  TableError trait_remove(const key_type& _key) noexcept;
+  TableError trait_remove(const key_t& _key) noexcept;
 
   /** @brief Update student record
    *  @param _entry Entry with updated values
    *  @return Error status */
-  table_r trait_write(const entry_type& _entry) noexcept;
+  TableError trait_write(const entry_t& _entry) noexcept;
 
   // TupleTableTrait Implementation
   /** @brief Wait for shared access */
@@ -160,18 +157,18 @@ class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
   /** @brief Promote lock mode
    *  @param _key Key of entry to promote
    *  @return Error status */
-  TupleTableError trait_promote(const key_type& _key) noexcept;
+  TupleTableError trait_promote(const key_t& _key) noexcept;
 
   /** @brief Release all locks on entry
    *  @param _key Key of entry to release */
-  void trait_release(const key_type& _key) noexcept;
+  void trait_release(const key_t& _key) noexcept;
 
   // Condition Variable Notifications
   /** @brief Signal shared lock available */
-  void trait_notify_s() noexcept;
+  void trait_notify_shared() noexcept;
 
   /** @brief Signal exclusive lock available */
-  void trait_notify_x() noexcept;
+  void trait_notify_exclusive() noexcept;
 
   /** @brief Signal table not empty */
   void trait_notify_not_empty() noexcept;
@@ -193,7 +190,7 @@ class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
   std::condition_variable s_available_; /**< Shared lock CV */
   std::condition_variable x_available_; /**< Exclusive lock CV */
   std::condition_variable not_empty_;   /**< Not empty CV */
-  std::condition_variable not_full_;     /**< Not full CV */
+  std::condition_variable not_full_;    /**< Not full CV */
   std::mutex mtx_;                      /**< Thread safety */
 
   std::array<StudentTableEntry, Rows> table_;

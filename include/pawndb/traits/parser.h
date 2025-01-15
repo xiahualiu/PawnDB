@@ -95,7 +95,7 @@ class ParserTrait {
 
   /** @brief Get transaction ID
    *  @return Result containing transaction ID or error */
-  txn_id_t get_txn() const noexcept {
+  txn_id_r get_txn() const noexcept {
     return static_cast<const Derived*>(this)->trait_get_txn();
   }
 

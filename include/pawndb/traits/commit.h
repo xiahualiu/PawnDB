@@ -15,8 +15,8 @@ template <typename Derived>
 class CommitTrait {
  public:
   /** @brief Get buffer reference */
-  BufferRef& buffer() noexcept {
-    return static_cast<Derived*>(this)->trait_buffer();
+  BufferRef buffer() const noexcept {
+    return static_cast<const Derived*>(this)->trait_buffer();
   }
 
   /** @brief Get table-tuple key */

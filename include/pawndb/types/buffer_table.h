@@ -42,8 +42,8 @@ class BufferRef;
  * - Container: Capacity operations
  */
 class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
-                    public SizedTrait<BufferTable>,
-                    public ContainerTrait<BufferTable> {
+                    private SizedTrait<BufferTable>,
+                    private ContainerTrait<BufferTable> {
  private:
   /** @brief Fixed number of buffers in pool */
   static constexpr std::size_t N = BUFFER_ROWS;
@@ -52,8 +52,8 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
    * @brief Buffer table entry containing buffer and metadata
    */
   struct BufferTableEntry {
-    buffer_t buffer; /**< Fixed-size character buffer */
-    bool is_used;    /**< Usage tracking flag */
+    buffer_t buffer_; /**< Fixed-size character buffer */
+    bool is_used_;    /**< Usage tracking flag */
   };
 
   std::array<BufferTableEntry, N> buffers_; /**< Buffer storage */
@@ -70,10 +70,6 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
   // Not copyable
   BufferTable(const BufferTable& other) noexcept = delete;
   BufferTable& operator=(const BufferTable& other) noexcept = delete;
-
-  // Not movable
-  BufferTable(BufferTable&& other) noexcept = delete;
-  BufferTable& operator=(BufferTable&& other) noexcept = delete;
 
   // BufferManagerTrait Implementation
   /** @brief Request new buffer allocation
@@ -99,7 +95,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
 /**
  * @brief Buffer reference wrapper
  */
-class BufferRef : public CopyTrait<BufferRef>,
+class BufferRef : private CopyTrait<BufferRef>,
                   public BufferRefTrait<BufferRef> {
  private:
   BufferTable* table_; /**< Owner table reference */
@@ -114,18 +110,9 @@ class BufferRef : public CopyTrait<BufferRef>,
    *  @param index Buffer index */
   BufferRef(BufferTable* table, std::size_t index) noexcept;
 
-  /** @brief Copy constructor
-   *  @param other Source reference to copy */
+  // Copyable
   BufferRef(const BufferRef& other) noexcept;
-
-  /** @brief Copy assignment
-   *  @param other Source reference to copy
-   *  @return Reference to this */
   BufferRef& operator=(const BufferRef& other) noexcept;
-
-  // Not movable
-  BufferRef(BufferRef&& other) noexcept = delete;
-  BufferRef& operator=(BufferRef&& other) noexcept = delete;
 
   // CopyTrait Implementation
   /** @brief Create clone of this reference */
@@ -134,6 +121,10 @@ class BufferRef : public CopyTrait<BufferRef>,
   /** @brief Copy from another reference
    *  @param other Source reference */
   void trait_copy(const BufferRef& other) noexcept;
+
+  /** @brief Check if reference is null
+   *  @return true if reference is invalid */
+  bool trait_null() const noexcept;
 
   // BufferEntryTrait Implementation
   /** @brief Get underlying buffer */

@@ -47,6 +47,10 @@ tick_t StudentTableEntry::trait_read_tickstamp() const noexcept {
   return tickstamp_;
 }
 
+tbl_row_t StudentTableEntry::trait_key() const noexcept {
+  return key_;
+}
+
 StudentTableEntry::serial_r StudentTableEntry::trait_serialize(
     BufferRef _buffer, std::size_t _offset) const noexcept {
   auto buffer_ptr = _buffer.buffer().data() + _offset;
@@ -98,12 +102,11 @@ std::size_t StudentTableEntry::trait_hash() const noexcept {
 }
 
 StudentTable::table_r StudentTable::trait_insert(
-    const entry_type& _entry) noexcept {
+    const entry_t& _entry) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   not_full_.wait(lock, [&]() { return !trait_full(); });
   auto idx = tuple_key_ % Rows;
-  auto start = idx;
-  do {
+  while (true) {
     if (!table_[idx].is_used_ || table_[idx].is_deleted_) {
       table_[idx] = _entry;
       table_[idx].key_ = tuple_key_;
@@ -112,15 +115,14 @@ StudentTable::table_r StudentTable::trait_insert(
       table_[idx].is_deleted_ = false;
       tuple_key_++;
       size_++;
-      return table_[idx];
+      return TableError::None;
     }
     idx = (idx + 1) % Rows;
-  } while (idx != start);
-  return TableError::Full;
+  }
 }
 
 StudentTable::table_r StudentTable::trait_search(
-    const key_type& _key) noexcept {
+    const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   auto start = idx;
@@ -136,42 +138,31 @@ StudentTable::table_r StudentTable::trait_search(
   return TableError::NotFound;
 }
 
-TableError StudentTable::trait_remove(const key_type& _key) noexcept {
+TableError StudentTable::trait_remove(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
-  auto start = idx;
-  do {
-    if (!table_[idx].is_used_) {
-      return TableError::NotFound;
-    }
+  while (true) {
     if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
       table_[idx].is_deleted_ = true;
       size_--;
       return TableError::None;
     }
     idx = (idx + 1) % Rows;
-  } while (idx != start);
-  return TableError::NotFound;
+  }
 }
 
-StudentTable::table_r StudentTable::trait_write(
-    const entry_type& _entry) noexcept {
+TableError StudentTable::trait_write(const entry_t& _entry) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _entry.key_ % Rows;
-  auto start = idx;
-  do {
-    if (!table_[idx].is_used_) {
-      return TableError::NotFound;
-    }
+  while (true) {
     if (table_[idx].key_ == _entry.key_ && !table_[idx].is_deleted_) {
       table_[idx].name_ = _entry.name_;
       table_[idx].age_ = _entry.age_;
       table_[idx].trait_set_checksum();
-      return table_[idx];
+      return TableError::None;
     }
     idx = (idx + 1) % Rows;
-  } while (idx != start);
-  return TableError::NotFound;
+  }
 }
 
 StudentTable::ttable_r StudentTable::trait_wait_shared() noexcept {
@@ -219,11 +210,10 @@ StudentTable::ttable_r StudentTable::trait_wait_exclusive() noexcept {
   return result;
 }
 
-TupleTableError StudentTable::trait_promote(const key_type& _key) noexcept {
+TupleTableError StudentTable::trait_promote(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
-  auto start = idx;
-  do {
+  while (true) {
     if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
       if (x_available_.wait_for(lock, WAIT_TIMEOUT,
                                 [&]() { return table_[idx].lock_ == 1; })) {
@@ -233,16 +223,13 @@ TupleTableError StudentTable::trait_promote(const key_type& _key) noexcept {
       return TupleTableError::Timeout;
     }
     idx = (idx + 1) % Rows;
-  } while (idx != start);
-  return TupleTableError::NotFound;
+  }
 }
 
-void StudentTable::trait_release(const key_type& _key) noexcept {
+void StudentTable::trait_release(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
-  auto start = idx;
-
-  do {
+  while (true) {
     if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
       if (table_[idx].lock_ == -1) {
         table_[idx].lock_ = 0;
@@ -252,14 +239,14 @@ void StudentTable::trait_release(const key_type& _key) noexcept {
       return;
     }
     idx = (idx + 1) % Rows;
-  } while (idx != start);
+  }
 }
 
-void StudentTable::trait_notify_s() noexcept {
+void StudentTable::trait_notify_shared() noexcept {
   s_available_.notify_all();
 }
 
-void StudentTable::trait_notify_x() noexcept {
+void StudentTable::trait_notify_exclusive() noexcept {
   x_available_.notify_one();
 }
 
