@@ -46,6 +46,7 @@ class CompositeKeyTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   CompositeKeyTrait() = default;
   ~CompositeKeyTrait() = default;
 };

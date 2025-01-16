@@ -153,7 +153,7 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
 
   // TableTrait Implementation
   /** @brief Insert new student record
-   *  @param _entry Entry to insert
+   *  @param _tuple Tuple to insert
    *  @return Result containing inserted entry or error */
   table_r trait_insert(const tuple_t& _tuple) noexcept;
 
@@ -168,7 +168,7 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
   TableError trait_remove(const key_t& _key) noexcept;
 
   /** @brief Update student record
-   *  @param _entry Entry with updated values
+   *  @param _tuple Tuple with updated values
    *  @return Error status */
   TableError trait_write(const tuple_t& _tuple) noexcept;
 

@@ -9,7 +9,7 @@
 
 namespace PawnDB {
 
-Worker::Worker(WorkerEntry* entry) noexcept
+Worker::Worker(WorkerContext* entry) noexcept
     : running_(entry->running_),
       job_ch_(entry->job_ch_),
       ret_ch_(*entry->ret_ch_),
@@ -50,7 +50,7 @@ void Worker::release_locks() noexcept {
     auto [tbl, tp_key] = lock.key().disassemble();
     switch (tbl) {
       case tbl_id<StudentTable>(): {
-        auto& table_ref = db_.students;
+        auto& table_ref = db_.students_;
         table_ref.release(tp_key);
         break;
       }
@@ -90,7 +90,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
-            auto& table_ref = db_.students;
+            auto& table_ref = db_.students_;
             std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
             table_ref.insert(new_tuple);
             table_ref.notify_not_empty();
@@ -109,7 +109,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         auto [table_id, tuple_key] = commit.key().trait_disassemble();
         switch (table_id) {
           case tbl_id<StudentTable>(): {
-            auto& table_ref = db_.students;
+            auto& table_ref = db_.students_;
             table_ref.remove(tuple_key);
             table_ref.notify_not_full();
             break;
@@ -126,7 +126,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
-            auto& table_ref = db_.students;
+            auto& table_ref = db_.students_;
             std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
             table_ref.write(new_tuple);
             commit.buffer().release();
@@ -225,7 +225,7 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
   auto table_id = table_id_r.unwrap();
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto& table_ref = db_.students;
+      auto& table_ref = db_.students_;
       auto timeout_cnt = 0;
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
@@ -294,7 +294,7 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
   auto table_id = table_id_r.unwrap();
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto& table_ref = db_.students;
+      auto& table_ref = db_.students_;
       auto timeout_cnt = 0;
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
@@ -383,7 +383,7 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   // Release lock on entry
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto& table_ref = db_.students;
+      auto& table_ref = db_.students_;
       table_ref.release(tuple_key);
       reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
       _job.buffer().release();
@@ -435,7 +435,7 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   }
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto& table_ref = db_.students;
+      auto& table_ref = db_.students_;
       auto timeout_cnt = 0;
       while (true) {
         // If the operation times out, abort the operation

@@ -65,6 +65,7 @@ class BufferManagerTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   BufferManagerTrait() = default;
   ~BufferManagerTrait() = default;
 };

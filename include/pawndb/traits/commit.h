@@ -30,6 +30,7 @@ class CommitTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   CommitTrait() = default;
   ~CommitTrait() = default;
 };

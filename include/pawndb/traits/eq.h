@@ -32,6 +32,7 @@ class EqTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   EqTrait() = default;
   ~EqTrait() = default;
 };

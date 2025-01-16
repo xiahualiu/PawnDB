@@ -32,6 +32,7 @@ class CopyTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   CopyTrait() = default;
   ~CopyTrait() = default;
 };

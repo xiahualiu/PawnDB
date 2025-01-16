@@ -31,9 +31,16 @@ class DatabaseTrait {
     static_cast<Derived*>(this)->trait_increment_tickstamp();
   }
 
- private:
-  DatabaseTrait() = delete;
-  ~DatabaseTrait() = delete;
+  /** @brief Get the singleton instance of the database */
+  static Derived& get_instance() {
+    static Derived instance = Derived();
+    return instance;
+  }
+
+ protected:
+  // Protected constructor and destructor
+  DatabaseTrait() = default;
+  ~DatabaseTrait() = default;
 };
 }  // namespace PawnDB
 

@@ -39,6 +39,7 @@ class JobTrait {
   }
 
  protected:
+ // Protected constructor and destructor
   JobTrait() = default;
   ~JobTrait() = default;
 };

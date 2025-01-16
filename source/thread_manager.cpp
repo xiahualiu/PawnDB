@@ -20,11 +20,7 @@
 namespace PawnDB {
 
 ThreadManager::ThreadManager(Database* _db, int _server_fd) noexcept
-    : db_(_db),
-      worker_query(),
-      ret_channel(),
-      job_channels(),
-      server_fd_(_server_fd) {}
+    : db_(*_db), ret_ch_(), workers_(), server_fd_(_server_fd) {}
 
 void ThreadManager::reply(OpAck _ack, Parser& _parser,
                           const sockaddr& _client_addr,
@@ -38,7 +34,7 @@ void ThreadManager::trait_start() noexcept {
   std::cout << "Server is listening on " << UNIX_SOCKET_PATH << std::endl;
   txn_id_t next_txn_id = 0;
   while (true) {
-    auto recv_buffer_r = db_->buffers.request();
+    auto recv_buffer_r = db_.buffers_.request();
     if (!recv_buffer_r) {
       std::cout << "No recv buffer available! Retry in 3 seconds."
                 << UNIX_SOCKET_PATH << std::endl;
@@ -76,19 +72,19 @@ void ThreadManager::trait_start() noexcept {
     switch (op) {
       case OpType::START_TXN: {
         // clear all dead transactions
-        while (!ret_channel.empty()) {
-          auto dead_txn_r = ret_channel.get();
+        while (!ret_ch_.empty()) {
+          auto dead_txn_r = ret_ch_.get();
           auto dead_txn = dead_txn_r.unwrap();
-          auto search_r = worker_query.search(dead_txn);
+          auto search_r = workers_.search(dead_txn);
           auto& worker = search_r.unwrap();
           worker.join();
-          ret_channel.pop();
-          worker_query.remove(dead_txn);
+          ret_ch_.pop();
+          workers_.remove(dead_txn);
         }
         // Insert new worker
         auto new_worker_entry =
-            WorkerEntry{&ret_channel, db_, next_txn_id, server_fd_};
-        auto insert_r = worker_query.insert(new_worker_entry);
+            WorkerContext{&ret_ch_, &db_, next_txn_id, server_fd_};
+        auto insert_r = workers_.insert(new_worker_entry);
         // Check if worker was inserted
         if (!insert_r) {
           std::cerr << "Failed to insert worker" << std::endl;
@@ -122,7 +118,7 @@ void ThreadManager::trait_start() noexcept {
           continue;
         }
         auto txn_id = txn_id_r.unwrap();
-        auto search_r = worker_query.search(txn_id);
+        auto search_r = workers_.search(txn_id);
         if (!search_r) {
           std::cerr << "Failed to find worker" << std::endl;
           reply(OpAck::BAD_TXN, parser, client_addr, client_addr_len);
@@ -157,7 +153,11 @@ void ThreadManager::trait_start() noexcept {
   }
 }
 
-void ThreadManager::trait_stop() noexcept {}
+void ThreadManager::trait_stop() noexcept {
+  shutdown(server_fd_, SHUT_RDWR);
+  close(server_fd_);
+  unlink(UNIX_SOCKET_PATH);
+}
 
 bool ThreadManager::trait_is_running() const noexcept {
   return true;

@@ -35,6 +35,7 @@ class ContainerTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   ContainerTrait() = default;
   ~ContainerTrait() = default;
 };

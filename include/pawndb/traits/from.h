@@ -17,6 +17,7 @@ class FromTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   FromTrait() = default;
   ~FromTrait() = default;
 };

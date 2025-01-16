@@ -13,8 +13,8 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/hash.h"
-#include "pawndb/traits/table.h"
 #include "pawndb/traits/sized.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/thread.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/ret_channel.h"
@@ -27,25 +27,25 @@ namespace PawnDB {
  * - O(1) hash-based lookup
  * - Thread lifecycle management
  * - Size tracking */
-class WorkerEntry : public HashTrait<WorkerEntry>,
-                    public ThreadTrait<WorkerEntry>,
-                    private CopyTrait<WorkerEntry>,
-                    public QueueTrait<WorkerEntry, Job> {
+class WorkerContext : public HashTrait<WorkerContext>,
+                    public ThreadTrait<WorkerContext>,
+                    private CopyTrait<WorkerContext>,
+                    public QueueTrait<WorkerContext, Job> {
  public:
   using key_t = txn_id_t;
 
   /** @brief Construct a new Worker Entry object */
-  WorkerEntry() noexcept;
+  WorkerContext() noexcept;
 
   /** @brief Construct a new Worker Entry object */
-  WorkerEntry(RetChannel* _ret_ch, Database* _db, txn_id_t _txn_id,
+  WorkerContext(RetChannel* _ret_ch, Database* _db, txn_id_t _txn_id,
               int _fd) noexcept;
 
   /** @brief Construct a new Worker Entry object */
-  WorkerEntry(const WorkerEntry& _other) noexcept;
+  WorkerContext(const WorkerContext& _other) noexcept;
 
   /** @brief Copy from other entry */
-  WorkerEntry& operator=(const WorkerEntry& _other) noexcept;
+  WorkerContext& operator=(const WorkerContext& _other) noexcept;
 
   // HashTrait Implementation
   /** @brief Compute hash from transaction ID */
@@ -66,10 +66,10 @@ class WorkerEntry : public HashTrait<WorkerEntry>,
 
   // CopyTrait Implementation
   /** @brief Create deep copy */
-  WorkerEntry trait_clone() const noexcept;
+  WorkerContext trait_clone() const noexcept;
 
   /** @brief Copy from other entry */
-  void trait_copy(const WorkerEntry& other) noexcept;
+  void trait_copy(const WorkerContext& other) noexcept;
 
   // QueueTrait Implementation
   /** @brief Get job without blocking */
@@ -98,8 +98,6 @@ class WorkerEntry : public HashTrait<WorkerEntry>,
   key_t txn_id_;             /**< Transaction ID */
   int fd_;                   /**< Server socket */
   std::atomic_flag running_; /**< Running flag */
-  bool is_used_;             /**< Usage flag */
-  bool is_deleted_;          /**< Deletion flag */
 
   friend class WorkerTable;
   friend class Worker;
@@ -110,17 +108,13 @@ class WorkerEntry : public HashTrait<WorkerEntry>,
  * Features:
  * - O(1) hash-based lookup
  * - Size tracking */
-class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
+class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
                     private SizedTrait<WorkerTable>,
                     private ContainerTrait<WorkerTable> {
- private:
-  using key_t = WorkerEntry::key_t;
-  using entry_type = WorkerEntry;
-
-  std::array<WorkerEntry, MAX_TRANSACTIONS> table_;
-  std::size_t size_;
-
  public:
+  using key_t = WorkerContext::key_t;
+  using entry_t = WorkerContext;
+
   // Default constructor
   WorkerTable() noexcept : table_(), size_(0) {}
 
@@ -132,7 +126,7 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
   /** @brief Insert new worker entry
    *  @param _entry Entry to insert
    *  @return Result containing reference to inserted entry or error */
-  table_r trait_insert(const entry_type& _entry) noexcept;
+  table_r trait_insert(const entry_t& _entry) noexcept;
 
   /** @brief Search for worker by key
    *  @param _key Key to search for
@@ -147,7 +141,7 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
   /** @brief Update worker entry
    *  @param _entry Entry with updated values
    *  @return Error status */
-  TableError trait_write(const entry_type& _entry) noexcept;
+  TableError trait_write(const entry_t& _entry) noexcept;
 
   // SizedTrait Implementation
   /** @brief Get current number of workers */
@@ -165,6 +159,17 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
   bool trait_full() const noexcept {
     return size_ >= MAX_TRANSACTIONS;
   }
+
+  /** @brief Worker Table Entry */
+  struct Entry {
+    WorkerContext context_;
+    bool is_used_;
+    bool is_deleted_;
+  };
+
+ private:
+  std::array<Entry, MAX_TRANSACTIONS> table_;
+  std::size_t size_;
 };
 
 }  // namespace PawnDB

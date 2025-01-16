@@ -17,6 +17,7 @@ class ToTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   ToTrait() = default;
   ~ToTrait() = default;
 };

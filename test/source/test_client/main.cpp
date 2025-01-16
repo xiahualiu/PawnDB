@@ -16,9 +16,10 @@
 #include <thread>
 
 #include "doctest/doctest.h"
-#include "pawndb/main_thread.h"
 #include "pawndb/params.h"
-#include "pawndb/parser.h"
+#include "pawndb/types/parser.h"
+#include "pawndb/types/thread_manager.h"
+#include "pawndb/types/worker_table.h"
 
 namespace PawnDB {
 
@@ -74,13 +75,47 @@ constexpr static auto yield_read_size = 7;
 
 // Initializing database
 static __attribute__((no_destroy)) auto database = Database();
-}
 
-int main() {}
+int main() {
+  // Create server socket must be UDP
+  int server_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+  if (-1 == server_fd) {
+    std::cerr << "Failed to create server socket: " << strerror(errno)
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+    return 0;
+  }
+  struct sockaddr_un server_addr;
+  server_addr.sun_family = AF_UNIX;
+  strncpy(server_addr.sun_path, UNIX_SOCKET_PATH,
+          sizeof(server_addr.sun_path) - 1);
+  errno = 0;
+  unlink(UNIX_SOCKET_PATH);
+  if (errno != 0 && errno != ENOENT) {
+    std::cerr << "Failed to unlink existing socket: " << strerror(errno)
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+    return 0;
+  }
+  if (-1 == bind(server_fd, reinterpret_cast<struct sockaddr*>(&server_addr),
+                 sizeof(server_addr))) {
+    std::cerr << "Failed to bind server socket: " << strerror(errno)
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+    return 0;
+  }
+  auto manager_thread = std::thread([&]() {
+    ThreadManager manager(&database, server_fd);
+    manager.start();
+  })
+  ;
+
+  return 0;
+}
 
 TEST_CASE("MainThread Transaction Start #1") {
   Database db;
-  MainThread main_thread(db);
+  ThreadManager main_thread(db);
 
   std::thread server_thread([&]() { main_thread.start(); });
 

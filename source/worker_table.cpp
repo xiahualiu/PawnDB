@@ -11,32 +11,31 @@
 
 namespace PawnDB {
 
-WorkerEntry::WorkerEntry() noexcept
+WorkerContext::WorkerContext() noexcept
     : ret_ch_(nullptr),
       db_(nullptr),
+      job_ch_(),
       txn_id_(0),
       fd_(0),
-      running_(),
-      is_used_(false),
-      is_deleted_(false) {}
+      running_() {}
 
-WorkerEntry::WorkerEntry(RetChannel* _ret_ch, Database* _db, txn_id_t _txn_id,
-                         int _fd) noexcept
+WorkerContext::WorkerContext(RetChannel* _ret_ch, Database* _db,
+                             txn_id_t _txn_id, int _fd) noexcept
     : ret_ch_(_ret_ch),
       db_(_db),
+      job_ch_(),
       txn_id_(_txn_id),
       fd_(_fd),
-      running_(),
-      is_used_(false),
-      is_deleted_(false) {}
+      running_() {}
 
-WorkerEntry::WorkerEntry(const WorkerEntry& _other) noexcept
+WorkerContext::WorkerContext(const WorkerContext& _other) noexcept
     : ret_ch_(_other.ret_ch_),
       db_(_other.db_),
+      job_ch_(),
       txn_id_(_other.txn_id_),
       fd_(_other.fd_) {}
 
-WorkerEntry& WorkerEntry::operator=(const WorkerEntry& _other) noexcept {
+WorkerContext& WorkerContext::operator=(const WorkerContext& _other) noexcept {
   ret_ch_ = _other.ret_ch_;
   db_ = _other.db_;
   txn_id_ = _other.txn_id_;
@@ -44,11 +43,11 @@ WorkerEntry& WorkerEntry::operator=(const WorkerEntry& _other) noexcept {
   return *this;
 }
 
-std::size_t WorkerEntry::trait_hash() const noexcept {
+std::size_t WorkerContext::trait_hash() const noexcept {
   return txn_id_;
 }
 
-void WorkerEntry::trait_start() noexcept {
+void WorkerContext::trait_start() noexcept {
   running_.test_and_set(std::memory_order_relaxed);
   thread_ = std::thread([this]() {
     auto worker = Worker(this);
@@ -56,11 +55,11 @@ void WorkerEntry::trait_start() noexcept {
   });
 }
 
-void WorkerEntry::trait_stop() noexcept {
+void WorkerContext::trait_stop() noexcept {
   running_.clear(std::memory_order_relaxed);
 }
 
-void WorkerEntry::trait_join() noexcept {
+void WorkerContext::trait_join() noexcept {
   running_.clear(std::memory_order_relaxed);
   // Clear all unfinished jobs
   while (!job_ch_.empty()) {
@@ -75,7 +74,7 @@ void WorkerEntry::trait_join() noexcept {
   thread_.join();
 }
 
-bool WorkerEntry::trait_is_running() noexcept {
+bool WorkerContext::trait_is_running() noexcept {
   if (!running_.test_and_set(std::memory_order_relaxed)) {
     running_.clear(std::memory_order_relaxed);
     return false;
@@ -83,50 +82,50 @@ bool WorkerEntry::trait_is_running() noexcept {
   return true;
 }
 
-WorkerEntry WorkerEntry::trait_clone() const noexcept {
+WorkerContext WorkerContext::trait_clone() const noexcept {
   return *this;
 }
 
-void WorkerEntry::trait_copy(const WorkerEntry& _other) noexcept {
+void WorkerContext::trait_copy(const WorkerContext& _other) noexcept {
   this->operator=(_other);
 }
 
-WorkerEntry::queue_r WorkerEntry::trait_get() noexcept {
+WorkerContext::queue_r WorkerContext::trait_get() noexcept {
   return job_ch_.get();
 }
 
-WorkerEntry::queue_r WorkerEntry::trait_recv() noexcept {
+WorkerContext::queue_r WorkerContext::trait_recv() noexcept {
   return job_ch_.recv();
 }
 
-QueueError WorkerEntry::trait_send(const Job& job) noexcept {
+QueueError WorkerContext::trait_send(const Job& job) noexcept {
   return job_ch_.send(job);
 }
 
-void WorkerEntry::trait_pop() noexcept {
+void WorkerContext::trait_pop() noexcept {
   job_ch_.pop();
 }
 
-void WorkerEntry::trait_clear() noexcept {
+void WorkerContext::trait_clear() noexcept {
   job_ch_.clear();
 }
 
-void WorkerEntry::trait_notify_not_empty() noexcept {
+void WorkerContext::trait_notify_not_empty() noexcept {
   job_ch_.notify_not_empty();
 }
 
 WorkerTable::table_r WorkerTable::trait_insert(
-    const entry_type& _entry) noexcept {
+    const entry_t& _context) noexcept {
   if (trait_full()) return TableError::Full;
-  auto idx = _entry.txn_id_ % MAX_TRANSACTIONS;
+  auto idx = _context.txn_id_ % MAX_TRANSACTIONS;
   auto start = idx;
   do {
     if (!table_[idx].is_used_ || table_[idx].is_deleted_) {
-      table_[idx] = _entry;
+      table_[idx].context_ = _context;
       table_[idx].is_used_ = true;
       table_[idx].is_deleted_ = false;
       size_++;
-      return table_[idx];
+      return table_[idx].context_;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
   } while (idx != start);
@@ -140,8 +139,8 @@ WorkerTable::table_r WorkerTable::trait_search(const key_t& _key) noexcept {
     if (!table_[idx].is_used_) {
       return TableError::NotFound;
     }
-    if (table_[idx].txn_id_ == _key && !table_[idx].is_deleted_) {
-      return table_[idx];
+    if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
+      return table_[idx].context_;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
   } while (idx != start);
@@ -155,7 +154,7 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
     if (!table_[idx].is_used_) {
       return TableError::NotFound;
     }
-    if (table_[idx].txn_id_ == _key && !table_[idx].is_deleted_) {
+    if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
       table_[idx].is_deleted_ = true;
       size_--;
       return TableError::None;
@@ -166,13 +165,14 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
 }
 
 TableError WorkerTable::trait_write(
-    const WorkerTable::entry_type& _entry) noexcept {
-  auto idx = _entry.txn_id_ % MAX_TRANSACTIONS;
+    const WorkerTable::entry_t& _context) noexcept {
+  auto idx = _context.txn_id_ % MAX_TRANSACTIONS;
   auto start = idx;
   do {
     if (!table_[idx].is_used_) return TableError::NotFound;
-    if (table_[idx].txn_id_ == _entry.txn_id_ && !table_[idx].is_deleted_) {
-      table_[idx] = _entry;
+    if (table_[idx].context_.txn_id_ == _context.txn_id_ &&
+        !table_[idx].is_deleted_) {
+      table_[idx].context_ = _context;
       return TableError::None;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;

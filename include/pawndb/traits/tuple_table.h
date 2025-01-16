@@ -101,6 +101,7 @@ class TupleTableTrait {
   }
 
  protected:
+ // Protected constructor and destructor
   TupleTableTrait() = default;
   ~TupleTableTrait() = default;
 };

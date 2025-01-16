@@ -90,6 +90,7 @@ class QueueTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   QueueTrait() = default;
   ~QueueTrait() = default;
 };

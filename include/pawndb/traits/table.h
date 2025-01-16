@@ -80,6 +80,7 @@ class TableTrait {
   }
 
  protected:
+ // Protected constructor and destructor
   TableTrait() = default;
   ~TableTrait() = default;
 };

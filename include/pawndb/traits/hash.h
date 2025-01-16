@@ -24,6 +24,7 @@ class HashTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   HashTrait() = default;
   ~HashTrait() = default;
 };

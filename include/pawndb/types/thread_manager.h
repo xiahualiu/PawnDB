@@ -3,10 +3,6 @@
 
 #include <sys/socket.h>
 
-#include <atomic>
-#include <thread>
-
-#include "pawndb/params.h"
 #include "pawndb/schema/demo.h"
 #include "pawndb/traits/parser.h"
 #include "pawndb/traits/thread.h"
@@ -41,17 +37,16 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   void reply(OpAck _ack, Parser& _parser, const sockaddr& _client_addr,
              const socklen_t _client_addr_len) noexcept;
 
-  // Database instance
-  Database* db_;
+  /** @brief Database instance */
+  Database& db_;
 
-  // Query worker
-  WorkerTable worker_query;
+  /** @brief Return channel */
+  RetChannel ret_ch_;
 
-  // Pre-allocate worker threads and all associated resources
-  RetChannel ret_channel;
-  std::array<std::thread, MAX_TRANSACTIONS> workers;
-  std::array<std::atomic_flag, MAX_TRANSACTIONS> running_flags;
-  std::array<JobChannel, MAX_TRANSACTIONS> job_channels;
+  /** @brief Worker hash table */
+  WorkerTable workers_;
+
+  /** @brief UDP server socket */
   const int server_fd_;
 };
 

@@ -154,6 +154,7 @@ class ParserTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   ParserTrait() = default;
   ~ParserTrait() = default;
 };

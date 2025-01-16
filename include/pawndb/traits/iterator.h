@@ -40,6 +40,11 @@ class IterTypeTrait {
     static_cast<DerivedIter*>(this)->trait_next();
     return tmp;
   }
+
+  protected:
+  // Protected constructor and destructor
+  IterTypeTrait() = default;
+  ~IterTypeTrait() = default;
 };
 
 /**
@@ -53,10 +58,6 @@ class IterTypeTrait {
  */
 template <typename Derived, typename DerivedIter>
 class IterTrait {
- protected:
-  IterTrait() = default;
-  ~IterTrait() = default;
-
  public:
   DerivedIter begin() const noexcept {
     return static_cast<const Derived*>(this)->trait_begin();
@@ -65,6 +66,11 @@ class IterTrait {
   DerivedIter end() const noexcept {
     return static_cast<const Derived*>(this)->trait_end();
   }
+
+ protected:
+  // Protected constructor and destructor
+  IterTrait() = default;
+  ~IterTrait() = default;
 };
 
 }  // namespace PawnDB

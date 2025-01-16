@@ -50,6 +50,7 @@ class SerializerTrait {
   }
 
  protected:
+  // Protected constructor and destructor
   SerializerTrait() = default;
   ~SerializerTrait() = default;
 };
