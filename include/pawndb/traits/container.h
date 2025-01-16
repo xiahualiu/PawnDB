@@ -7,7 +7,8 @@ namespace PawnDB {
  * @brief CRTP interface for container implementations
  * @tparam Derived Class implementing container interface
  *
- * Provides common container operations like capacity checking and empty/full status.
+ * Provides common container operations like capacity checking and empty/full
+ * status.
  *
  * Required trait implementations:
  * - trait_capacity() -> constexpr std::size_t

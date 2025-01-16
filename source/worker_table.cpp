@@ -5,7 +5,7 @@
 #include <atomic>
 #include <cstring>
 
-#include "pawndb/traits/hash_table.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/worker.h"
 
@@ -92,27 +92,27 @@ void WorkerEntry::trait_copy(const WorkerEntry& _other) noexcept {
 }
 
 WorkerEntry::queue_r WorkerEntry::trait_get() noexcept {
-    return job_ch_.get();
+  return job_ch_.get();
 }
 
 WorkerEntry::queue_r WorkerEntry::trait_recv() noexcept {
-    return job_ch_.recv();
+  return job_ch_.recv();
 }
 
 QueueError WorkerEntry::trait_send(const Job& job) noexcept {
-    return job_ch_.send(job);
+  return job_ch_.send(job);
 }
 
 void WorkerEntry::trait_pop() noexcept {
-    job_ch_.pop();
+  job_ch_.pop();
 }
 
 void WorkerEntry::trait_clear() noexcept {
-    job_ch_.clear();
+  job_ch_.clear();
 }
 
 void WorkerEntry::trait_notify_not_empty() noexcept {
-    job_ch_.notify_not_empty();
+  job_ch_.notify_not_empty();
 }
 
 WorkerTable::table_r WorkerTable::trait_insert(

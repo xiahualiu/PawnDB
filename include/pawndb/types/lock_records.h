@@ -7,7 +7,7 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/eq.h"
-#include "pawndb/traits/hash_table.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/iterator.h"
 #include "pawndb/traits/lock_manager.h"
 #include "pawndb/traits/sized.h"
@@ -74,16 +74,16 @@ class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
  * - Thread-safe operations
  *
  * Implemented traits:
- * - HashTableTrait: Lock table operations
+ * - TableTrait: Lock table operations
  * - IterTrait: Lock scanning
  * - SizedTrait: Lock count tracking
  * - ContainerTrait: Capacity management
  */
-class LockRecords : public HashTableTrait<LockRecords, LockEntry>,
+class LockRecords : public TableTrait<LockRecords, LockEntry>,
                     public LockManagerTrait<LockRecords, TableTupleKey>,
                     public IterTrait<LockRecords, LockRecordIterator>,
-                    private SizedTrait<LockRecords>,
-                    private ContainerTrait<LockRecords> {
+                    public SizedTrait<LockRecords>,
+                    public ContainerTrait<LockRecords> {
   /** @brief Maximum locks per transaction */
   constexpr static std::size_t N = MAX_LOCK_PER_TRANSACTION;
 
@@ -125,7 +125,7 @@ class LockRecords : public HashTableTrait<LockRecords, LockEntry>,
    *  @return Iterator positioned after last lock */
   LockRecordIterator trait_end() const noexcept;
 
-  // HashTableTrait Implementation
+  // TableTrait Implementation
   /** @brief Insert new lock entry
    *  @param entry Lock entry to insert
    *  @return Result containing reference to inserted entry or error */
@@ -214,6 +214,14 @@ class LockRecordIterator
    * @return true if at same position
    */
   bool trait_equals(const LockRecordIterator& other) const noexcept;
+
+  /**
+   * @brief Get current storage index
+   * @return Current index
+   */
+  std::size_t _test_index() const noexcept {
+    return idx_;
+  }
 
  private:
   /** @brief Advance to next valid entry */

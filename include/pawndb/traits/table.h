@@ -16,7 +16,7 @@ enum class TableError {
 };
 
 /**
- * @brief CRTP interface for hash table implementations
+ * @brief CRTP interface for table implementations
  * @tparam Derived Class implementing table interface
  * @tparam EntryType Type of table entries, must implement HashTrait
  *
@@ -27,7 +27,7 @@ enum class TableError {
  * - trait_write(const entry_type&) -> table_r
  */
 template <typename Derived, typename EntryType>
-class HashTableTrait {
+class TableTrait {
  public:
   /** @brief Entry type alias */
   using entry_type = EntryType;
@@ -80,8 +80,8 @@ class HashTableTrait {
   }
 
  protected:
-  HashTableTrait() = default;
-  ~HashTableTrait() = default;
+  TableTrait() = default;
+  ~TableTrait() = default;
 };
 
 }  // namespace PawnDB

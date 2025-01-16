@@ -3,7 +3,6 @@
 
 #include "pawndb/params.h"
 
-
 namespace PawnDB {
 
 /**

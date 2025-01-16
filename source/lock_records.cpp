@@ -1,6 +1,6 @@
 #include "pawndb/types/lock_records.h"
 
-#include "pawndb/traits/hash_table.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/lock_manager.h"
 
 namespace PawnDB {
@@ -95,7 +95,7 @@ LockError LockRecords::trait_add_lock(const TableTupleKey& _key,
   if (size_ >= N) return LockError::Full;
   auto insert_r = trait_insert(LockEntry(_key, _type));
   switch (insert_r.getError()) {
-    case TableError::Conflict: return LockError::AlreadyHeld;
+    case TableError::Conflict: return LockError::Conflict;
     default: return LockError::None;
   }
 }

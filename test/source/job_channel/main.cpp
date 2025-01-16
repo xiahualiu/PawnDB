@@ -8,6 +8,7 @@
  *
  */
 
+#include "pawndb/traits/queue.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include <sys/socket.h>
@@ -28,16 +29,16 @@ TEST_CASE("Channel Empty #1") {
 
   auto result = channel.get();
   CHECK(!result);
-  CHECK(result.getError() == FIFOError::Empty);
+  CHECK(result.getError() == QueueError::Empty);
 }
 
 TEST_CASE("Channel Send/Get #1") {
   JobChannel channel;
-  CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == FIFOError::None);
+  CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == QueueError::None);
   CHECK(!channel.empty());
   auto result = channel.get();
   CHECK(result);
-  CHECK(result.unwrap().buffer_size_ == 42);
+  CHECK(result.unwrap().buffer_size() == 42);
   channel.pop();
   CHECK(channel.empty());
 }
@@ -46,17 +47,17 @@ TEST_CASE("Channel Full #1") {
   JobChannel channel;
   // Fill channel
   for (std::size_t i = 0; i < MAX_ITEM_PER_CHANNEL; i++) {
-    CHECK(channel.send({{}, i, sockaddr{}, socklen_t{}}) == FIFOError::None);
+    CHECK(channel.send({{}, i, sockaddr{}, socklen_t{}}) == QueueError::None);
   }
   CHECK(channel.full());
-  CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == FIFOError::Full);
+  CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == QueueError::Full);
 }
 
 TEST_CASE("Channel Receive Timeout #1") {
   JobChannel channel;
   auto result = channel.recv();
   CHECK(!result);
-  CHECK(result.getError() == FIFOError::Timeout);
+  CHECK(result.getError() == QueueError::Timeout);
 }
 
 TEST_CASE("Channel Multi-threaded #1") {
@@ -66,14 +67,14 @@ TEST_CASE("Channel Multi-threaded #1") {
   std::thread consumer([&]() {
     auto result = channel.recv();
     CHECK(result);
-    CHECK(result.unwrap().buffer_size_ == 42);
+    CHECK(result.unwrap().buffer_size() == 42);
     channel.pop();
     received = true;
   });
 
   std::thread producer([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == FIFOError::None);
+    CHECK(channel.send({{}, 42, sockaddr{}, socklen_t{}}) == QueueError::None);
     channel.notify_not_empty();
   });
 

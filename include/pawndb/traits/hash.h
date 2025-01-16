@@ -3,7 +3,6 @@
 
 #include <cstddef>
 
-
 namespace PawnDB {
 
 /**
@@ -29,6 +28,6 @@ class HashTrait {
   ~HashTrait() = default;
 };
 
-} // namespace PawnDB
+}  // namespace PawnDB
 
-#endif // PAWNDB_TRAITS_HASH_H
+#endif  // PAWNDB_TRAITS_HASH_H

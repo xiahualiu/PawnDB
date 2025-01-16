@@ -10,12 +10,11 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "pawndb/types/ret_channel.h"
-
 #include <sys/socket.h>
 
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
+#include "pawndb/types/ret_channel.h"
 
 namespace PawnDB {
 
@@ -26,12 +25,12 @@ TEST_CASE("Channel Empty #1") {
 
   auto result = channel.get();
   CHECK(!result);
-  CHECK(result.getError() == FIFOError::Empty);
+  CHECK(result.getError() == QueueError::Empty);
 }
 
 TEST_CASE("Channel Send/Get #1") {
   RetChannel channel;
-  CHECK(channel.send(42) == FIFOError::None);
+  CHECK(channel.send(42) == QueueError::None);
   CHECK(!channel.empty());
   auto result = channel.get();
   CHECK(result);
@@ -44,7 +43,7 @@ TEST_CASE("Channel Full #1") {
   RetChannel channel;
   // Fill channel
   for (std::size_t i = 0; i < MAX_TRANSACTIONS; i++) {
-    CHECK(channel.send(42) == FIFOError::None);
+    CHECK(channel.send(42) == QueueError::None);
   }
   CHECK(channel.full());
 }

@@ -13,7 +13,7 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/hash.h"
-#include "pawndb/traits/hash_table.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/thread.h"
 #include "pawndb/types/job_channel.h"
@@ -110,7 +110,7 @@ class WorkerEntry : public HashTrait<WorkerEntry>,
  * Features:
  * - O(1) hash-based lookup
  * - Size tracking */
-class WorkerTable : public HashTableTrait<WorkerTable, WorkerEntry>,
+class WorkerTable : public TableTrait<WorkerTable, WorkerEntry>,
                     private SizedTrait<WorkerTable>,
                     private ContainerTrait<WorkerTable> {
  private:
@@ -128,7 +128,7 @@ class WorkerTable : public HashTableTrait<WorkerTable, WorkerEntry>,
   WorkerTable(const WorkerTable& _other) = delete;
   WorkerTable& operator=(const WorkerTable& _other) = delete;
 
-  // HashTableTrait Implementation
+  // TableTrait Implementation
   /** @brief Insert new worker entry
    *  @param _entry Entry to insert
    *  @return Result containing reference to inserted entry or error */

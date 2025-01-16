@@ -2,14 +2,6 @@
 
 namespace PawnDB {
 
-BufferTable::BufferTable() noexcept
-    : size_(0),
-      next_(0) {
-  for (auto &entry : buffers_) {
-    entry.is_used_ = 0;
-  }
-}
-
 BufferTable::request_r BufferTable::trait_request() noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   if (trait_full()) {
@@ -19,7 +11,7 @@ BufferTable::request_r BufferTable::trait_request() noexcept {
     next_ = (next_ + 1) % N;
   }
   auto result = BufferRef{this, next_};
-  buffers_[next_].is_used_ = 1;
+  buffers_[next_].is_used_ = true;
   next_ = (next_ + 1) % N;
   size_++;
   return result;
@@ -33,23 +25,19 @@ bool BufferTable::trait_full() const noexcept {
   return size_ >= N;
 }
 
-// Sized
 std::size_t BufferTable::trait_size() const noexcept {
   return size_;
 }
 
-// Test functions
 std::uint8_t BufferTable::_test_is_used(std::size_t _i) const noexcept {
   return buffers_[_i].is_used_;
 }
 
 BufferRef::BufferRef(BufferTable *_table, std::size_t _index) noexcept
-    : table_(_table),
-      index_(_index) {}
+    : table_(_table), index_(_index) {}
 
 BufferRef::BufferRef(const BufferRef &_other) noexcept
-    : table_(_other.table_),
-      index_(_other.index_) {}
+    : table_(_other.table_), index_(_other.index_) {}
 
 BufferRef &BufferRef::operator=(const BufferRef &_other) noexcept {
   table_ = _other.table_;

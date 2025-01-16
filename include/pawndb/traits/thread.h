@@ -16,13 +16,19 @@ template <typename Derived>
 class ThreadTrait {
  public:
   /** @brief Start thread execution */
-  void start() noexcept { return static_cast<Derived*>(this)->trait_start(); }
+  void start() noexcept {
+    return static_cast<Derived*>(this)->trait_start();
+  }
 
   /** @brief Stop thread execution */
-  void stop() noexcept { static_cast<Derived*>(this)->trait_stop(); }
+  void stop() noexcept {
+    static_cast<Derived*>(this)->trait_stop();
+  }
 
   /** @brief clear the thread unfinished job then join the thread */
-  void join() noexcept { static_cast<Derived*>(this)->trait_join(); }
+  void join() noexcept {
+    static_cast<Derived*>(this)->trait_join();
+  }
 
   /**
    * @brief Check if thread is running

@@ -51,6 +51,8 @@ socklen_t Job::trait_c_addr_len() const noexcept {
   return client_addr_len_;
 }
 
+JobChannel::JobChannel() noexcept : jobs_(), head_(0), tail_(0), count_(0) {}
+
 JobChannel::queue_r JobChannel::trait_get() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
   if (!empty()) {

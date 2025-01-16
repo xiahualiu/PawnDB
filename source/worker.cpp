@@ -4,6 +4,7 @@
 
 #include "pawndb/params.h"
 #include "pawndb/table_types.h"
+#include "pawndb/traits/queue.h"
 #include "pawndb/types/job_channel.h"
 
 namespace PawnDB {
@@ -37,9 +38,7 @@ bool Worker::trait_is_running() noexcept {
 
 void Worker::worker_quit() noexcept {
   release_locks();
-  if (status_ != TxnStatus::COMMITTED) {
-    clear_commit_table();
-  }
+  clear_commit_table();
   ret_ch_.send(txn_id_);
 }
 
@@ -65,16 +64,11 @@ void Worker::release_locks() noexcept {
 }
 
 void Worker::clear_commit_table() noexcept {
-  auto commit_it = commit_table_.begin();
-  auto commit_it_end = commit_table_.end();
-  while (commit_it != commit_it_end) {
-    auto& commit = *commit_it;
-    if (!commit.buffer().null()) {
-      commit.buffer().release();
-      commit_it++;
-    }
+  while (!commit_table_.empty()) {
+    auto commit = commit_table_.get().unwrap();
+    commit.buffer().release();
+    commit_table_.pop();
   }
-  commit_table_.clear();
 }
 
 void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
@@ -85,18 +79,17 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
     job_ch_.pop();
     return;
   }
-  auto commit_it = commit_table_.begin();
-  auto commit_it_end = commit_table_.end();
   // No error allowed in commit phase because of ACID properties
-  while (commit_it != commit_it_end) {
-    auto& commit = *commit_it;
+  while (!commit_table_.empty()) {
+    auto& commit = commit_table_.get().unwrap();
+    commit_table_.pop();
     switch (commit.op()) {
       case OpType::ADD_TUPLE: {
         auto [table_id, tuple_key] = commit.key().trait_disassemble();
         auto buffer = commit.buffer();
         switch (table_id) {
           case tbl_id<StudentTable>(): {
-            auto new_tuple = StudentTable::entry_t{};
+            auto new_tuple = StudentTable::tuple_t{};
             auto& table_ref = db_.students;
             std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
             table_ref.insert(new_tuple);
@@ -132,7 +125,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         auto buffer = commit.buffer();
         switch (table_id) {
           case tbl_id<StudentTable>(): {
-            auto new_tuple = StudentTable::entry_t{};
+            auto new_tuple = StudentTable::tuple_t{};
             auto& table_ref = db_.students;
             std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
             table_ref.write(new_tuple);
@@ -149,7 +142,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         break;
       }
     }
-    commit_it++;
   }
   status_ = TxnStatus::COMMITTED;
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
@@ -174,7 +166,7 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
   auto table_id = table_id_r.unwrap();
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto new_entry = StudentTableEntry{};
+      auto new_entry = StudentTuple{};
       auto bytes_read_r =
           new_entry.deserialize(_job.buffer(), _parser.get_tuple_offset());
       // Check if tuple data is valid
@@ -198,10 +190,10 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
     }
   }
   // Insert new tuple into commit table
-  auto commit_error = commit_table_.add_commit(
-      {{table_id, 0}, OpType::ADD_TUPLE, _job.buffer()});
+  auto commit_error =
+      commit_table_.send({{table_id, 0}, OpType::ADD_TUPLE, _job.buffer()});
   // Check if commit table is full
-  if (commit_error == CommitError::Full) {
+  if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
     _job.buffer().release();
     job_ch_.pop();
@@ -516,7 +508,7 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   }
   switch (table_id) {
     case tbl_id<StudentTable>(): {
-      auto new_entry = StudentTableEntry{};
+      auto new_entry = StudentTuple{};
       if (!new_entry.deserialize(_job.buffer(), _parser.get_tuple_offset())) {
         reply(OpAck::BAD_DATA, _parser, 7, _job);
         _job.buffer().release();
@@ -533,8 +525,14 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
       return;
     }
   }
-  commit_table_.add_commit(
+  auto commit_error = commit_table_.send(
       {{table_id, tuple_key}, OpType::UPDATE, _job.buffer()});
+  if (commit_error == QueueError::Full) {
+    reply(OpAck::COMMIT_FULL, _parser, 7, _job);
+    _job.buffer().release();
+    job_ch_.pop();
+    return;
+  }
   reply(OpAck::SUCCESS, _parser, 7, _job);
   job_ch_.pop();
   // Don't release buffer here, it will be released when the transaction is
@@ -574,10 +572,9 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
     job_ch_.pop();
     return;
   }
-  auto commit_error =
-      commit_table_.add_commit({lock_record_key, OpType::DELETE, {}});
+  auto commit_error = commit_table_.send({lock_record_key, OpType::DELETE, {}});
   // Check if commit table is full
-  if (commit_error == CommitError::Full) {
+  if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
     _job.buffer().release();
     job_ch_.pop();

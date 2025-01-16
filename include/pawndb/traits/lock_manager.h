@@ -12,14 +12,13 @@ namespace PawnDB {
 enum class LockError {
   None,        /**< Operation successful */
   NotFound,    /**< Lock not found */
-  AlreadyHeld, /**< Lock already exists */
   Conflict,    /**< Lock conflicts */
   InvalidType, /**< Invalid lock type */
   Full         /**< No more locks available */
 };
 
 enum class LockType {
-  SHARED,   /**< Shared read lock */
+  SHARED,   /**< SHARED read lock */
   EXCLUSIVE /**< Exclusive write lock */
 };
 

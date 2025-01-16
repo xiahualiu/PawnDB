@@ -7,14 +7,16 @@
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
+#include <string>
 
 #include "pawndb/params.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
+#include "pawndb/traits/eq.h"
 #include "pawndb/traits/hash.h"
-#include "pawndb/traits/hash_table.h"
 #include "pawndb/traits/serializer.h"
 #include "pawndb/traits/sized.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/traits/tuple.h"
 #include "pawndb/traits/tuple_table.h"
 
@@ -30,28 +32,29 @@ namespace PawnDB {
  * - Lock management
  * - Hash-based lookup
  */
-class StudentTableEntry : public TupleTrait<StudentTableEntry>,
-                          public SerializerTrait<StudentTableEntry>,
-                          private CopyTrait<StudentTableEntry>,
-                          public HashTrait<StudentTableEntry> {
+class StudentTuple : public TupleTrait<StudentTuple>,
+                     public SerializerTrait<StudentTuple>,
+                     private CopyTrait<StudentTuple>,
+                     public HashTrait<StudentTuple>,
+                     public EqTrait<StudentTuple> {
  public:
   using key_t = tbl_row_t;                       /**< Key type alias */
   constexpr static std::size_t NAME_LENGTH = 32; /**< Fixed name length */
 
   // Constexpr Constructors
-  constexpr StudentTableEntry() noexcept
-      : checksum_(0),
-        tickstamp_(0),
-        name_({0}),
-        age_(0),
-        key_(0),
-        lock_(0),
-        is_used_(false),
-        is_deleted_(false) {}
+  constexpr StudentTuple() noexcept
+      : checksum_(0), tickstamp_(0), name_({0}), age_(0), key_(0) {}
+
+  /** @brief Construct student record
+   *  @param _name Student name
+   *  @param _age Student age
+   *  @param _key Entry key */
+  StudentTuple(std::string _name, const std::uint8_t _age,
+               const tbl_row_t _key) noexcept;
 
   // Copyable
-  StudentTableEntry(const StudentTableEntry& other) noexcept;
-  StudentTableEntry& operator=(const StudentTableEntry& other) noexcept;
+  StudentTuple(const StudentTuple& other) noexcept;
+  StudentTuple& operator=(const StudentTuple& other) noexcept;
 
   // TupleTrait Implementation
   /** @brief Set entry checksum */
@@ -79,25 +82,35 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
   // HashTrait Implementation
   std::size_t trait_hash() const noexcept;
 
- private:
-  /** @brief Compute checksum */
-  cksum_t compute_checksum() const noexcept;
+  // Test functions
+  std::uint8_t _test_age() const noexcept {
+    return age_;
+  }
+
+  std::string _test_name() const noexcept {
+    return std::string(name_.data());
+  }
 
   // CopyTrait Implementation
   /** @brief Clone entry */
-  StudentTableEntry trait_clone() const noexcept;
+  StudentTuple trait_clone() const noexcept;
 
   /** @brief Copy entry */
-  void trait_copy(const StudentTableEntry& other) noexcept;
+  void trait_copy(const StudentTuple& other) noexcept;
+
+  // EqTrait Implementation
+  /** @brief Compare entries */
+  bool trait_equals(const StudentTuple& other) const noexcept;
+
+ private:
+  /** @brief Compute checksum */
+  cksum_t compute_checksum() const noexcept;
 
   volatile cksum_t checksum_;          /**< Entry checksum */
   tick_t tickstamp_;                   /**< Entry timestamp */
   std::array<char, NAME_LENGTH> name_; /**< Student name */
   std::uint8_t age_;                   /**< Student age */
   tbl_row_t key_;                      /**< Entry key */
-  lk_t lock_;                          /**< Entry lock */
-  bool is_used_;                       /**< Usage flag */
-  bool is_deleted_;                    /**< Deletion flag */
 
   friend class StudentTable;
 };
@@ -110,27 +123,39 @@ class StudentTableEntry : public TupleTrait<StudentTableEntry>,
  * - Checksum validation
  * - Concurrency control
  */
-class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
-                     public TupleTableTrait<StudentTable, StudentTableEntry>,
-                     private SizedTrait<StudentTable>,
-                     private ContainerTrait<StudentTable> {
+class StudentTable : public TableTrait<StudentTable, StudentTuple>,
+                     public TupleTableTrait<StudentTable, StudentTuple>,
+                     public SizedTrait<StudentTable>,
+                     public ContainerTrait<StudentTable> {
   constexpr static std::size_t Rows = 10;
 
  public:
   using key_t = tbl_row_t;
-  using entry_t = StudentTableEntry;
+  using tuple_t = StudentTuple;
 
-  StudentTable() noexcept : table_{}, size_(0), tuple_key_(0) {}
+  /** @brief Entry in student table */
+  struct Entry {
+    StudentTuple tuple_;
+    lk_t lock_;
+    bool is_used_;
+    bool is_deleted_;
 
-  // Non-copyable
+    /** @brief Construct empty entry */
+    constexpr Entry() noexcept
+        : tuple_{}, lock_(0), is_used_(false), is_deleted_(false) {}
+  };
+
+  /** @brief Construct student table */
+  StudentTable() noexcept : table_{}, size_(0), next_key_(0) {}
+
   StudentTable(const StudentTable& other) noexcept = delete;
   StudentTable& operator=(const StudentTable& other) noexcept = delete;
 
-  // HashTableTrait Implementation
+  // TableTrait Implementation
   /** @brief Insert new student record
    *  @param _entry Entry to insert
    *  @return Result containing inserted entry or error */
-  table_r trait_insert(const entry_t& _entry) noexcept;
+  table_r trait_insert(const tuple_t& _tuple) noexcept;
 
   /** @brief Search for student by key
    *  @param _key Key to search for
@@ -145,7 +170,7 @@ class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
   /** @brief Update student record
    *  @param _entry Entry with updated values
    *  @return Error status */
-  TableError trait_write(const entry_t& _entry) noexcept;
+  TableError trait_write(const tuple_t& _tuple) noexcept;
 
   // TupleTableTrait Implementation
   /** @brief Wait for shared access */
@@ -186,17 +211,20 @@ class StudentTable : public HashTableTrait<StudentTable, StudentTableEntry>,
   /** @brief Check if full */
   bool trait_full() const noexcept;
 
+  /** @brief Same as search but return the whole entry */
+  Result<Entry&, TableError> _test_get_entry(const key_t& _key) noexcept;
+
  private:
-  std::condition_variable s_available_; /**< Shared lock CV */
+  std::condition_variable s_available_; /**< SHARED lock CV */
   std::condition_variable x_available_; /**< Exclusive lock CV */
   std::condition_variable not_empty_;   /**< Not empty CV */
   std::condition_variable not_full_;    /**< Not full CV */
   std::mutex mtx_;                      /**< Thread safety */
 
-  std::array<StudentTableEntry, Rows> table_;
+  std::array<Entry, Rows> table_;
 
   std::size_t size_;
-  key_t tuple_key_;
+  key_t next_key_;
 };
 }  // namespace PawnDB
 

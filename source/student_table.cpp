@@ -2,56 +2,59 @@
 
 #include <cstddef>
 #include <cstring>
+#include <string>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/hash_table.h"
+#include "pawndb/result.h"
+#include "pawndb/tools.h"
+#include "pawndb/traits/table.h"
 
 namespace PawnDB {
 
-StudentTableEntry::StudentTableEntry(const StudentTableEntry& other) noexcept
+StudentTuple::StudentTuple(const StudentTuple& other) noexcept
     : checksum_(other.checksum_),
       tickstamp_(other.tickstamp_),
       name_(other.name_),
       age_(other.age_),
-      key_(other.key_),
-      lock_(other.lock_),
-      is_used_(other.is_used_),
-      is_deleted_(other.is_deleted_) {}
+      key_(other.key_) {}
 
-StudentTableEntry& StudentTableEntry::operator=(
-    const StudentTableEntry& other) noexcept {
+StudentTuple::StudentTuple(std::string _name, const std::uint8_t _age,
+                           const tbl_row_t _key) noexcept
+    : checksum_(0), tickstamp_(0), name_({0}), age_(_age), key_(_key) {
+  std::memcpy(name_.data(), _name.data(), _name.size());
+  set_checksum();
+}
+
+StudentTuple& StudentTuple::operator=(const StudentTuple& other) noexcept {
   checksum_ = other.checksum_;
   tickstamp_ = other.tickstamp_;
   name_ = other.name_;
   age_ = other.age_;
   key_ = other.key_;
-  lock_ = other.lock_;
-  is_used_ = other.is_used_;
-  is_deleted_ = other.is_deleted_;
   return *this;
 }
 
-void StudentTableEntry::trait_set_checksum() noexcept {
+void StudentTuple::trait_set_checksum() noexcept {
   checksum_ = compute_checksum();
 }
 
-bool StudentTableEntry::trait_val_checksum() const noexcept {
+bool StudentTuple::trait_val_checksum() const noexcept {
   return checksum_ == compute_checksum();
 }
 
-void StudentTableEntry::trait_set_tickstamp(const tick_t _tickstamp) noexcept {
+void StudentTuple::trait_set_tickstamp(const tick_t _tickstamp) noexcept {
   tickstamp_ = _tickstamp;
 }
 
-tick_t StudentTableEntry::trait_read_tickstamp() const noexcept {
+tick_t StudentTuple::trait_read_tickstamp() const noexcept {
   return tickstamp_;
 }
 
-tbl_row_t StudentTableEntry::trait_key() const noexcept {
+tbl_row_t StudentTuple::trait_key() const noexcept {
   return key_;
 }
 
-StudentTableEntry::serial_r StudentTableEntry::trait_serialize(
+StudentTuple::serial_r StudentTuple::trait_serialize(
     BufferRef _buffer, std::size_t _offset) const noexcept {
   auto buffer_ptr = _buffer.buffer().data() + _offset;
   std::memcpy(buffer_ptr, name_.data(), NAME_LENGTH);
@@ -62,7 +65,7 @@ StudentTableEntry::serial_r StudentTableEntry::trait_serialize(
   return sizeof(cksum_t) + NAME_LENGTH + sizeof(std::uint8_t);
 }
 
-StudentTableEntry::serial_r StudentTableEntry::trait_deserialize(
+StudentTuple::serial_r StudentTuple::trait_deserialize(
     BufferRef _buffer, std::size_t _offset) noexcept {
   auto buffer_ptr = _buffer.buffer().data() + _offset;
   std::memcpy(name_.data(), buffer_ptr, NAME_LENGTH);
@@ -73,7 +76,7 @@ StudentTableEntry::serial_r StudentTableEntry::trait_deserialize(
   return sizeof(cksum_t) + NAME_LENGTH + sizeof(std::uint8_t);
 }
 
-cksum_t StudentTableEntry::compute_checksum() const noexcept {
+cksum_t StudentTuple::compute_checksum() const noexcept {
   cksum_t result = 0;
   for (char c : name_) {
     result += static_cast<cksum_t>(c);
@@ -82,46 +85,64 @@ cksum_t StudentTableEntry::compute_checksum() const noexcept {
   return result;
 }
 
-StudentTableEntry StudentTableEntry::trait_clone() const noexcept {
+StudentTuple StudentTuple::trait_clone() const noexcept {
   return *this;
 }
 
-void StudentTableEntry::trait_copy(const StudentTableEntry& other) noexcept {
+void StudentTuple::trait_copy(const StudentTuple& other) noexcept {
   checksum_ = other.checksum_;
   tickstamp_ = other.tickstamp_;
   name_ = other.name_;
   age_ = other.age_;
   key_ = other.key_;
-  lock_ = other.lock_;
-  is_used_ = other.is_used_;
-  is_deleted_ = other.is_deleted_;
 }
 
-std::size_t StudentTableEntry::trait_hash() const noexcept {
+std::size_t StudentTuple::trait_hash() const noexcept {
   return key_;
 }
 
+bool StudentTuple::trait_equals(const StudentTuple& other) const noexcept {
+  return key_ == other.key_ && array_cmp(name_, other.name_) == 0 &&
+         age_ == other.age_;
+}
+
 StudentTable::table_r StudentTable::trait_insert(
-    const entry_t& _entry) noexcept {
+    const tuple_t& _tuple) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   not_full_.wait(lock, [&]() { return !trait_full(); });
-  auto idx = tuple_key_ % Rows;
+  auto idx = next_key_ % Rows;
   while (true) {
     if (!table_[idx].is_used_ || table_[idx].is_deleted_) {
-      table_[idx] = _entry;
-      table_[idx].key_ = tuple_key_;
+      table_[idx].tuple_ = _tuple;
+      table_[idx].tuple_.key_ = next_key_;
       table_[idx].lock_ = 0;
       table_[idx].is_used_ = true;
       table_[idx].is_deleted_ = false;
-      tuple_key_++;
+      next_key_++;
       size_++;
-      return TableError::None;
+      return table_[idx].tuple_;
     }
     idx = (idx + 1) % Rows;
   }
 }
 
-StudentTable::table_r StudentTable::trait_search(
+StudentTable::table_r StudentTable::trait_search(const key_t& _key) noexcept {
+  auto lock = std::unique_lock<std::mutex>(mtx_);
+  auto idx = _key % Rows;
+  auto start = idx;
+  do {
+    if (!table_[idx].is_used_) {
+      return TableError::NotFound;
+    }
+    if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
+      return table_[idx].tuple_;
+    }
+    idx = (idx + 1) % Rows;
+  } while (idx != start);
+  return TableError::NotFound;
+}
+
+Result<StudentTable::Entry&, TableError> StudentTable::_test_get_entry(
     const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
@@ -130,7 +151,7 @@ StudentTable::table_r StudentTable::trait_search(
     if (!table_[idx].is_used_) {
       return TableError::NotFound;
     }
-    if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
+    if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       return table_[idx];
     }
     idx = (idx + 1) % Rows;
@@ -142,7 +163,7 @@ TableError StudentTable::trait_remove(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   while (true) {
-    if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
+    if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       table_[idx].is_deleted_ = true;
       size_--;
       return TableError::None;
@@ -151,14 +172,12 @@ TableError StudentTable::trait_remove(const key_t& _key) noexcept {
   }
 }
 
-TableError StudentTable::trait_write(const entry_t& _entry) noexcept {
+TableError StudentTable::trait_write(const tuple_t& _tuple) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
-  auto idx = _entry.key_ % Rows;
+  auto idx = _tuple.key_ % Rows;
   while (true) {
-    if (table_[idx].key_ == _entry.key_ && !table_[idx].is_deleted_) {
-      table_[idx].name_ = _entry.name_;
-      table_[idx].age_ = _entry.age_;
-      table_[idx].trait_set_checksum();
+    if (table_[idx].tuple_.key_ == _tuple.key_ && !table_[idx].is_deleted_) {
+      table_[idx].tuple_ = _tuple;
       return TableError::None;
     }
     idx = (idx + 1) % Rows;
@@ -175,7 +194,7 @@ StudentTable::ttable_r StudentTable::trait_wait_shared() noexcept {
             if (table_[i].is_used_ && !table_[i].is_deleted_ &&
                 table_[i].lock_ >= 0) {
               table_[i].lock_++;
-              result = table_[i];
+              result = table_[i].tuple_;
               return true;
             }
           }
@@ -198,7 +217,7 @@ StudentTable::ttable_r StudentTable::trait_wait_exclusive() noexcept {
             if (table_[i].is_used_ && !table_[i].is_deleted_ &&
                 table_[i].lock_ == 0) {
               table_[i].lock_ = -1;
-              result = table_[i];
+              result = table_[i].tuple_;
               return true;
             }
           }
@@ -214,7 +233,7 @@ TupleTableError StudentTable::trait_promote(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   while (true) {
-    if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
+    if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       if (x_available_.wait_for(lock, WAIT_TIMEOUT,
                                 [&]() { return table_[idx].lock_ == 1; })) {
         table_[idx].lock_ = -1;
@@ -230,7 +249,7 @@ void StudentTable::trait_release(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   while (true) {
-    if (table_[idx].key_ == _key && !table_[idx].is_deleted_) {
+    if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       if (table_[idx].lock_ == -1) {
         table_[idx].lock_ = 0;
       } else {

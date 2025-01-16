@@ -40,13 +40,17 @@ class QueueTrait {
    * @brief Get next value from queue without blocking
    * @return Result containing either value or error
    */
-  queue_r get() noexcept { return static_cast<Derived*>(this)->trait_get(); }
+  queue_r get() noexcept {
+    return static_cast<Derived*>(this)->trait_get();
+  }
 
   /**
    * @brief Get next value from queue with blocking
    * @return Result containing either value or error
    */
-  queue_r recv() noexcept { return static_cast<Derived*>(this)->trait_recv(); }
+  queue_r recv() noexcept {
+    return static_cast<Derived*>(this)->trait_recv();
+  }
 
   /**
    * @brief Copy value to FIFO
@@ -60,12 +64,16 @@ class QueueTrait {
   /**
    * @brief Clear all elements from queue
    */
-  void clear() noexcept { static_cast<Derived*>(this)->trait_clear(); }
+  void clear() noexcept {
+    static_cast<Derived*>(this)->trait_clear();
+  }
 
   /**
    * @brief Remove next element from queue
    */
-  void pop() noexcept { static_cast<Derived*>(this)->trait_pop(); }
+  void pop() noexcept {
+    static_cast<Derived*>(this)->trait_pop();
+  }
 
   /**
    * @brief Signal that queue is not empty

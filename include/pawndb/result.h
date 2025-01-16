@@ -74,28 +74,36 @@ class Result {
    *
    * @return true if the Result is successful, false otherwise.
    */
-  explicit operator bool() const noexcept { return error == E::None; }
+  explicit operator bool() const noexcept {
+    return error == E::None;
+  }
 
   /**
    * @brief Checks if the Result is an error.
    *
    * @return true if the Result is an error, false otherwise.
    */
-  inline bool operator!() const noexcept { return error != E::None; }
+  inline bool operator!() const noexcept {
+    return error != E::None;
+  }
 
   /**
    * @brief Unwraps the value from the Result.
    *
    * @return A reference to the value.
    */
-  inline T& unwrap() noexcept { return value; }
+  inline T& unwrap() noexcept {
+    return value;
+  }
 
   /**
    * @brief Gets the error from the Result.
    *
    * @return The error.
    */
-  inline const E getError() const noexcept { return error; }
+  inline const E getError() const noexcept {
+    return error;
+  }
 
  private:
   T value;
@@ -133,28 +141,36 @@ class Result<T&, E> {
    *
    * @return true if the Result is successful, false otherwise.
    */
-  explicit operator bool() const noexcept { return error == E::None; }
+  explicit operator bool() const noexcept {
+    return error == E::None;
+  }
 
   /**
    * @brief Checks if the Result is an error.
    *
    * @return true if the Result is an error, false otherwise.
    */
-  inline bool operator!() const noexcept { return error != E::None; }
+  inline bool operator!() const noexcept {
+    return error != E::None;
+  }
 
   /**
    * @brief Unwraps the value from the Result.
    *
    * @return A const reference to the value.
    */
-  inline T& unwrap() const noexcept { return *value; }
+  inline T& unwrap() const noexcept {
+    return *value;
+  }
 
   /**
    * @brief Gets the error from the Result.
    *
    * @return The error.
    */
-  inline const E getError() const noexcept { return error; }
+  inline const E getError() const noexcept {
+    return error;
+  }
 
  private:
   T* value;

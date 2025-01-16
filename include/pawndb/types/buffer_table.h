@@ -42,8 +42,8 @@ class BufferRef;
  * - Container: Capacity operations
  */
 class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
-                    private SizedTrait<BufferTable>,
-                    private ContainerTrait<BufferTable> {
+                    public SizedTrait<BufferTable>,
+                    public ContainerTrait<BufferTable> {
  private:
   /** @brief Fixed number of buffers in pool */
   static constexpr std::size_t N = BUFFER_ROWS;
@@ -54,6 +54,9 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
   struct BufferTableEntry {
     buffer_t buffer_; /**< Fixed-size character buffer */
     bool is_used_;    /**< Usage tracking flag */
+
+    /** @brief Default constructor */
+    constexpr BufferTableEntry() noexcept : buffer_{}, is_used_(false) {}
   };
 
   std::array<BufferTableEntry, N> buffers_; /**< Buffer storage */
@@ -65,7 +68,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
 
  public:
   /** @brief Initialize empty buffer pool */
-  BufferTable() noexcept;
+  constexpr BufferTable() noexcept : buffers_{}, size_(0), next_(0) {}
 
   // Not copyable
   BufferTable(const BufferTable& other) noexcept = delete;

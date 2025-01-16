@@ -36,6 +36,6 @@ class EqTrait {
   ~EqTrait() = default;
 };
 
-} // namespace PawnDB
+}  // namespace PawnDB
 
-#endif // PAWNDB_TRAITS_EQ_H
+#endif  // PAWNDB_TRAITS_EQ_H

@@ -7,13 +7,13 @@
 namespace PawnDB {
 
 /**
- * @brief CRTP base class for buffer entries providing buffer access and
- * lifecycle management
- * @tparam Derived The derived buffer entry class implementing required traits
+ * @brief CRTP base class for buffer reference management
+ * @tparam Derived The derived buffer entry class
  *
  * Required implementations:
- * - trait_buffer() -> buffer_t& : Access underlying buffer
+ * - trait_buffer() -> buffer_t& : Get buffer reference
  * - trait_release() -> void : Release buffer resources
+ * - trait_null() -> bool : Check if buffer is null
  */
 template <typename Derived>
 class BufferRefTrait {
@@ -24,7 +24,9 @@ class BufferRefTrait {
   }
 
   /** @brief Release buffer resources */
-  void release() noexcept { static_cast<Derived*>(this)->trait_release(); }
+  void release() noexcept {
+    static_cast<Derived*>(this)->trait_release();
+  }
 
   /** @brief Check if buffer is null */
   bool null() const noexcept {
@@ -55,7 +57,7 @@ template <typename Derived, typename BufferRefType>
 class BufferManagerTrait {
  public:
   /** @brief Request result type */
-  using request_r = Result<BufferRefType&, BufferError>;
+  using request_r = Result<BufferRefType, BufferError>;
 
   /** @brief Request new buffer allocation */
   request_r request() noexcept {
