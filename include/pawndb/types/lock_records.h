@@ -7,10 +7,10 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/eq.h"
-#include "pawndb/traits/table.h"
 #include "pawndb/traits/iterator.h"
 #include "pawndb/traits/lock_manager.h"
 #include "pawndb/traits/sized.h"
+#include "pawndb/traits/table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {

@@ -46,6 +46,16 @@ int main() {
     std::exit(EXIT_FAILURE);
   }
 
+  // Set receive timeout to 3 seconds
+  struct timeval tv;
+  tv.tv_sec = 3;  // 3 second timeout
+  tv.tv_usec = 0;
+  if (setsockopt(server_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+    std::cerr << "Failed to set socket timeout: " << strerror(errno)
+              << std::endl;
+    std::exit(EXIT_FAILURE);
+  }
+
   auto thread_manager = ThreadManager(&Database::get_instance(), server_fd);
   auto thread_manager_ptr = &thread_manager;
 

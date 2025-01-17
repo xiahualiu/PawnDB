@@ -41,7 +41,7 @@ class IterTypeTrait {
     return tmp;
   }
 
-  protected:
+ protected:
   // Protected constructor and destructor
   IterTypeTrait() = default;
   ~IterTypeTrait() = default;

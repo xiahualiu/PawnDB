@@ -71,12 +71,12 @@ class Worker : public ThreadTrait<Worker> {
   void process_update(Parser& _parser, Job& _job) noexcept;
   void process_rm(Parser& _parser, Job& _job) noexcept;
 
-  std::atomic_flag& running_; /**< Running flag */
-  JobChannel& job_ch_;        /**< Job channel */
-  RetChannel& ret_ch_;        /**< Return channel */
-  Database& db_;              /**< Database instance */
+  std::atomic_flag& running_;   /**< Running flag */
+  JobChannel& job_ch_;          /**< Job channel */
+  RetChannel& ret_ch_;          /**< Return channel */
+  Database& db_;                /**< Database instance */
   WorkerContext::key_t txn_id_; /**< Transaction ID */
-  const int fd_;              /**< Server socket */
+  const int fd_;                /**< Server socket */
 
   std::uint8_t timeout_cnt_; /**< Timeout counter */
   CommitTable commit_table_; /**< Commit buffer table */

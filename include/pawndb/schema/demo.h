@@ -13,6 +13,7 @@
 #define PAWNDB_SCHEMA_DEMO_H
 
 #include <atomic>
+
 #include "pawndb/params.h"
 #include "pawndb/traits/database.h"
 #include "pawndb/types/buffer_table.h"

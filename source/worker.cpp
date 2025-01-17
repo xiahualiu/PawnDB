@@ -1,6 +1,9 @@
 #include "pawndb/types/worker.h"
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <atomic>
+#include <iostream>
 
 #include "pawndb/params.h"
 #include "pawndb/table_types.h"
@@ -24,7 +27,7 @@ Worker::Worker(WorkerContext* entry) noexcept
 void Worker::reply(OpAck _ack, Parser& _parser, std::size_t _size,
                    Job& _job) noexcept {
   _parser.set_ack(_ack);
-  sendto(fd_, _parser.get_buffer().data(), _size, 0, &_job.c_addr(),
+  sendto(fd_, _parser.get_buffer().data(), _size, 0, _job.c_addr(),
          _job.c_addr_len());
 }
 
@@ -588,6 +591,7 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
 
 void Worker::trait_start() noexcept {
   while (is_running()) {
+    std::cout << "Worker running: #" << txn_id_ << std::endl;
     auto job_r = job_ch_.recv();
     if (!job_r) {
       timeout_cnt_++;
@@ -599,7 +603,11 @@ void Worker::trait_start() noexcept {
       worker_quit();
       return;
     }
+
     auto job = job_r.unwrap();
+    std::cout << "Worker #" << txn_id_ << " , get a job from: " << reinterpret_cast<const sockaddr_un*>(job.c_addr())->sun_path << std::endl;
+    std::cout << "Length of client address: " << job.c_addr_len() << std::endl;
+
     auto parser = Parser(job.buffer(), job.buffer_size());
 
     auto op_r = parser.get_op();
@@ -614,6 +622,7 @@ void Worker::trait_start() noexcept {
     switch (op) {
       case OpType::START_TXN:
         parser.set_txn_id(txn_id_);
+        std::cout << "Worker #" << txn_id_ << "reply START_TXN." << std::endl;
         reply(OpAck::SUCCESS, parser, 7, job);
         job.buffer().release();
         job_ch_.pop();

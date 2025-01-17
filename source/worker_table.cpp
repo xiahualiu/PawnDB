@@ -43,6 +43,13 @@ WorkerContext& WorkerContext::operator=(const WorkerContext& _other) noexcept {
   return *this;
 }
 
+WorkerContext::~WorkerContext() noexcept {
+  if (thread_.joinable()) {
+    trait_stop();
+    trait_join();
+  }
+}
+
 std::size_t WorkerContext::trait_hash() const noexcept {
   return txn_id_;
 }
@@ -60,13 +67,12 @@ void WorkerContext::trait_stop() noexcept {
 }
 
 void WorkerContext::trait_join() noexcept {
-  running_.clear(std::memory_order_relaxed);
   // Clear all unfinished jobs
   while (!job_ch_.empty()) {
     auto job = job_ch_.get().unwrap();
     auto parser = Parser(job.buffer(), job.buffer_size());
     parser.set_ack(OpAck::DEAD_TXN);
-    sendto(fd_, parser.get_buffer().data(), 7, 0, &job.c_addr(),
+    sendto(fd_, parser.get_buffer().data(), 7, 0, job.c_addr(),
            job.c_addr_len());
     job.buffer().release();
     job_ch_.pop();
@@ -114,6 +120,12 @@ void WorkerContext::trait_notify_not_empty() noexcept {
   job_ch_.notify_not_empty();
 }
 
+WorkerTable::WorkerTable() noexcept : table_{}, size_(0) {}
+
+WorkerTable::~WorkerTable() noexcept {
+  trait_clear();
+}
+
 WorkerTable::table_r WorkerTable::trait_insert(
     const entry_t& _context) noexcept {
   if (trait_full()) return TableError::Full;
@@ -125,6 +137,7 @@ WorkerTable::table_r WorkerTable::trait_insert(
       table_[idx].is_used_ = true;
       table_[idx].is_deleted_ = false;
       size_++;
+      table_[idx].context_.start();
       return table_[idx].context_;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
@@ -155,6 +168,8 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
       return TableError::NotFound;
     }
     if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
+      table_[idx].context_.stop();
+      table_[idx].context_.join();
       table_[idx].is_deleted_ = true;
       size_--;
       return TableError::None;
@@ -164,20 +179,16 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
   return TableError::NotFound;
 }
 
-TableError WorkerTable::trait_write(
-    const WorkerTable::entry_t& _context) noexcept {
-  auto idx = _context.txn_id_ % MAX_TRANSACTIONS;
-  auto start = idx;
-  do {
-    if (!table_[idx].is_used_) return TableError::NotFound;
-    if (table_[idx].context_.txn_id_ == _context.txn_id_ &&
-        !table_[idx].is_deleted_) {
-      table_[idx].context_ = _context;
-      return TableError::None;
+/** @brief Clear all workers */
+void WorkerTable::trait_clear() noexcept {
+  for (auto& entry : table_) {
+    if (entry.is_used_ && !entry.is_deleted_) {
+      entry.context_.stop();
+      entry.context_.join();
+      entry.is_deleted_ = true;
+      size_--;
     }
-    idx = (idx + 1) % MAX_TRANSACTIONS;
-  } while (idx != start);
-  return TableError::NotFound;
+  }
 }
 
 }  // namespace PawnDB

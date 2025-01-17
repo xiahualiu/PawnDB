@@ -56,7 +56,7 @@ class TupleTrait {
   }
 
  protected:
- // Protected constructor and destructor
+  // Protected constructor and destructor
   TupleTrait() = default;
   ~TupleTrait() = default;
 };

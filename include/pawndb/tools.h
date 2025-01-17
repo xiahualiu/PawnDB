@@ -25,6 +25,5 @@ int array_cmp(const std::array<char, N>& a,
   return 0;  // Arrays are equal
 }
 
-
 }  // namespace PawnDB
 #endif

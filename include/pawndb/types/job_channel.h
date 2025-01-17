@@ -2,6 +2,7 @@
 #define PAWNDB_TYPES_JOB_CHANNEL_H
 
 #include <sys/socket.h>
+#include <sys/un.h>
 
 #include <array>
 #include <condition_variable>
@@ -33,7 +34,7 @@ class Job : public JobTrait<Job>, private CopyTrait<Job> {
       : buffer_(), buffer_size_(0), client_addr_(), client_addr_len_(0) {}
 
   /** @brief Initialize job with buffer and client address */
-  Job(BufferRef _buffer, std::size_t _buffer_size, const struct sockaddr& _addr,
+  Job(BufferRef _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
       socklen_t _addr_len) noexcept;
 
   // Copyable
@@ -48,7 +49,7 @@ class Job : public JobTrait<Job>, private CopyTrait<Job> {
   std::size_t trait_buffer_size() const noexcept;
 
   /** @brief Get client address */
-  const struct sockaddr& trait_c_addr() const noexcept;
+  const sockaddr* trait_c_addr() const noexcept;
 
   /** @brief Get address length */
   socklen_t trait_c_addr_len() const noexcept;
@@ -61,10 +62,10 @@ class Job : public JobTrait<Job>, private CopyTrait<Job> {
   void trait_copy(const Job& other) noexcept;
 
  private:
-  BufferRef buffer_;            /**< Request data buffer */
-  std::size_t buffer_size_;     /**< Request data size */
-  struct sockaddr client_addr_; /**< Client address */
-  socklen_t client_addr_len_;   /**< Address length */
+  BufferRef buffer_;          /**< Request data buffer */
+  std::size_t buffer_size_;   /**< Request data size */
+  sockaddr_un client_addr_;   /**< Client address */
+  socklen_t client_addr_len_; /**< Address length */
 };
 
 /**

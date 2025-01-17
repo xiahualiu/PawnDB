@@ -1,26 +1,31 @@
 #include "pawndb/types/job_channel.h"
 
+#include <sys/socket.h>
+
+#include <cstring>
+
 namespace PawnDB {
 
-Job::Job(BufferRef _buffer, std::size_t _buffer_size,
-         const struct sockaddr& _addr, socklen_t _addr_len) noexcept
+Job::Job(BufferRef _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
+         socklen_t _addr_len) noexcept
     : buffer_(_buffer),
       buffer_size_(_buffer_size),
-      client_addr_(_addr),
-      client_addr_len_(_addr_len) {}
+      client_addr_len_(_addr_len) {
+  memcpy(&client_addr_, &_addr, sizeof(_addr));
+}
 
-Job::Job(const Job& other) noexcept {
-  buffer_ = other.buffer_;
-  buffer_size_ = other.buffer_size_;
-  client_addr_ = other.client_addr_;
-  client_addr_len_ = other.client_addr_len_;
+Job::Job(const Job& other) noexcept
+    : buffer_(other.buffer_),
+      buffer_size_(other.buffer_size_),
+      client_addr_len_(other.client_addr_len_) {
+  memcpy(&client_addr_, &other.client_addr_, sizeof(other.client_addr_));
 }
 
 Job& Job::operator=(const Job& other) noexcept {
   buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
-  client_addr_ = other.client_addr_;
   client_addr_len_ = other.client_addr_len_;
+  memcpy(&client_addr_, &other.client_addr_, sizeof(other.client_addr_));
   return *this;
 }
 
@@ -31,8 +36,8 @@ Job Job::trait_clone() const noexcept {
 void Job::trait_copy(const Job& other) noexcept {
   buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
-  client_addr_ = other.client_addr_;
   client_addr_len_ = other.client_addr_len_;
+  memcpy(&client_addr_, &other.client_addr_, sizeof(other.client_addr_));
 }
 
 BufferRef Job::trait_buffer() const noexcept {
@@ -43,8 +48,8 @@ std::size_t Job::trait_buffer_size() const noexcept {
   return buffer_size_;
 }
 
-const struct sockaddr& Job::trait_c_addr() const noexcept {
-  return client_addr_;
+const sockaddr* Job::trait_c_addr() const noexcept {
+  return reinterpret_cast<const sockaddr*>(&client_addr_);
 }
 
 socklen_t Job::trait_c_addr_len() const noexcept {

@@ -1,7 +1,7 @@
 #include "pawndb/types/lock_records.h"
 
-#include "pawndb/traits/table.h"
 #include "pawndb/traits/lock_manager.h"
+#include "pawndb/traits/table.h"
 
 namespace PawnDB {
 

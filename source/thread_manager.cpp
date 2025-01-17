@@ -5,6 +5,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
@@ -20,20 +21,21 @@
 namespace PawnDB {
 
 ThreadManager::ThreadManager(Database* _db, int _server_fd) noexcept
-    : db_(*_db), ret_ch_(), workers_(), server_fd_(_server_fd) {}
+    : db_(*_db), ret_ch_(), workers_(), server_fd_(_server_fd), running_() {}
 
 void ThreadManager::reply(OpAck _ack, Parser& _parser,
-                          const sockaddr& _client_addr,
+                          const sockaddr_un& _client_addr,
                           const socklen_t _client_addr_len) noexcept {
   _parser.set_ack(_ack);
   sendto(server_fd_, _parser.get_buffer().data(), _parser.get_buffer_size(), 0,
-         &_client_addr, _client_addr_len);
+         reinterpret_cast<const sockaddr*>(&_client_addr), _client_addr_len);
 }
 
 void ThreadManager::trait_start() noexcept {
   std::cout << "Server is listening on " << UNIX_SOCKET_PATH << std::endl;
   txn_id_t next_txn_id = 0;
-  while (true) {
+  running_.test_and_set(std::memory_order_relaxed);
+  while (running_.test_and_set(std::memory_order_relaxed)) {
     auto recv_buffer_r = db_.buffers_.request();
     if (!recv_buffer_r) {
       std::cout << "No recv buffer available! Retry in 3 seconds."
@@ -42,11 +44,14 @@ void ThreadManager::trait_start() noexcept {
       continue;
     }
     auto recv_buffer = recv_buffer_r.unwrap();
-    auto client_addr = sockaddr();
-    auto client_addr_len = socklen_t();
+    auto client_addr = sockaddr_un{};
+    auto client_addr_len = socklen_t(sizeof(client_addr));
     ssize_t recv_size =
         recvfrom(server_fd_, recv_buffer.buffer().data(), BUFFER_WIDTH, 0,
-                 &client_addr, &client_addr_len);
+                 reinterpret_cast<sockaddr*>(&client_addr), &client_addr_len);
+    std::cout << "Received " << recv_size << " bytes from client" << std::endl;
+    std::cout << "Client address: " << client_addr.sun_path << std::endl;
+    std::cout << "Client address length: " << client_addr_len << std::endl;
     // Check if fd is closed
     if (0 == recv_size) {
       return;
@@ -75,13 +80,9 @@ void ThreadManager::trait_start() noexcept {
         while (!ret_ch_.empty()) {
           auto dead_txn_r = ret_ch_.get();
           auto dead_txn = dead_txn_r.unwrap();
-          auto search_r = workers_.search(dead_txn);
-          auto& worker = search_r.unwrap();
-          worker.join();
-          ret_ch_.pop();
           workers_.remove(dead_txn);
         }
-        // Insert new worker
+        // Insert new worker (will start it as well)
         auto new_worker_entry =
             WorkerContext{&ret_ch_, &db_, next_txn_id, server_fd_};
         auto insert_r = workers_.insert(new_worker_entry);
@@ -93,8 +94,7 @@ void ThreadManager::trait_start() noexcept {
           continue;
         }
         auto& worker_entry = insert_r.unwrap();
-        // Start worker thread
-        worker_entry.start();
+        // Send the first job to the worker
         worker_entry.send(
             {recv_buffer, recv_size_u, client_addr, client_addr_len});
         worker_entry.notify_not_empty();
@@ -154,12 +154,22 @@ void ThreadManager::trait_start() noexcept {
 }
 
 void ThreadManager::trait_stop() noexcept {
-  shutdown(server_fd_, SHUT_RDWR);
-  close(server_fd_);
-  unlink(UNIX_SOCKET_PATH);
+  running_.clear(std::memory_order_relaxed);
+  // Clear all unfinished workers
+  workers_.clear();
 }
 
-bool ThreadManager::trait_is_running() const noexcept {
+void ThreadManager::trait_join() noexcept {
+  running_.clear(std::memory_order_relaxed);
+  // Clear all unfinished workers
+  workers_.clear();
+}
+
+bool ThreadManager::trait_is_running() noexcept {
+  if (!running_.test_and_set(std::memory_order_relaxed)) {
+    running_.clear(std::memory_order_relaxed);
+    return false;
+  }
   return true;
 }
 

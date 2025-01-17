@@ -41,7 +41,7 @@ class WorkerContextTrait {
   }
 
  protected:
- // Protected constructor and destructor
+  // Protected constructor and destructor
   WorkerContextTrait() = default;
   ~WorkerContextTrait() = default;
 };

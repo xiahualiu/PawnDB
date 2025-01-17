@@ -91,7 +91,7 @@ class LockManagerTrait {
   }
 
  protected:
- // Protected constructor and destructor
+  // Protected constructor and destructor
   LockManagerTrait() = default;
   ~LockManagerTrait() = default;
 };

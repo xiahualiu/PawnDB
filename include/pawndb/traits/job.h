@@ -28,7 +28,7 @@ class JobTrait {
 
   /** @brief Get client address
    *  @return Reference to client sockaddr */
-  const struct sockaddr& c_addr() const noexcept {
+  const sockaddr* c_addr() const noexcept {
     return static_cast<const Derived*>(this)->trait_c_addr();
   }
 
@@ -39,7 +39,7 @@ class JobTrait {
   }
 
  protected:
- // Protected constructor and destructor
+  // Protected constructor and destructor
   JobTrait() = default;
   ~JobTrait() = default;
 };

@@ -7,8 +7,8 @@
  * @copyright Copyright (c) 2025
  *
  */
-
-#define DOCTEST_CONFIG_IMPLEMENT
+#include <iostream>
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -17,126 +17,127 @@
 
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
+#include "pawndb/schema/demo.h"
+#include "pawndb/traits/parser.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/thread_manager.h"
-#include "pawndb/types/worker_table.h"
 
 namespace PawnDB {
 
-// Bad operation message
-constexpr static auto bad_op =
-    std::array<char, BUFFER_WIDTH>{static_cast<char>(OpType::MAX_OP_VALUE), 0};
-constexpr static auto bad_op_size = 3;
+class TestClient {
+ private:
+  int client_fd_;
+  struct sockaddr_un server_addr_;
 
-// Start TXN
-constexpr static auto start_txn = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::START_TXN), 0, 0, 0, 0, 0, 0};
-constexpr static auto start_txn_size = 7;
+  const char* CLIENT_PATH = "/tmp/test-client.sock";
 
-// Read as shared
-constexpr static auto read_shared = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::SHARED_READ), 0, 0, 0, 0, 0, 0};
-constexpr static auto read_shared_size = 7;
+ public:
+  TestClient() {
+    // Create UDP socket
+    client_fd_ = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (client_fd_ == -1) {
+      throw std::runtime_error("Failed to create socket");
+    }
 
-// Read as exlusive
-constexpr static auto read_exclusive = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::EXCLUSIVE_READ), 0, 0, 0, 0, 0, 0};
-constexpr static auto read_exlusive_size = 7;
+    // Setup server address
+    memset(server_addr_.sun_path, 0, sizeof(server_addr_.sun_path));
+    server_addr_.sun_family = AF_UNIX;
+    strncpy(server_addr_.sun_path, UNIX_SOCKET_PATH,
+            sizeof(server_addr_.sun_path) - 1);
 
-// Abort transaction
-constexpr static auto abort_txn = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::COMMIT_TXN), 0, 0, 0, 0, 0, 0};
-constexpr static auto abort_txn_size = 7;
+    // Setup client address
+    struct sockaddr_un client_addr;
+    memset(&client_addr, 0, sizeof(client_addr));
+    client_addr.sun_family = AF_UNIX;
+    strncpy(client_addr.sun_path, CLIENT_PATH,
+            sizeof(client_addr.sun_path) - 1);
+    unlink(CLIENT_PATH);
 
-// Commit transaction
-constexpr static auto commit_txn = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::COMMIT_TXN), 0, 0, 0, 0, 0, 0};
-constexpr static auto commit_txn_size = 7;
+    // Bind client address
+    if (bind(client_fd_, reinterpret_cast<struct sockaddr*>(&client_addr),
+             sizeof(client_addr))) {
+      throw std::runtime_error("Failed to bind client address");
+    }
+  }
 
-// Remove tuple
-constexpr static auto remove_tuple = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::DELETE), 0, 0, 0, 0, 0, 0};
-constexpr static auto remove_tuple_size = 7;
+  ~TestClient() noexcept {
+    if (client_fd_ != -1) {
+      close(client_fd_);
+    }
+  }
 
-// Update tuple
-constexpr static auto update_tuple = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::UPDATE), 0, 0, 0, 0, 0, 0};
-constexpr static auto update_tuple_size = 7;
+  // Non-copyable
+  TestClient(const TestClient&) = delete;
+  TestClient& operator=(const TestClient&) = delete;
 
-// Promote tuple
-constexpr static auto promote_tuple = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::PROMOTE), 0, 0, 0, 0, 0, 0};
-constexpr static auto promove_tuple_size = 7;
+  bool send_request(const buffer_t& buffer, std::size_t size) noexcept {
+    auto sent = sendto(client_fd_, buffer.data(), size, 0,
+                       reinterpret_cast<struct sockaddr*>(&server_addr_),
+                       sizeof(server_addr_));
+    return sent != -1;
+  }
 
-// Yield read
-constexpr static auto yield_read = std::array<char, BUFFER_WIDTH>{
-    static_cast<char>(OpType::YIELD_READ), 0, 0, 0, 0, 0, 0};
-constexpr static auto yield_read_size = 7;
+  bool receive_response(buffer_t& response) noexcept {
+    socklen_t server_len = sizeof(server_addr_);
+    auto received = recvfrom(client_fd_, response.data(), response.size(), 0,
+                             reinterpret_cast<struct sockaddr*>(&server_addr_),
+                             &server_len);
+    return received != -1;
+  }
+};
 
-// Initializing database
-static __attribute__((no_destroy)) auto database = Database();
-
-int main() {
+TEST_CASE("MainThread Transaction Start #1") {
   // Create server socket must be UDP
   int server_fd = socket(AF_UNIX, SOCK_DGRAM, 0);
-  if (-1 == server_fd) {
-    std::cerr << "Failed to create server socket: " << strerror(errno)
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-    return 0;
-  }
+  CHECK(-1 != server_fd);
   struct sockaddr_un server_addr;
   server_addr.sun_family = AF_UNIX;
   strncpy(server_addr.sun_path, UNIX_SOCKET_PATH,
           sizeof(server_addr.sun_path) - 1);
-  errno = 0;
   unlink(UNIX_SOCKET_PATH);
-  if (errno != 0 && errno != ENOENT) {
-    std::cerr << "Failed to unlink existing socket: " << strerror(errno)
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-    return 0;
-  }
-  if (-1 == bind(server_fd, reinterpret_cast<struct sockaddr*>(&server_addr),
-                 sizeof(server_addr))) {
-    std::cerr << "Failed to bind server socket: " << strerror(errno)
-              << std::endl;
-    std::exit(EXIT_FAILURE);
-    return 0;
-  }
-  auto manager_thread = std::thread([&]() {
-    ThreadManager manager(&database, server_fd);
-    manager.start();
-  })
-  ;
+  CHECK(-1 != bind(server_fd, reinterpret_cast<struct sockaddr*>(&server_addr),
+                   sizeof(server_addr)));
+  // Set receive timeout to 3 seconds
+  struct timeval tv;
+  tv.tv_sec = 3;  // 3 second timeout
+  tv.tv_usec = 0;
+  CHECK(-1 !=
+        setsockopt(server_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0);
 
-  return 0;
-}
+  ThreadManager manager(&Database::get_instance(), server_fd);
+  auto* manager_ptr = &manager;
 
-TEST_CASE("MainThread Transaction Start #1") {
-  Database db;
-  ThreadManager main_thread(db);
+  auto manager_thread = std::thread([&]() { manager_ptr->start(); });
 
-  std::thread server_thread([&]() { main_thread.start(); });
+  auto client = TestClient();
 
-  TestClient client;
-  std::array<char, BUFFER_WIDTH> buffer{};
-  Parser parser(buffer, 0);
-  parser.set_op(OpType::START_TXN);
-  parser.set_buffer_size(7);
+  buffer_t buffer;
+  Parser parser_in(buffer, BUFFER_WIDTH);
+  parser_in.set_op(OpType::START_TXN);
+  parser_in.set_op_id(1);
 
-  CHECK(client.send_request(buffer, parser.get_buffer_size()));
+  CHECK(client.send_request(buffer, 7));
 
-  std::array<char, BUFFER_WIDTH> response{};
+  buffer_t response{};
   CHECK(client.receive_response(response));
 
+  std::cout << "Receive response: " << std::endl;
   Parser response_parser(response, BUFFER_WIDTH);
+  auto op_recv = response_parser.get_op();
+  CHECK(op_recv);
+  CHECK(op_recv.unwrap() == OpType::START_TXN);
+  auto op_id_recv = response_parser.get_op_id();
+  CHECK(op_id_recv);
+  CHECK(op_id_recv.unwrap() == 1);
+  auto txn_id_recv = response_parser.get_txn();
+  CHECK(txn_id_recv);
+  CHECK(txn_id_recv.unwrap() == 0);
   auto ack = response_parser.get_ack();
   CHECK(ack);
   CHECK(ack.unwrap() == OpAck::SUCCESS);
 
-  main_thread.stop();
-  server_thread.join();
+  manager.stop();
+  manager_thread.join();
 }
 
 }  // namespace PawnDB

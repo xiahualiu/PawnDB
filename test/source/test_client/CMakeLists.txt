@@ -1,3 +1,3 @@
-add_executable(main-thread-test main.cpp)
+add_executable(client-test main.cpp)
 
-doctest_discover_tests(main-thread-test)
+doctest_discover_tests(client-test)

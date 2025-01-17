@@ -24,8 +24,7 @@ class SizedTrait {
   }
 
  protected:
-
- // Protected constructor and destructor
+  // Protected constructor and destructor
   SizedTrait() = default;
   ~SizedTrait() = default;
 };

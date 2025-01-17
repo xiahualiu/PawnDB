@@ -75,6 +75,9 @@ class ParserTrait {
   /** @brief Transaction ID result */
   using txn_id_r = Result<txn_id_t, ParserError>;
 
+  /** @brief Operation acknowledgment result */
+  using op_ack_r = Result<OpAck, ParserError>;
+
   /** @brief Table ID result */
   using tbl_id_r = Result<tp_id_t, ParserError>;
 
@@ -99,6 +102,12 @@ class ParserTrait {
     return static_cast<const Derived*>(this)->trait_get_txn();
   }
 
+  /** @brief Get operation acknowledgment status
+   *  @return Result containing acknowledgment status or error */
+  op_ack_r get_ack() const noexcept {
+    return static_cast<const Derived*>(this)->trait_get_ack();
+  }
+
   /** @brief Get table ID
    *  @return Result containing table ID or error */
   tbl_id_r get_tbl() const noexcept {
@@ -117,16 +126,41 @@ class ParserTrait {
     return static_cast<const Derived*>(this)->trait_get_tuple_offset();
   }
 
+  /** @brief Set operation type
+   * @param _op Operation type */
+  void set_op(OpType _op) noexcept {
+    static_cast<Derived*>(this)->trait_set_op(_op);
+  }
+
+  /** @brief Set operation ID
+   * @param _op_id Operation ID */
+  void set_op_id(op_t _op_id) noexcept {
+    static_cast<Derived*>(this)->trait_set_op_id(_op_id);
+  }
+
+
+  /** @brief Set transaction id
+   * @param _txn Transaction id */
+  void set_txn_id(txn_id_t _txn) noexcept {
+    static_cast<Derived*>(this)->trait_set_txn_id(_txn);
+  }
+
   /** @brief Set operation acknowledgment status
    *  @param _ack Acknowledgment status */
   void set_ack(OpAck _ack) noexcept {
     static_cast<Derived*>(this)->trait_set_ack(_ack);
   }
 
-  /** @brief Set transaction id
-   * @param _txn Transaction id */
-  void set_txn_id(txn_id_t _txn) noexcept {
-    static_cast<Derived*>(this)->trait_set_txn_id(_txn);
+  /** @brief Set table id
+   * @param _tbl Table id */
+  void set_tbl(tp_id_t _tbl) noexcept {
+    static_cast<Derived*>(this)->trait_set_tbl(_tbl);
+  }
+
+  /** @brief Set key field in the buffer
+   * @param _key Key value */
+  void set_key(tbl_row_t _key) noexcept {
+    static_cast<Derived*>(this)->trait_set_key(_key);
   }
 
   /** @brief Set buffer size for parsing
@@ -135,11 +169,6 @@ class ParserTrait {
     static_cast<Derived*>(this)->trait_set_buffer_size(_size);
   }
 
-  /** @brief Set key field in the buffer
-   * @param _key Key value */
-  void set_key(tbl_row_t _key) noexcept {
-    static_cast<Derived*>(this)->trait_set_key(_key);
-  }
 
   /** @brief Get buffer size
    * @return Buffer size */

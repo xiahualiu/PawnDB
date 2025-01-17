@@ -28,18 +28,21 @@ namespace PawnDB {
  * - Thread lifecycle management
  * - Size tracking */
 class WorkerContext : public HashTrait<WorkerContext>,
-                    public ThreadTrait<WorkerContext>,
-                    private CopyTrait<WorkerContext>,
-                    public QueueTrait<WorkerContext, Job> {
+                      public ThreadTrait<WorkerContext>,
+                      private CopyTrait<WorkerContext>,
+                      public QueueTrait<WorkerContext, Job> {
  public:
   using key_t = txn_id_t;
 
   /** @brief Construct a new Worker Entry object */
   WorkerContext() noexcept;
 
+  /** @brief Destructor */
+  ~WorkerContext() noexcept;
+
   /** @brief Construct a new Worker Entry object */
   WorkerContext(RetChannel* _ret_ch, Database* _db, txn_id_t _txn_id,
-              int _fd) noexcept;
+                int _fd) noexcept;
 
   /** @brief Construct a new Worker Entry object */
   WorkerContext(const WorkerContext& _other) noexcept;
@@ -109,14 +112,17 @@ class WorkerContext : public HashTrait<WorkerContext>,
  * - O(1) hash-based lookup
  * - Size tracking */
 class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
-                    private SizedTrait<WorkerTable>,
-                    private ContainerTrait<WorkerTable> {
+                    public SizedTrait<WorkerTable>,
+                    public ContainerTrait<WorkerTable> {
  public:
   using key_t = WorkerContext::key_t;
   using entry_t = WorkerContext;
 
   // Default constructor
-  WorkerTable() noexcept : table_(), size_(0) {}
+  WorkerTable() noexcept;
+
+  // Destructor need to join all active threads
+  ~WorkerTable() noexcept;
 
   // Non-copyable
   WorkerTable(const WorkerTable& _other) = delete;
@@ -141,7 +147,7 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
   /** @brief Update worker entry
    *  @param _entry Entry with updated values
    *  @return Error status */
-  TableError trait_write(const entry_t& _entry) noexcept;
+  // TableError trait_write(const entry_t& _entry) noexcept;
 
   // SizedTrait Implementation
   /** @brief Get current number of workers */
@@ -159,6 +165,9 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
   bool trait_full() const noexcept {
     return size_ >= MAX_TRANSACTIONS;
   }
+
+  /** @brief Clear all workers */
+  void trait_clear() noexcept;
 
   /** @brief Worker Table Entry */
   struct Entry {

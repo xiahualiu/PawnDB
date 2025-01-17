@@ -2,6 +2,7 @@
 #define PAWNDB_THREAD_MANAGER_H
 
 #include <sys/socket.h>
+#include <atomic>
 
 #include "pawndb/schema/demo.h"
 #include "pawndb/traits/parser.h"
@@ -30,11 +31,11 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   void trait_join() noexcept;
 
   /** @brief Check if main thread is running */
-  bool trait_is_running() const noexcept;
+  bool trait_is_running() noexcept;
 
  private:
   /** @brief Send reply to client */
-  void reply(OpAck _ack, Parser& _parser, const sockaddr& _client_addr,
+  void reply(OpAck _ack, Parser& _parser, const sockaddr_un& _client_addr,
              const socklen_t _client_addr_len) noexcept;
 
   /** @brief Database instance */
@@ -48,6 +49,9 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
 
   /** @brief UDP server socket */
   const int server_fd_;
+
+  /** @brief Main thread running flag */
+  std::atomic_flag running_;
 };
 
 }  // namespace PawnDB

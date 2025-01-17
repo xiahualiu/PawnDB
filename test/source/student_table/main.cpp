@@ -224,7 +224,6 @@ TEST_CASE("Table Lock Promotion #1") {
   CHECK(get_r.unwrap().lock_ == -1);
 }
 
-
 TEST_CASE("Table Lock Promotion #3") {
   StudentTable table;
   StudentTuple student = {"Brian", 25, 0};

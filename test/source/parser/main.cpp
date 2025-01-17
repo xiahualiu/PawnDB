@@ -10,9 +10,9 @@
 
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
-#include "pawndb/traits/parser.h"
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
+#include "pawndb/traits/parser.h"
 #include "pawndb/types/buffer_table.h"
 #include "pawndb/types/parser.h"
 
@@ -24,7 +24,8 @@ TEST_CASE("Parser Basic Operation #1") {
   auto buffer = ref_r.unwrap();
   auto& buf = buffer.buffer();
 
-  buf = {static_cast<char>(OpType::START_TXN), 1, 2, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0};
+  buf = {
+      static_cast<char>(OpType::START_TXN), 1, 2, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0};
 
   Parser parser(buffer, 11);
 
