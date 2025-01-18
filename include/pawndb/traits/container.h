@@ -11,7 +11,6 @@ namespace PawnDB {
  * status.
  *
  * Required trait implementations:
- * - trait_capacity() -> constexpr std::size_t
  * - trait_empty() -> bool
  * - trait_full() -> bool
  */

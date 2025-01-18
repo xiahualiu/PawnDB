@@ -67,7 +67,7 @@ void WorkerContext::trait_stop() noexcept {
 }
 
 void WorkerContext::trait_join() noexcept {
-  // Clear all unfinished jobs
+  // Ack all unfinished jobs
   while (!job_ch_.empty()) {
     auto job = job_ch_.get().unwrap();
     auto parser = Parser(job.buffer(), job.buffer_size());
@@ -130,8 +130,7 @@ WorkerTable::table_r WorkerTable::trait_insert(
     const entry_t& _context) noexcept {
   if (trait_full()) return TableError::Full;
   auto idx = _context.txn_id_ % MAX_TRANSACTIONS;
-  auto start = idx;
-  do {
+  while (true) {
     if (!table_[idx].is_used_ || table_[idx].is_deleted_) {
       table_[idx].context_ = _context;
       table_[idx].is_used_ = true;
@@ -141,8 +140,7 @@ WorkerTable::table_r WorkerTable::trait_insert(
       return table_[idx].context_;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
-  } while (idx != start);
-  return TableError::Full;
+  }
 }
 
 WorkerTable::table_r WorkerTable::trait_search(const key_t& _key) noexcept {
@@ -162,11 +160,7 @@ WorkerTable::table_r WorkerTable::trait_search(const key_t& _key) noexcept {
 
 TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
   auto idx = _key % MAX_TRANSACTIONS;
-  auto start = idx;
-  do {
-    if (!table_[idx].is_used_) {
-      return TableError::NotFound;
-    }
+  while (true) {
     if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
       table_[idx].context_.stop();
       table_[idx].context_.join();
@@ -175,8 +169,7 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
       return TableError::None;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
-  } while (idx != start);
-  return TableError::NotFound;
+  }
 }
 
 /** @brief Clear all workers */

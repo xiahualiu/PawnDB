@@ -8,6 +8,7 @@
 #include "pawndb/result.h"
 #include "pawndb/tools.h"
 #include "pawndb/traits/table.h"
+#include "pawndb/traits/tuple_table.h"
 
 namespace PawnDB {
 
@@ -106,6 +107,9 @@ bool StudentTuple::trait_equals(const StudentTuple& other) const noexcept {
          age_ == other.age_;
 }
 
+StudentTable::StudentTable() noexcept
+    : table_{}, s_avail_cnt_(0), x_avail_cnt_(0), size_(0), next_key_(0) {}
+
 StudentTable::table_r StudentTable::trait_insert(
     const tuple_t& _tuple) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
@@ -118,6 +122,8 @@ StudentTable::table_r StudentTable::trait_insert(
       table_[idx].lock_ = 0;
       table_[idx].is_used_ = true;
       table_[idx].is_deleted_ = false;
+      s_avail_cnt_++;
+      x_avail_cnt_++;
       next_key_++;
       size_++;
       return table_[idx].tuple_;
@@ -184,49 +190,64 @@ TableError StudentTable::trait_write(const tuple_t& _tuple) noexcept {
   }
 }
 
+void StudentTable::trait_clear() noexcept {
+  auto lock = std::unique_lock<std::mutex>(mtx_);
+  for (tbl_row_t i = 0; i < Rows; i++) {
+    table_[i].is_used_ = false;
+    table_[i].is_deleted_ = false;
+  }
+  s_avail_cnt_ = 0;
+  x_avail_cnt_ = 0;
+  size_ = 0;
+  next_key_ = 0;
+}
+
 StudentTable::ttable_r StudentTable::trait_wait_shared() noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
-  ttable_r result = TupleTableError::Timeout;
   if (not_empty_.wait_for(lock, WAIT_TIMEOUT,
                           [&]() { return !trait_empty(); })) {
-    if (s_available_.wait_for(lock, WAIT_TIMEOUT, [&]() {
-          for (tbl_row_t i = 0; i < Rows; i++) {
-            if (table_[i].is_used_ && !table_[i].is_deleted_ &&
-                table_[i].lock_ >= 0) {
-              table_[i].lock_++;
-              result = table_[i].tuple_;
-              return true;
-            }
+    if (s_available_.wait_for(lock, WAIT_TIMEOUT,
+                              [&]() { return s_avail_cnt_ > 0; })) {
+      for (tbl_row_t i = 0; i < Rows; i++) {
+        if (table_[i].is_used_ && !table_[i].is_deleted_ &&
+            table_[i].lock_ >= 0) {
+          table_[i].lock_++;
+          if (table_[i].lock_ == 1) {
+            x_avail_cnt_--;
           }
-          return false;
-        })) {
-      return result;
+          return table_[i].tuple_;
+        }
+      }
+      return TupleTableError::NotFound;
+    } else {
+      return TupleTableError::Timeout;
     }
   }
-  return result;
+  return TupleTableError::Timeout;
 }
 
 StudentTable::ttable_r StudentTable::trait_wait_exclusive() noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
-  ttable_r result = TupleTableError::Timeout;
-
   if (not_empty_.wait_for(lock, WAIT_TIMEOUT,
                           [&]() { return !trait_empty(); })) {
-    if (x_available_.wait_for(lock, WAIT_TIMEOUT, [&]() {
-          for (tbl_row_t i = 0; i < Rows; i++) {
-            if (table_[i].is_used_ && !table_[i].is_deleted_ &&
-                table_[i].lock_ == 0) {
-              table_[i].lock_ = -1;
-              result = table_[i].tuple_;
-              return true;
-            }
-          }
-          return false;
-        })) {
-      return result;
+    if (x_available_.wait_for(lock, WAIT_TIMEOUT,
+                              [&]() { return x_avail_cnt_ > 0; })) {
+      for (tbl_row_t i = 0; i < Rows; i++) {
+        if (table_[i].is_used_ && !table_[i].is_deleted_ &&
+            table_[i].lock_ == 0) {
+          table_[i].lock_ = -1;
+          x_avail_cnt_--;
+          s_avail_cnt_--;
+          return table_[i].tuple_;
+        }
+      }
+      return TupleTableError::NotFound;
+    } else {
+      return TupleTableError::Timeout;
     }
+  } else {
+    return TupleTableError::Timeout;
   }
-  return result;
 }
 
 TupleTableError StudentTable::trait_promote(const key_t& _key) noexcept {
@@ -236,6 +257,7 @@ TupleTableError StudentTable::trait_promote(const key_t& _key) noexcept {
     if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       if (x_available_.wait_for(lock, WAIT_TIMEOUT,
                                 [&]() { return table_[idx].lock_ == 1; })) {
+        s_avail_cnt_--;
         table_[idx].lock_ = -1;
         return TupleTableError::None;
       }
@@ -254,6 +276,9 @@ void StudentTable::trait_release(const key_t& _key) noexcept {
         table_[idx].lock_ = 0;
       } else {
         table_[idx].lock_--;
+      }
+      if (table_[idx].lock_ == 0) {
+        x_avail_cnt_++;
       }
       return;
     }

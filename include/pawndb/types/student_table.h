@@ -146,8 +146,9 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
   };
 
   /** @brief Construct student table */
-  StudentTable() noexcept : table_{}, size_(0), next_key_(0) {}
+  StudentTable() noexcept;
 
+  // Non-copyable
   StudentTable(const StudentTable& other) noexcept = delete;
   StudentTable& operator=(const StudentTable& other) noexcept = delete;
 
@@ -166,6 +167,9 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
    *  @param _key Key of record to remove
    *  @return Error status */
   TableError trait_remove(const key_t& _key) noexcept;
+
+  /** @brief Clear the student table */
+  void trait_clear() noexcept;
 
   /** @brief Update student record
    *  @param _tuple Tuple with updated values
@@ -223,6 +227,8 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
 
   std::array<Entry, Rows> table_;
 
+  tbl_row_t s_avail_cnt_; /**< Number of shared locks available */
+  tbl_row_t x_avail_cnt_; /**< Number of exclusive locks available */
   std::size_t size_;
   key_t next_key_;
 };

@@ -13,7 +13,7 @@ namespace PawnDB {
  * Required implementations:
  * - trait_buffer() -> buffer_t& : Get buffer reference
  * - trait_release() -> void : Release buffer resources
- * - trait_null() -> bool : Check if buffer is null
+ * - trait_null() -> bool : Test if buffer is null.
  */
 template <typename Derived>
 class BufferRefTrait {
@@ -26,11 +26,6 @@ class BufferRefTrait {
   /** @brief Release buffer resources */
   void release() noexcept {
     static_cast<Derived*>(this)->trait_release();
-  }
-
-  /** @brief Check if buffer is null */
-  bool null() const noexcept {
-    return static_cast<const Derived*>(this)->trait_null();
   }
 
  protected:
@@ -62,6 +57,11 @@ class BufferManagerTrait {
   /** @brief Request new buffer allocation */
   request_r request() noexcept {
     return static_cast<Derived*>(this)->trait_request();
+  }
+
+  /** @brief Clear all buffers & ownerships */
+  void clear() noexcept {
+    static_cast<Derived*>(this)->trait_clear();
   }
 
  protected:

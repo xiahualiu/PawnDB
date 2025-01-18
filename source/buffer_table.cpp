@@ -17,9 +17,17 @@ BufferTable::request_r BufferTable::trait_request() noexcept {
   return result;
 }
 
-bool BufferTable::trait_empty() const noexcept {
-  return size_ == 0;
+void BufferTable::trait_clear() noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  for (auto &buffer : buffers_) {
+    buffer.is_used_ = false;
+  }
+  size_ = 0;
 }
+
+// bool BufferTable::trait_empty() const noexcept {
+//   return size_ == 0;
+// }
 
 bool BufferTable::trait_full() const noexcept {
   return size_ >= N;
@@ -54,7 +62,7 @@ void BufferRef::trait_copy(const BufferRef &_other) noexcept {
   index_ = _other.index_;
 }
 
-bool BufferRef::trait_null() const noexcept {
+bool BufferRef::_test_null() const noexcept {
   return table_ == nullptr;
 }
 

@@ -79,6 +79,10 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
    *  @return Result with buffer reference or error */
   request_r trait_request() noexcept;
 
+  /**  @brief Release buffer back to pool */
+  void trait_clear() noexcept;
+
+  // ContainerTrait Implementation
   /** @brief Check if pool is empty */
   bool trait_empty() const noexcept;
 
@@ -127,7 +131,7 @@ class BufferRef : private CopyTrait<BufferRef>,
 
   /** @brief Check if reference is null
    *  @return true if reference is invalid */
-  bool trait_null() const noexcept;
+  bool _test_null() const noexcept;
 
   // BufferEntryTrait Implementation
   /** @brief Get underlying buffer */

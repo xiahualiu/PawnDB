@@ -10,9 +10,6 @@
  * - trait_clone(): Creates a copy of the derived object
  * - trait_copy(const Derived&): Copies state from another derived object
  *
- * @note The copy can be lazy, which means it does not need to be exactly 1:1
- * memory copy. The requirement is simple, you need to make sure the object's
- * other functions behaviors should be the same after copy.
  */
 namespace PawnDB {
 

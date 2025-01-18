@@ -33,6 +33,12 @@ class Database : public DatabaseTrait<Database> {
     tickstamp_.fetch_add(1, std::memory_order_relaxed);
   }
 
+  void trait_clear() noexcept {
+    tickstamp_.store(0, std::memory_order_relaxed);
+    students_.clear();
+    buffers_.clear();
+  }
+
  public:
   StudentTable students_;
   std::atomic_uint32_t tickstamp_;

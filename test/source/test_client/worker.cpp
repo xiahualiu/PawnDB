@@ -591,6 +591,7 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
 
 void Worker::trait_start() noexcept {
   while (is_running()) {
+    std::cout << "Worker running: #" << txn_id_ << std::endl;
     auto job_r = job_ch_.recv();
     if (!job_r) {
       timeout_cnt_++;

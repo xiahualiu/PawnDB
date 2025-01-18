@@ -13,10 +13,12 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/hash.h"
+#include "pawndb/traits/parser.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/table.h"
 #include "pawndb/traits/thread.h"
 #include "pawndb/types/job_channel.h"
+#include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
 
 namespace PawnDB {
@@ -94,6 +96,29 @@ class WorkerContext : public HashTrait<WorkerContext>,
   void trait_notify_not_empty() noexcept;
 
  private:
+  // Reply functions
+  void reply(OpAck _ack, Parser& _parser, std::size_t _size,
+             Job& _job) noexcept;
+
+  /** @brief Worker quit function */
+  void worker_quit() noexcept;
+
+  /** @brief Release all locks */
+  void release_locks() noexcept;
+
+  /** @brief Clear commit table */
+  void clear_commit_table() noexcept;
+
+  // Process functions
+  void process_commit(Parser& _parser, Job& _job) noexcept;
+  void process_add(Parser& _parser, Job& _job) noexcept;
+  void process_shared_read(Parser& _parser, Job& _job) noexcept;
+  void process_exclusive_read(Parser& _parser, Job& _job) noexcept;
+  void process_yield(Parser& _parser, Job& _job) noexcept;
+  void process_promote(Parser& _parser, Job& _job) noexcept;
+  void process_update(Parser& _parser, Job& _job) noexcept;
+  void process_rm(Parser& _parser, Job& _job) noexcept;
+
   RetChannel* ret_ch_;       /**< Return channel */
   Database* db_;             /**< Database instance */
   std::thread thread_;       /**< Worker thread */

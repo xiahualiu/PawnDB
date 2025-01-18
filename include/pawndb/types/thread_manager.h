@@ -2,6 +2,7 @@
 #define PAWNDB_THREAD_MANAGER_H
 
 #include <sys/socket.h>
+
 #include <atomic>
 
 #include "pawndb/schema/demo.h"
@@ -15,7 +16,9 @@ namespace PawnDB {
 
 class ThreadManager : public ThreadTrait<ThreadManager> {
  public:
-  ThreadManager(Database* _db, int _server_fd) noexcept;
+  /** @brief Constructor
+   *  @param _db Database instance */
+  ThreadManager(Database* _db) noexcept;
 
   // Non-copyable
   ThreadManager(const ThreadManager& _other) = delete;
@@ -28,7 +31,7 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   void trait_stop() noexcept;
 
   /** @brief Join main thread */
-  void trait_join() noexcept;
+  // void trait_join() noexcept;
 
   /** @brief Check if main thread is running */
   bool trait_is_running() noexcept;
@@ -48,7 +51,7 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   WorkerTable workers_;
 
   /** @brief UDP server socket */
-  const int server_fd_;
+  int server_fd_;
 
   /** @brief Main thread running flag */
   std::atomic_flag running_;
