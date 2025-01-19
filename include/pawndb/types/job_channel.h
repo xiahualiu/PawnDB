@@ -27,7 +27,7 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for job passing
  */
-class Job : public JobTrait<Job>, private CopyTrait<Job> {
+class Job : public JobTrait<Job>, public CopyTrait<Job> {
  public:
   /** @brief Initialize empty job */
   constexpr Job() noexcept

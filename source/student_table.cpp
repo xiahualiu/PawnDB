@@ -193,6 +193,7 @@ TableError StudentTable::trait_write(const tuple_t& _tuple) noexcept {
 void StudentTable::trait_clear() noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   for (tbl_row_t i = 0; i < Rows; i++) {
+    table_[i].lock_ = 0;
     table_[i].is_used_ = false;
     table_[i].is_deleted_ = false;
   }
@@ -274,11 +275,13 @@ void StudentTable::trait_release(const key_t& _key) noexcept {
     if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       if (table_[idx].lock_ == -1) {
         table_[idx].lock_ = 0;
+        x_avail_cnt_++;
+        s_avail_cnt_++;
       } else {
         table_[idx].lock_--;
-      }
-      if (table_[idx].lock_ == 0) {
-        x_avail_cnt_++;
+        if (table_[idx].lock_ == 0) {
+          x_avail_cnt_++;
+        }
       }
       return;
     }
@@ -287,11 +290,15 @@ void StudentTable::trait_release(const key_t& _key) noexcept {
 }
 
 void StudentTable::trait_notify_shared() noexcept {
-  s_available_.notify_all();
+  if (s_avail_cnt_ > 0) {
+    s_available_.notify_all();
+  }
 }
 
 void StudentTable::trait_notify_exclusive() noexcept {
-  x_available_.notify_one();
+  if (x_avail_cnt_ > 0) {
+    x_available_.notify_all();
+  }
 }
 
 void StudentTable::trait_notify_not_empty() noexcept {
@@ -312,6 +319,14 @@ bool StudentTable::trait_empty() const noexcept {
 
 bool StudentTable::trait_full() const noexcept {
   return size_ == Rows;
+}
+
+tbl_row_t StudentTable::_test_s_avail_cnt() const noexcept {
+  return s_avail_cnt_;
+}
+
+tbl_row_t StudentTable::_test_x_avail_cnt() const noexcept {
+  return x_avail_cnt_;
 }
 
 }  // namespace PawnDB

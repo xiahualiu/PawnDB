@@ -27,7 +27,7 @@ class JobTrait {
   }
 
   /** @brief Get client address
-   *  @return Reference to client sockaddr */
+   *  @return A pointer to client sockaddr */
   const sockaddr* c_addr() const noexcept {
     return static_cast<const Derived*>(this)->trait_c_addr();
   }

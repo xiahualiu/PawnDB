@@ -5,7 +5,7 @@ namespace PawnDB {
 
 /**
  * @brief Trait for converting from source type
- * @tparam To Target type to convert to
+ * @tparam Derived Target type to convert to
  * @tparam From Source type to convert from
  */
 template <typename Derived, typename From>

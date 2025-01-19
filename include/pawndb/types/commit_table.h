@@ -88,7 +88,7 @@ class CommitEntry : public CommitTrait<CommitEntry>,
  * - Container: Capacity operations
  */
 class CommitTable : public QueueTrait<CommitTable, CommitEntry>,
-                    private SizedTrait<CommitTable>,
+                    public SizedTrait<CommitTable>,
                     public ContainerTrait<CommitTable> {
   /** @brief Maximum entries per transaction */
   static constexpr std::size_t N = MAX_COMMIT_PER_TRANSACTION;

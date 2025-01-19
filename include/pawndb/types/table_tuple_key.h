@@ -19,7 +19,7 @@ namespace PawnDB {
  * Implements composite key, copy, and hash operations.
  */
 class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
-                      private CopyTrait<TableTupleKey>,
+                      public CopyTrait<TableTupleKey>,
                       public HashTrait<TableTupleKey>,
                       public EqTrait<TableTupleKey> {
  public:

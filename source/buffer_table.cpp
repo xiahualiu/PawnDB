@@ -25,9 +25,9 @@ void BufferTable::trait_clear() noexcept {
   size_ = 0;
 }
 
-// bool BufferTable::trait_empty() const noexcept {
-//   return size_ == 0;
-// }
+bool BufferTable::trait_empty() const noexcept {
+  return size_ == 0;
+}
 
 bool BufferTable::trait_full() const noexcept {
   return size_ >= N;

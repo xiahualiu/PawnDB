@@ -102,7 +102,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
 /**
  * @brief Buffer reference wrapper
  */
-class BufferRef : private CopyTrait<BufferRef>,
+class BufferRef : public CopyTrait<BufferRef>,
                   public BufferRefTrait<BufferRef> {
  private:
   BufferTable* table_; /**< Owner table reference */

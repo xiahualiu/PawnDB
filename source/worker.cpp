@@ -85,7 +85,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
   // No error allowed in commit phase because of ACID properties
   while (!commit_table_.empty()) {
     auto& commit = commit_table_.get().unwrap();
-    commit_table_.pop();
     switch (commit.op()) {
       case OpType::ADD_TUPLE: {
         auto [table_id, tuple_key] = commit.key().trait_disassemble();
@@ -145,6 +144,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         break;
       }
     }
+    commit_table_.pop();
   }
   status_ = TxnStatus::COMMITTED;
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);

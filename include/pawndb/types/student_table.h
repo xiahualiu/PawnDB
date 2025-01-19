@@ -34,7 +34,7 @@ namespace PawnDB {
  */
 class StudentTuple : public TupleTrait<StudentTuple>,
                      public SerializerTrait<StudentTuple>,
-                     private CopyTrait<StudentTuple>,
+                     public CopyTrait<StudentTuple>,
                      public HashTrait<StudentTuple>,
                      public EqTrait<StudentTuple> {
  public:
@@ -127,9 +127,10 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
                      public TupleTableTrait<StudentTable, StudentTuple>,
                      public SizedTrait<StudentTable>,
                      public ContainerTrait<StudentTable> {
-  constexpr static std::size_t Rows = 10;
 
  public:
+  constexpr static std::size_t Rows = 10;
+
   using key_t = tbl_row_t;
   using tuple_t = StudentTuple;
 
@@ -217,6 +218,12 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
 
   /** @brief Same as search but return the whole entry */
   Result<Entry&, TableError> _test_get_entry(const key_t& _key) noexcept;
+
+  /** @brief Get number of shared locks available */
+  tbl_row_t _test_s_avail_cnt() const noexcept;
+
+  /** @brief Get number of exclusive locks available */
+  tbl_row_t _test_x_avail_cnt() const noexcept;
 
  private:
   std::condition_variable s_available_; /**< SHARED lock CV */

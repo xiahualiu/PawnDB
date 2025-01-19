@@ -46,6 +46,15 @@ TEST_CASE("Channel Full #1") {
     CHECK(channel.send(42) == QueueError::None);
   }
   CHECK(channel.full());
+  CHECK(channel.size() == MAX_TRANSACTIONS);
+}
+
+TEST_CASE("Channel Clear #1") {
+  RetChannel channel;
+  CHECK(channel.send(42) == QueueError::None);
+  CHECK(!channel.empty());
+  channel.clear();
+  CHECK(channel.empty());
 }
 
 }  // namespace PawnDB

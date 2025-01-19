@@ -24,7 +24,7 @@ namespace PawnDB {
  * - Non-blocking operations
  */
 class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
-                   private SizedTrait<RetChannel>,
+                   public SizedTrait<RetChannel>,
                    public ContainerTrait<RetChannel> {
  private:
   std::array<txn_id_t, MAX_TRANSACTIONS> txns_;
@@ -46,7 +46,7 @@ class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
   queue_r trait_get() noexcept;
 
   /** @brief Wait for and get next transaction */
-  queue_r trait_recv() noexcept;
+  // queue_r trait_recv() noexcept;
 
   /** @brief Add dead transaction */
   QueueError trait_send(const txn_id_t& txn) noexcept;
@@ -58,7 +58,7 @@ class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
   void trait_clear() noexcept;
 
   /** @brief Signal not empty condition */
-  void trait_notify_not_empty() noexcept;
+  // void trait_notify_not_empty() noexcept;
 
   // Size tracking
   /** @brief Get current transaction count */

@@ -20,7 +20,7 @@ class LockRecordIterator;
 /**
  * @brief Lock entry storing lock information
  */
-class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
+class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
  public:
   using key_t = TableTupleKey; /**< Key type alias */
 

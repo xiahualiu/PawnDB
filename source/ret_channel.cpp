@@ -15,10 +15,6 @@ RetChannel::queue_r RetChannel::trait_get() noexcept {
   }
 }
 
-RetChannel::queue_r RetChannel::trait_recv() noexcept {
-  return trait_get();
-}
-
 QueueError RetChannel::trait_send(const txn_id_t& _dead_txn) noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
   txns_[tail_] = _dead_txn;
@@ -39,8 +35,6 @@ void RetChannel::trait_pop() noexcept {
   head_ = (head_ + 1) % MAX_TRANSACTIONS;
   count_--;
 }
-
-void RetChannel::trait_notify_not_empty() noexcept {}
 
 std::size_t RetChannel::trait_size() const noexcept {
   return count_;

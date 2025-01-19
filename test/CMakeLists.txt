@@ -55,7 +55,6 @@ endif()
 
 add_custom_target(
   show-test-coverage
-  DEPENDS ${ALL_TEST_TARGETS}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
   COMMAND gcovr 
   --gcov-executable 
