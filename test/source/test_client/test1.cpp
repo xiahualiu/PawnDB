@@ -95,7 +95,8 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(ack.unwrap() == OpAck::SUCCESS);
   }
 
-  // The buffer number used should be 1 when idle, only the thread manager uses 1 for recvfrom function.
+  // The buffer number used should be 1 when idle, only the thread manager uses
+  // 1 for recvfrom function.
   CHECK(Database::get_db_instance().buffers_.size() == 1);
 
   // Send another start txn request
@@ -155,6 +156,7 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(ack.unwrap() == OpAck::SUCCESS);
   }
 
-  // The buffer number used should be 1 when idle, only the thread manager uses 1 for recvfrom function.
+  // The buffer number used should be 1 when idle, only the thread manager uses
+  // 1 for recvfrom function.
   CHECK(Database::get_db_instance().buffers_.size() == 1);
 }

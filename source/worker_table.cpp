@@ -3,8 +3,8 @@
 #include <sys/socket.h>
 
 #include <atomic>
-#include <iostream>
 #include <cstring>
+#include <iostream>
 
 #include "pawndb/traits/table.h"
 #include "pawndb/types/job_channel.h"

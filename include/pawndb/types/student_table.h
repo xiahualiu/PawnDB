@@ -77,7 +77,8 @@ class StudentTuple : public TupleTrait<StudentTuple>,
   serial_r trait_serialize(buffer_t& buffer, std::size_t offset) const noexcept;
 
   /** @brief Deserialize entry */
-  serial_r trait_deserialize(const buffer_t& buffer, std::size_t offset) noexcept;
+  serial_r trait_deserialize(const buffer_t& buffer,
+                             std::size_t offset) noexcept;
 
   // HashTrait Implementation
   std::size_t trait_hash() const noexcept;

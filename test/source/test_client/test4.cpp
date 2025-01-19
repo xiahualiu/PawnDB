@@ -139,7 +139,7 @@ TEST_CASE("MainThread Transaction Start #1") {
   CHECK(Database::get_db_instance().buffers_.size() == 21);
 
   // There should be exactly 10 acks, 10 blocking.
-  for (int i = 0; i< 10; i++) {
+  for (int i = 0; i < 10; i++) {
     buffer_t buffer;
 
     CHECK(7 == client.receive_response(buffer));
@@ -246,7 +246,8 @@ TEST_CASE("MainThread Transaction Start #1") {
     parser_in.set_txn(static_cast<txn_id_t>(20 + i));
     CHECK(7 == client.send_request(buffer, 7));
 
-    // We should be able to recv 2 acks, one from the blocking worker and one for this commit
+    // We should be able to recv 2 acks, one from the blocking worker and one
+    // for this commit
     recv_size = client.receive_response(buffer);
     recv_size = client.receive_response(buffer);
   }
