@@ -1,6 +1,7 @@
 #ifndef PAWNDB_TRAITS_SERIALIZER_H
 #define PAWNDB_TRAITS_SERIALIZER_H
 
+#include "pawndb/params.h"
 #include "pawndb/result.h"
 #include "pawndb/types/buffer_table.h"
 
@@ -31,12 +32,34 @@ class SerializerTrait {
 
   /**
    * @brief Serialize value to buffer
-   * @param _buffer Target buffer
+   * @param _buffer Target buffer ref
    * @param _offset Buffer write position
    * @return Bytes write to the buffer
    */
   serial_r serialize(BufferRef _buffer, std::size_t _offset) const noexcept {
+    return static_cast<const Derived*>(this)->trait_serialize(_buffer.buffer(),
+                                                              _offset);
+  }
+
+  /**
+   * @brief Serialize value to buffer
+   * @param _buffer Target buffer
+   * @param _offset Buffer write position
+   * @return Bytes write to the buffer
+   */
+  serial_r serialize(buffer_t& _buffer, std::size_t _offset) const noexcept {
     return static_cast<const Derived*>(this)->trait_serialize(_buffer, _offset);
+  }
+
+  /**
+   * @brief Deserialize value from buffer
+   * @param _buffer Source buffer ref
+   * @param _offset Buffer read position
+   * @return SerializeR Success: bytes read, Error: code
+   */
+  serial_r deserialize(const BufferRef _buffer, std::size_t _offset) noexcept {
+    return static_cast<Derived*>(this)->trait_deserialize(_buffer.buffer(),
+                                                          _offset);
   }
 
   /**
@@ -45,7 +68,7 @@ class SerializerTrait {
    * @param _offset Buffer read position
    * @return SerializeR Success: bytes read, Error: code
    */
-  serial_r deserialize(const BufferRef _buffer, std::size_t _offset) noexcept {
+  serial_r deserialize(const buffer_t& _buffer, std::size_t _offset) noexcept {
     return static_cast<Derived*>(this)->trait_deserialize(_buffer, _offset);
   }
 

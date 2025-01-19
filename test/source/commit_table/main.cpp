@@ -1,17 +1,7 @@
-/**
- * @file main.cpp
- * @brief Channal unit tests
- * @version 0.1
- * @date 2025-01-04
- *
- * @copyright Copyright (c) 2025
- *
- */
-
-#include "pawndb/params.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "doctest/doctest.h"
+#include "pawndb/params.h"
 #include "pawndb/types/commit_table.h"
 
 namespace PawnDB {

@@ -1,13 +1,3 @@
-/**
- * @file main.cpp
- * @brief Parser unit test
- * @version 0.1
- * @date 2025-01-04
- *
- * @copyright Copyright (c) 2025
- *
- */
-
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "doctest/doctest.h"

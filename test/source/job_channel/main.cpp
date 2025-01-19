@@ -1,26 +1,15 @@
-/**
- * @file main.cpp
- * @brief Channal unit tests
- * @version 0.1
- * @date 2025-01-04
- *
- * @copyright Copyright (c) 2025
- *
- */
-
-#include <cstring>
-
-#include "pawndb/types/buffer_table.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include <sys/socket.h>
 
 #include <chrono>
+#include <cstring>
 #include <thread>
 
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
 #include "pawndb/traits/queue.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/types/job_channel.h"
 
 namespace PawnDB {

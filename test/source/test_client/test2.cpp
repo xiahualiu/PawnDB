@@ -38,8 +38,8 @@ TEST_CASE("MainThread Transaction Start #1") {
   // Create a client
   auto client = TestClient();
 
-  // Send a start txn request
-  {
+  // Start txn until the worker table is full
+  for (std::size_t i = 0; i < MAX_TRANSACTIONS; i++) {
     buffer_t buffer;
     Parser parser_in(buffer, BUFFER_WIDTH);
 
@@ -60,52 +60,24 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(op_id_recv.unwrap() == 1);
     auto txn_id_recv = response_parser.get_txn();
     CHECK(txn_id_recv);
-    CHECK(txn_id_recv.unwrap() == 0);
+    CHECK(txn_id_recv.unwrap() == i);
     auto ack = response_parser.get_ack();
     CHECK(ack);
     CHECK(ack.unwrap() == OpAck::SUCCESS);
   }
 
-  // Abort the txn
-  {
-    buffer_t buffer;
-    Parser parser_in(buffer, BUFFER_WIDTH);
-
-    // Prepare the ABORT TXN request
-    parser_in.set_op(OpType::ABORT_TXN);
-    parser_in.set_op_id(2);
-    parser_in.set_txn(0);
-    CHECK(client.send_request(buffer, 7));
-
-    // Check response
-    auto recv_size = client.receive_response(buffer);
-    CHECK(recv_size == 7);
-    Parser response_parser(buffer, recv_size);
-    auto op_recv = response_parser.get_op();
-    CHECK(op_recv);
-    CHECK(op_recv.unwrap() == OpType::ABORT_TXN);
-    auto op_id_recv = response_parser.get_op_id();
-    CHECK(op_id_recv);
-    CHECK(op_id_recv.unwrap() == 2);
-    auto txn_id_recv = response_parser.get_txn();
-    CHECK(txn_id_recv);
-    CHECK(txn_id_recv.unwrap() == 0);
-    auto ack = response_parser.get_ack();
-    CHECK(ack);
-    CHECK(ack.unwrap() == OpAck::SUCCESS);
-  }
-
-  // The buffer number used should be 1 when idle, only the thread manager uses 1 for recvfrom function.
+  // The buffer number used should be 1 when idle, only the thread manager uses
+  // 1 for recvfrom function.
   CHECK(Database::get_db_instance().buffers_.size() == 1);
 
-  // Send another start txn request
+  // If we start another txn, it should be replied as BUSY
   {
     buffer_t buffer;
     Parser parser_in(buffer, BUFFER_WIDTH);
 
     // Prepare the START TXN request
     parser_in.set_op(OpType::START_TXN);
-    parser_in.set_op_id(1);
+    parser_in.set_op_id(2);
     CHECK(7 == client.send_request(buffer, 7));
 
     // Check response
@@ -117,25 +89,22 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(op_recv.unwrap() == OpType::START_TXN);
     auto op_id_recv = response_parser.get_op_id();
     CHECK(op_id_recv);
-    CHECK(op_id_recv.unwrap() == 1);
-    auto txn_id_recv = response_parser.get_txn();
-    CHECK(txn_id_recv);
-    CHECK(txn_id_recv.unwrap() == 1);
+    CHECK(op_id_recv.unwrap() == 2);
     auto ack = response_parser.get_ack();
     CHECK(ack);
-    CHECK(ack.unwrap() == OpAck::SUCCESS);
+    CHECK(ack.unwrap() == OpAck::BUSY);
   }
 
-  // Abort the txn
+  // Abort one txn, we should be able to insert txn again
   {
     buffer_t buffer;
     Parser parser_in(buffer, BUFFER_WIDTH);
 
     // Prepare the ABORT TXN request
     parser_in.set_op(OpType::ABORT_TXN);
-    parser_in.set_op_id(2);
-    parser_in.set_txn(1);
-    CHECK(client.send_request(buffer, 7));
+    parser_in.set_op_id(3);
+    parser_in.set_txn(MAX_TRANSACTIONS - 1);
+    CHECK(7 == client.send_request(buffer, 7));
 
     // Check response
     auto recv_size = client.receive_response(buffer);
@@ -146,15 +115,41 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(op_recv.unwrap() == OpType::ABORT_TXN);
     auto op_id_recv = response_parser.get_op_id();
     CHECK(op_id_recv);
-    CHECK(op_id_recv.unwrap() == 2);
-    auto txn_id_recv = response_parser.get_txn();
-    CHECK(txn_id_recv);
-    CHECK(txn_id_recv.unwrap() == 1);
+    CHECK(op_id_recv.unwrap() == 3);
     auto ack = response_parser.get_ack();
     CHECK(ack);
     CHECK(ack.unwrap() == OpAck::SUCCESS);
   }
 
-  // The buffer number used should be 1 when idle, only the thread manager uses 1 for recvfrom function.
+  // Start a new txn
+  {
+    buffer_t buffer;
+    Parser parser_in(buffer, BUFFER_WIDTH);
+
+    // Prepare the START TXN request
+    parser_in.set_op(OpType::START_TXN);
+    parser_in.set_op_id(4);
+    CHECK(7 == client.send_request(buffer, 7));
+
+    // Check response
+    auto recv_size = client.receive_response(buffer);
+    CHECK(recv_size == 7);
+    Parser response_parser(buffer, recv_size);
+    auto op_recv = response_parser.get_op();
+    CHECK(op_recv);
+    CHECK(op_recv.unwrap() == OpType::START_TXN);
+    auto op_id_recv = response_parser.get_op_id();
+    CHECK(op_id_recv);
+    CHECK(op_id_recv.unwrap() == 4);
+    auto txn_id_recv = response_parser.get_txn();
+    CHECK(txn_id_recv);
+    CHECK(txn_id_recv.unwrap() == MAX_TRANSACTIONS);
+    auto ack = response_parser.get_ack();
+    CHECK(ack);
+    CHECK(ack.unwrap() == OpAck::SUCCESS);
+  }
+
+  // The buffer number used should be 1 when idle, only the thread manager uses
+  // 1 for recvfrom function.
   CHECK(Database::get_db_instance().buffers_.size() == 1);
 }

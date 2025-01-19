@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <stdexcept>
 
@@ -60,26 +61,58 @@ class TestClient {
   TestClient(const TestClient&) = delete;
   TestClient& operator=(const TestClient&) = delete;
 
-  bool send_request(const buffer_t& buffer, std::size_t size) noexcept {
+  std::size_t send_request(const buffer_t& buffer, std::size_t size) {
     auto sent = sendto(client_fd_, buffer.data(), size, 0,
                        reinterpret_cast<struct sockaddr*>(&server_addr_),
                        sizeof(server_addr_));
-    if (sent == -1) {
-      std::cerr << "Failed to send request: " << strerror(errno) << std::endl;
-      return false;
+    if (sent <= 0) {
+      throw std::runtime_error("Failed to send request.");
     }
-    return true;
+    return static_cast<std::size_t>(sent);
   }
 
-  bool receive_response(buffer_t& response) noexcept {
+  std::size_t receive_response(buffer_t& response) {
     socklen_t server_len = sizeof(server_addr_);
     auto received = recvfrom(client_fd_, response.data(), response.size(), 0,
                              reinterpret_cast<struct sockaddr*>(&server_addr_),
                              &server_len);
-    return received != -1;
+    if (received <= 0) {
+      throw std::runtime_error("Failed to receive response.");
+    }
+    return static_cast<std::size_t>(received);
+  }
+
+  inline static void hex_dump(const char* buffer, std::size_t size) {
+    for (std::size_t i = 0; i < size; i += 16) {
+      // Print offset
+      std::cout << "\033[33m" << std::setfill('0') << std::setw(4) << std::hex
+                << i << "\033[0m  ";
+
+      // Print hex values
+      for (std::size_t j = 0; j < 16; j++) {
+        if (i + j < size) {
+          std::cout << std::setfill('0') << std::setw(2) << std::hex
+                    << (static_cast<int>(buffer[i + j]) & 0xFF) << " ";
+        } else {
+          std::cout << "   ";
+        }
+        if (j == 7) std::cout << " ";
+      }
+
+      // Print ASCII
+      std::cout << " \033[36m|";
+      for (std::size_t j = 0; j < 16; j++) {
+        if (i + j < size) {
+          char c = buffer[i + j];
+          std::cout << (std::isprint(c) ? c : '.');
+        }
+      }
+      std::cout << "|\033[0m\n";
+    }
+    std::cout << std::dec;  // Reset to decimal
   }
 };
 
-}
+}  // namespace PawnDB
 
 #endif  // PAWNDB_TEST_CLIENT_H

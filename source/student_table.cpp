@@ -56,8 +56,8 @@ tbl_row_t StudentTuple::trait_key() const noexcept {
 }
 
 StudentTuple::serial_r StudentTuple::trait_serialize(
-    BufferRef _buffer, std::size_t _offset) const noexcept {
-  auto buffer_ptr = _buffer.buffer().data() + _offset;
+    buffer_t& _buffer, std::size_t _offset) const noexcept {
+  auto buffer_ptr = _buffer.data() + _offset;
   std::memcpy(buffer_ptr, name_.data(), NAME_LENGTH);
   buffer_ptr += NAME_LENGTH;
   std::memcpy(buffer_ptr, &age_, sizeof(std::uint8_t));
@@ -67,8 +67,8 @@ StudentTuple::serial_r StudentTuple::trait_serialize(
 }
 
 StudentTuple::serial_r StudentTuple::trait_deserialize(
-    BufferRef _buffer, std::size_t _offset) noexcept {
-  auto buffer_ptr = _buffer.buffer().data() + _offset;
+    const buffer_t& _buffer, std::size_t _offset) noexcept {
+  auto buffer_ptr = _buffer.data() + _offset;
   std::memcpy(name_.data(), buffer_ptr, NAME_LENGTH);
   buffer_ptr += NAME_LENGTH;
   std::memcpy(&age_, buffer_ptr, sizeof(std::uint8_t));

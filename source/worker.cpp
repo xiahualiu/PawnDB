@@ -1,4 +1,5 @@
 #include "pawndb/types/worker.h"
+
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -40,6 +41,7 @@ bool Worker::trait_is_running() noexcept {
 }
 
 void Worker::worker_quit() noexcept {
+  std::cout << "Worker #" << txn_id_ << " is stopping" << std::endl;
   release_locks();
   clear_commit_table();
   ret_ch_.send(txn_id_);
@@ -180,7 +182,8 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
         job_ch_.pop();
         return;
       }
-      // Reuse buffer
+      // Reuse buffer, must reply first.
+      reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
       std::memcpy(_job.buffer().buffer().data(), &new_entry, sizeof(new_entry));
       break;
     }
@@ -202,7 +205,7 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
     job_ch_.pop();
     return;
   }
-  reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
+  // No reply here, because we reused the buffer, the reply is already done
   job_ch_.pop();
   // Don't release buffer here, it will be released when the transaction is
   // committed
@@ -518,6 +521,8 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
         job_ch_.pop();
         return;
       }
+      // Reuse buffer, must reply first.
+      reply(OpAck::SUCCESS, _parser, 7, _job);
       std::memcpy(_job.buffer().buffer().data(), &new_entry, sizeof(new_entry));
       break;
     }
@@ -536,7 +541,7 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
     job_ch_.pop();
     return;
   }
-  reply(OpAck::SUCCESS, _parser, 7, _job);
+  // No reply here, because we reused the buffer, the reply is already done
   job_ch_.pop();
   // Don't release buffer here, it will be released when the transaction is
   // committed
@@ -605,8 +610,9 @@ void Worker::trait_start() noexcept {
     auto job = job_r.unwrap();
 
     // DEBUG
-    std::cout << "Worker #" << txn_id_ << " , get a job from: " << reinterpret_cast<const sockaddr_un*>(job.c_addr())->sun_path << std::endl;
-    std::cout << "Length of client address: " << job.c_addr_len() << std::endl;
+    std::cout << "Worker #" << txn_id_ << " , get a job from: "
+              << reinterpret_cast<const sockaddr_un*>(job.c_addr())->sun_path
+              << std::endl;
 
     auto parser = Parser(job.buffer(), job.buffer_size());
     auto op_r = parser.get_op();
@@ -619,7 +625,7 @@ void Worker::trait_start() noexcept {
     auto op = op_r.unwrap();
     switch (op) {
       case OpType::START_TXN:
-        parser.set_txn_id(txn_id_);
+        parser.set_txn(txn_id_);
         std::cout << "Worker #" << txn_id_ << " reply START_TXN." << std::endl;
         reply(OpAck::SUCCESS, parser, 7, job);
         job.buffer().release();
@@ -631,6 +637,10 @@ void Worker::trait_start() noexcept {
         return;
       }
       case OpType::ABORT_TXN: {
+        std::cout << "Worker #" << txn_id_ << " reply ABORT_TXN." << std::endl;
+        reply(OpAck::SUCCESS, parser, 7, job);
+        job.buffer().release();
+        job_ch_.pop();
         worker_quit();
         return;
       }

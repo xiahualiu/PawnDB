@@ -74,10 +74,10 @@ class StudentTuple : public TupleTrait<StudentTuple>,
 
   // SerializerTrait Implementation
   /** @brief Serialize entry */
-  serial_r trait_serialize(BufferRef buffer, std::size_t offset) const noexcept;
+  serial_r trait_serialize(buffer_t& buffer, std::size_t offset) const noexcept;
 
   /** @brief Deserialize entry */
-  serial_r trait_deserialize(BufferRef buffer, std::size_t offset) noexcept;
+  serial_r trait_deserialize(const buffer_t& buffer, std::size_t offset) noexcept;
 
   // HashTrait Implementation
   std::size_t trait_hash() const noexcept;
@@ -127,7 +127,6 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
                      public TupleTableTrait<StudentTable, StudentTuple>,
                      public SizedTrait<StudentTable>,
                      public ContainerTrait<StudentTable> {
-
  public:
   constexpr static std::size_t Rows = 10;
 

@@ -101,7 +101,7 @@ void ThreadManager::trait_start() noexcept {
       std::cout << "Socket has been shut down. Stop receiving messages."
                 << std::endl;
       recv_buffer.release();
-      return;
+      break;
     }
     // Check if received error
     if (recv_size < 0) {
@@ -131,7 +131,9 @@ void ThreadManager::trait_start() noexcept {
         // clear all dead transactions
         while (!ret_ch_.empty()) {
           auto dead_txn = ret_ch_.get().unwrap();
+          std::cout << "Clearing Worker #" << dead_txn << std::endl;
           workers_.remove(dead_txn);
+          ret_ch_.pop();
         }
         // Insert new worker (will start as well)
         auto new_worker_ct =

@@ -2,6 +2,7 @@
 #define PAWNDB_TYPES_PARSER_H
 
 #include <cstddef>
+#include <cstring>
 
 #include "pawndb/params.h"
 #include "pawndb/traits/parser.h"
@@ -35,7 +36,9 @@ class Parser : public ParserTrait<Parser> {
 
   txn_id_r trait_get_txn() const noexcept {
     if (size_ < 6) return ParserError::ReadAfterEnd;
-    return *reinterpret_cast<txn_id_t*>(&buffers_[2]);
+    txn_id_t txn;
+    std::memcpy(&txn, &buffers_[2], sizeof(txn_id_t));
+    return txn;
   }
 
   op_ack_r trait_get_ack() const noexcept {
@@ -71,8 +74,8 @@ class Parser : public ParserTrait<Parser> {
     buffers_[6] = static_cast<char>(_ack);
   }
 
-  void trait_set_txn_id(txn_id_t _txn) noexcept {
-    *reinterpret_cast<txn_id_t*>(&buffers_[2]) = _txn;
+  void trait_set_txn(txn_id_t _txn) noexcept {
+    std::memcpy(&buffers_[2], &_txn, sizeof(txn_id_t));
   }
 
   void trait_set_tbl(tp_id_t _tbl) noexcept {

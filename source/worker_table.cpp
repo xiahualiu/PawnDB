@@ -177,6 +177,10 @@ void WorkerTable::trait_clear() noexcept {
   for (auto& entry : table_) {
     if (entry.is_used_ && !entry.is_deleted_) {
       entry.context_.stop();
+    }
+  }
+  for (auto& entry : table_) {
+    if (entry.is_used_ && !entry.is_deleted_) {
       entry.context_.join();
       entry.is_deleted_ = true;
       size_--;

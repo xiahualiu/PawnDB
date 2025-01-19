@@ -45,7 +45,7 @@ add_custom_target(
   run-all-tests
   DEPENDS ${ALL_TEST_TARGETS}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  COMMAND ctest -j 0)
+  COMMAND ctest --parallel 8)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(GCOV_EXE gcov)

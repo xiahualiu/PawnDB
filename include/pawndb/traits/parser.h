@@ -138,11 +138,10 @@ class ParserTrait {
     static_cast<Derived*>(this)->trait_set_op_id(_op_id);
   }
 
-
   /** @brief Set transaction id
    * @param _txn Transaction id */
-  void set_txn_id(txn_id_t _txn) noexcept {
-    static_cast<Derived*>(this)->trait_set_txn_id(_txn);
+  void set_txn(txn_id_t _txn) noexcept {
+    static_cast<Derived*>(this)->trait_set_txn(_txn);
   }
 
   /** @brief Set operation acknowledgment status
@@ -168,7 +167,6 @@ class ParserTrait {
   void set_buffer_size(std::size_t _size) noexcept {
     static_cast<Derived*>(this)->trait_set_buffer_size(_size);
   }
-
 
   /** @brief Get buffer size
    * @return Buffer size */
