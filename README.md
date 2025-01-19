@@ -6,34 +6,41 @@
 
 # PawnDB
 
-A lightweight, type-safe in-memory database optimized for OLTP workloads.
+An **ultra lightweight & fast**, **portable** & **type-safe** in-memory database optimized for OLTP workloads.
+
+[PawnDB Wiki](https://github.com/xiahualiu/PawnDB/wiki)
+
+[PawnDB Doxygen Docs](https://xiahualiu.github.io/PawnDB/)
 
 ## Features
 
 ### Memory Management
-- Zero heap allocation design
-- Static memory allocation
-- Built-in buffer pool management
-- RAII buffer object with reference counting
-- Maximum tuple size: 65535 bytes (UDP packet size limit)
+- Built-in buffer pool management.
+- No dynamic memory allocation system call (`malloc` or `new`) used.
 
 ### Transaction Management
-- Strict 2-Phase Locking (2PL)
-- Tuple-level shared/exclusive locks
-- Support lock promotion
-- ACID compliance
-- Single record operations
+- Strict 2-Phase Locking (2PL).
+- Tuple-level shared/exclusive locks.
+- Support lock promotion.
+- ACID compliance.
+- Single record operations.
 - Deadlock prevention.
 
 ### Type Safety
-- Compile-time type checking
-- Zero dynamic dispatch
-- No virtual functions
-- Strong type system
+- Compile-time type checking.
+- CRTP design pattern, does not use `virtual` functions.
+- No complicated inheritance due to Mixin pattern used.
+
+### Portable & Extendable
+- Can be used with external data serializer such as [Protobuf](https://github.com/protocolbuffers/protobuf).
+- Fully portable based on C++17 standard library.
+  - Multi-thread based on `std::thread`.
+  - No 3rd party code & license involved.
+  - *Also requires Posix Domain Socket support for client communication.*
 
 ## Language
 
-* PawnDB is written in [ISO C++17](https://isocpp.org/std/the-standard), without compiler extensions.
+* PawnDB is written in [ISO C++17](https://isocpp.org/std/the-standard), without any compiler extensions.
 * PawnDB follows [Google coding style](https://google.github.io/styleguide/).
 
 ## License
