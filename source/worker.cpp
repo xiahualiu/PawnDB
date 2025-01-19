@@ -111,6 +111,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
       }
       case OpType::DELETE: {
         auto [table_id, tuple_key] = commit.key().trait_disassemble();
+        lock_table_.rm_lock(commit.trait_key());
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto& table_ref = db_.students_;
@@ -148,7 +149,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
     }
     commit_table_.pop();
   }
-  status_ = TxnStatus::COMMITTED;
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
   _job.buffer().release();
   job_ch_.pop();
@@ -626,7 +626,6 @@ void Worker::trait_start() noexcept {
     switch (op) {
       case OpType::START_TXN:
         parser.set_txn(txn_id_);
-        std::cout << "Worker #" << txn_id_ << " reply START_TXN." << std::endl;
         reply(OpAck::SUCCESS, parser, 7, job);
         job.buffer().release();
         job_ch_.pop();
@@ -637,7 +636,6 @@ void Worker::trait_start() noexcept {
         return;
       }
       case OpType::ABORT_TXN: {
-        std::cout << "Worker #" << txn_id_ << " reply ABORT_TXN." << std::endl;
         reply(OpAck::SUCCESS, parser, 7, job);
         job.buffer().release();
         job_ch_.pop();

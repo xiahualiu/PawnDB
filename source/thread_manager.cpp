@@ -110,10 +110,6 @@ void ThreadManager::trait_start() noexcept {
       recv_buffer.release();
       continue;
     }
-    // DEBUG
-    std::cout << "Received " << recv_size << " bytes from client" << std::endl;
-    std::cout << "Client address: " << client_addr.sun_path << std::endl;
-    std::cout << "Client address length: " << client_addr_len << std::endl;
 
     auto recv_size_u = static_cast<std::size_t>(recv_size);
     auto parser = Parser(recv_buffer, recv_size_u);
@@ -131,7 +127,6 @@ void ThreadManager::trait_start() noexcept {
         // clear all dead transactions
         while (!ret_ch_.empty()) {
           auto dead_txn = ret_ch_.get().unwrap();
-          std::cout << "Clearing Worker #" << dead_txn << std::endl;
           workers_.remove(dead_txn);
           ret_ch_.pop();
         }
@@ -141,7 +136,6 @@ void ThreadManager::trait_start() noexcept {
         auto insert_r = workers_.insert(new_worker_ct);
         // Check if worker was inserted
         if (!insert_r) {
-          std::cerr << "Failed to insert worker." << std::endl;
           reply(OpAck::BUSY, parser, client_addr, client_addr_len);
           recv_buffer.release();
           continue;

@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 
 #include <atomic>
+#include <iostream>
 #include <cstring>
 
 #include "pawndb/traits/table.h"
@@ -67,7 +68,9 @@ void WorkerContext::trait_stop() noexcept {
 }
 
 void WorkerContext::trait_join() noexcept {
-  // Ack all unfinished jobs
+  // Ensure the worker is dead.
+  thread_.join();
+  // Ack all unfinished jobs that worker has not acked
   while (!job_ch_.empty()) {
     auto job = job_ch_.get().unwrap();
     auto parser = Parser(job.buffer(), job.buffer_size());
@@ -77,7 +80,6 @@ void WorkerContext::trait_join() noexcept {
     job.buffer().release();
     job_ch_.pop();
   }
-  thread_.join();
 }
 
 bool WorkerContext::trait_is_running() noexcept {

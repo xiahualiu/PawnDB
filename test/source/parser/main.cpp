@@ -44,7 +44,7 @@ TEST_CASE("Parser Basic Operation #2") {
   Parser parser(buffer, 13);
   parser.set_ack(OpAck::SUCCESS);
   CHECK(buf[6] == static_cast<char>(OpAck::SUCCESS));
-  parser.set_txn_id(std::uint16_t(45678));
+  parser.set_txn(std::uint16_t(45678));
   CHECK(*reinterpret_cast<txn_id_t*>(&buf[2]) == 45678);
   parser.set_key(127);
   CHECK(buf[8] == 127);

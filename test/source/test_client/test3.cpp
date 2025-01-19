@@ -42,7 +42,7 @@ TEST_CASE("MainThread Transaction Start #1") {
   // Check student table size
   CHECK(Database::get_db_instance().students_.size() == 0);
 
-  // Start txn until the worker table is full
+  // Start 1 txn
   {
     buffer_t buffer;
     Parser parser_in(buffer, BUFFER_WIDTH);
@@ -97,7 +97,6 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(recv_size == 46);
     Parser response_parser(buffer, recv_size);
     auto op_recv = response_parser.get_op();
-    CHECK(buffer[0] == 4);
     CHECK(op_recv);
     CHECK(op_recv.unwrap() == OpType::ADD_TUPLE);
     auto op_id_recv = response_parser.get_op_id();
@@ -143,6 +142,9 @@ TEST_CASE("MainThread Transaction Start #1") {
     CHECK(ack);
     CHECK(ack.unwrap() == OpAck::SUCCESS);
   }
+
+  // Ensure the worker has done commit
+  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   // Check student table size
   CHECK(Database::get_db_instance().students_.size() == 1);

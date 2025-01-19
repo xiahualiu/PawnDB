@@ -34,8 +34,7 @@ using d_id_t = std::uint8_t;
 /// is fewer than 4,294,967,295.
 using txn_id_t = std::uint32_t;
 
-/// @brief Operation type, uint8_t is enough if the max operation type is
-/// fewer than 255.
+/// @brief Operation id type, uint8_t is enough in most cases.
 using op_t = std::uint8_t;
 
 /// @brief Lock type, uint8_t is enough if the max shared lock number on an
