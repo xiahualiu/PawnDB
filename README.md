@@ -6,7 +6,7 @@
 
 # PawnDB
 
-An **ultra lightweight**, **portable** & **type-safe** in-memory database optimized for OLTP workloads.
+An **ultra lightweight & fast**, **portable** & **type-safe** in-memory database optimized for OLTP workloads.
 
 [PawnDB Wiki](https://github.com/xiahualiu/PawnDB/wiki)
 
