@@ -6,7 +6,7 @@
 
 # PawnDB
 
-An ultra lightweight, portable, type-safe in-memory database optimized for OLTP workloads.
+An **ultra lightweight**, **portable** & **type-safe** in-memory database optimized for OLTP workloads.
 
 [PawnDB Wiki](https://github.com/xiahualiu/PawnDB/wiki)
 
@@ -32,7 +32,7 @@ An ultra lightweight, portable, type-safe in-memory database optimized for OLTP 
 - No complicated inheritance due to Mixin pattern used.
 
 ### Portable & Extendable
-- Can use external serializer such as [Protobuf](https://github.com/protocolbuffers/protobuf).
+- Can be used with external data serializer such as [Protobuf](https://github.com/protocolbuffers/protobuf).
 - Fully portable based on C++17 standard library.
   - Multi-thread based on `std::thread`.
   - No 3rd party code & license involved.
