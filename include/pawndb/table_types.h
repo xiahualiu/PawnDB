@@ -12,17 +12,9 @@
 #ifndef PAWNDB_TABLE_TYPES_H
 #define PAWNDB_TABLE_TYPES_H
 
-#include "pawndb/data_types.h"
-#include "pawndb/table.h"
+#include "pawndb/types/student_table.h"
 
 namespace PawnDB {
-
-/**
- * @brief Type alias for the student table.
- *
- * The student table has 16 rows and contains student names and a uint8_t field.
- */
-using student_table = Table<16, student_name, std::uint8_t>;
 
 /**
  * @brief Template function to get the table ID for a given table type.
@@ -42,7 +34,7 @@ constexpr tp_id_t tbl_id() = delete;
  * @return The table ID for student_table.
  */
 template <>
-constexpr tp_id_t tbl_id<student_table>() {
+constexpr tp_id_t tbl_id<StudentTable>() {
   return 1;
 }
 

@@ -28,7 +28,8 @@ add_compile_options(
   -Wno-c++98-compat-pedantic
   -Wno-padded
   -Wno-switch-enum
-  -Wno-unsafe-buffer-usage)
+  -Wno-unsafe-buffer-usage
+  -Wno-exit-time-destructors)
 
 # Enable AddressSanitizer and coverage for debug builds
 add_compile_options("$<$<CONFIG:DEBUG>:-fsanitize=address>")

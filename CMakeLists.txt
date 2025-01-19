@@ -9,8 +9,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(
   pawndb
   VERSION 0.1
-  LANGUAGES CXX
-)
+  LANGUAGES CXX)
 
 # Set the standard to ISO C++17 without extensions
 set(CMAKE_CXX_STANDARD 17)
@@ -26,8 +25,7 @@ add_library(${PROJECT_NAME} "")
 # include paths
 target_include_directories(
   ${PROJECT_NAME} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                         $<INSTALL_INTERFACE:include/>
-)
+                         $<INSTALL_INTERFACE:include/>)
 
 # Install to system default path minimum
 include(cmake/install.cmake)
@@ -38,26 +36,24 @@ if(CCACHE_PROGRAM)
   set(CMAKE_CXX_COMPILER_LAUNCHER ${CCACHE_PROGRAM})
 endif()
 
+# --- Options ---
+option(PAWNDB_ENABLE_DOXYGEN "Build documentation with Doxygen" OFF)
+option(PAWNDB_ENABLE_STYLE "Enable style checks" OFF)
+option(PAWNDB_ENABLE_TEST "Enable testing targets" OFF)
+
 # --- Include standalone and test ---
-if(I_AM_CI_MACHINE)
-  add_subdirectory("source")
-  if(CI_MACHINE_STYLE_TASK)
-    add_subdirectory("style")
-  endif()
-  if(CI_MACHINE_DOXYGEN_TASK)
-    add_subdirectory("docs")
-  endif()
-  if(CI_MACHINE_TEST_TASK)
-    enable_testing()
-    add_subdirectory("test")
-  endif()
-  if(CI_MACHINE_STANDALONE_TASK)
-    add_subdirectory("standalone")
-  endif()
-else()
-  add_subdirectory("source")  
-  add_subdirectory("standalone")
+enable_testing()
+add_subdirectory("source")
+add_subdirectory("standalone")
+
+if (PAWNDB_ENABLE_TEST)
   add_subdirectory("test")
+endif()
+
+if (PAWNDB_ENABLE_DOXYGEN)
   add_subdirectory("docs")
+endif()
+
+if (PAWNDB_ENABLE_STYLE)
   add_subdirectory("style")
 endif()

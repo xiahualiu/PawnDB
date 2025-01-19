@@ -30,7 +30,7 @@ jobs:
           sudo ./llvm.sh 18
 
       - name: configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DI_AM_CI_MACHINE=1 -DCI_MACHINE_STANDALONE_TASK=1 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
 
       - name: build app
         run: cmake --build build --target pawndb-app -j

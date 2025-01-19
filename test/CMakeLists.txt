@@ -9,38 +9,43 @@ link_libraries(${CMAKE_PROJECT_NAME} doctest)
 add_subdirectory("source")
 
 # ---- Find all test tartgets ----
-function(get_test_targets dir var_name)
-  get_property(
-    subdirectories
+
+# Initialize cache variable
+set(ALL_TEST_TARGETS "" CACHE INTERNAL "")
+
+function(get_test_targets dir)
+  # Get subdirectories
+  get_property(subdirectories
     DIRECTORY ${dir}
     PROPERTY SUBDIRECTORIES)
+    
+  # Process each subdirectory
   foreach(subdir ${subdirectories})
-    get_test_targets(${subdir} ${var_name})
+    get_test_targets(${subdir})
   endforeach()
 
-  get_property(
-    test_targets
+  # Get test targets in current directory
+  get_property(test_targets
     DIRECTORY ${dir}
     PROPERTY BUILDSYSTEM_TARGETS)
+    
+  # Add executable targets to cache variable
   foreach(test_target ${test_targets})
     get_target_property(test_target_type ${test_target} TYPE)
     if(${test_target_type} STREQUAL "EXECUTABLE")
-      list(APPEND ${var_name} ${test_target})
+      set(ALL_TEST_TARGETS ${ALL_TEST_TARGETS} ${test_target} CACHE INTERNAL "")
     endif()
-    set(${var_name}
-        ${${var_name}}
-        PARENT_SCOPE)
   endforeach()
 endfunction()
 
-set(test_targets "")
-get_test_targets("${CMAKE_CURRENT_SOURCE_DIR}/source" test_targets)
+# Get all test targets
+get_test_targets("${CMAKE_CURRENT_SOURCE_DIR}/source")
 
 add_custom_target(
   run-all-tests
-  DEPENDS ${test_targets}
+  DEPENDS ${ALL_TEST_TARGETS}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  COMMAND ctest -j 0)
+  COMMAND ctest)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(GCOV_EXE gcov)
@@ -50,11 +55,14 @@ endif()
 
 add_custom_target(
   show-test-coverage
-  DEPENDS ${test_targets}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  COMMAND gcovr
-  --gcov-executable ${GCOV_EXE} 
-  . 
-  --filter include/ 
-  --filter source/
+  COMMAND gcovr 
+  --gcov-executable 
+  "${GCOV_EXE} gcov" 
+  . --filter include/ 
+  --filter source/)
+
+add_custom_target(clean-coverage
+  COMMAND find ${CMAKE_BINARY_DIR} -name "*.gcda" -delete
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
