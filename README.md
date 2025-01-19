@@ -10,7 +10,7 @@ An **ultra lightweight & fast**, **portable** & **type-safe** in-memory database
 
 [PawnDB Wiki](https://github.com/xiahualiu/PawnDB/wiki)
 
-[PawnDB Docs](https://xiahualiu.github.io/PawnDB/)
+[PawnDB Doxygen Docs](https://xiahualiu.github.io/PawnDB/)
 
 ## Features
 
