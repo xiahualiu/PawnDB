@@ -9,23 +9,16 @@ namespace PawnDB {
  * @brief Queue operation error codes
  */
 enum class QueueError {
-  None,   /**< Operation successful */
-  Empty,  /**< Queue has no data */
-  Full,   /**< Queue at capacity */
-  Timeout /**< Operation timed out */
+  None,  /**< Operation successful */
+  Empty, /**< Queue has no data */
+  Full,  /**< Queue at capacity */
 };
 
 /**
- * @brief CRTP base class for queue implementations
- * @tparam Derived The derived queue class
- * @tparam T Type of elements stored in queue
+ * @brief CRTP base class providing queue operations.
  *
- * Required trait implementations:
- * - trait_get() -> GetR : Non-blocking get
- * - trait_recv() -> GetR : Blocking get
- * - trait_send(const T&) -> QueueError : Send value
- * - trait_clear() -> void : Clear queue
- * - trait_pop() -> void : Remove front element
+ * @tparam Derived The derived class implementing the actual queue operations.
+ * @tparam T The type of elements stored in the queue.
  */
 template <typename Derived, typename T>
 class QueueTrait {
@@ -37,28 +30,22 @@ class QueueTrait {
   using queue_r = Result<value_type&, QueueError>;
 
   /**
-   * @brief Get next value from queue without blocking
-   * @return Result containing either value or error
+   * @brief Retrieves the next value from the queue without blocking.
+   * @return Result containing either a reference to the front value or an error
+   * code.
    */
-  queue_r get() noexcept {
-    return static_cast<Derived*>(this)->trait_get();
+  queue_r front() noexcept {
+    return static_cast<Derived*>(this)->trait_front();
   }
 
   /**
-   * @brief Get next value from queue with blocking
-   * @return Result containing either value or error
+   * @brief Adds a new value to the queue.
+   *
+   * @param _value The value to be added to the queue.
+   * @return Result indicating success or the appropriate error code.
    */
-  queue_r recv() noexcept {
-    return static_cast<Derived*>(this)->trait_recv();
-  }
-
-  /**
-   * @brief Copy value to FIFO
-   * @param _value The value to send
-   * @return Error status of the operation
-   */
-  QueueError send(const value_type& _value) noexcept {
-    return static_cast<Derived*>(this)->trait_send(_value);
+  queue_r push(const T& _value) noexcept {
+    return static_cast<Derived*>(this)->trait_push(_value);
   }
 
   /**
@@ -69,24 +56,11 @@ class QueueTrait {
   }
 
   /**
-   * @brief Remove next element from queue
+   * @brief Removes the next element from the queue.
+   * @return Result indicating success or the appropriate error code.
    */
-  void pop() noexcept {
+  QueueError pop() noexcept {
     static_cast<Derived*>(this)->trait_pop();
-  }
-
-  /**
-   * @brief Signal that queue is not empty
-   */
-  void notify_not_empty() noexcept {
-    static_cast<Derived*>(this)->trait_notify_not_empty();
-  }
-
-  /**
-   * @brief Signal that queue is not full
-   */
-  void notify_not_full() noexcept {
-    static_cast<Derived*>(this)->trait_notify_not_full();
   }
 
  protected:

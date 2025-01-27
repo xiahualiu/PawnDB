@@ -1,15 +1,3 @@
-/**
- * @file buffer_table.h
- * @brief Fixed-size thread-safe buffer pool implementation
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Fixed buffer allocation
- * - Thread safety
- * - Size tracking
- * - Error handling
- */
 #ifndef PAWNDB_TYPES_BUFFER_TABLE_H
 #define PAWNDB_TYPES_BUFFER_TABLE_H
 

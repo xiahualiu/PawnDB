@@ -9,14 +9,12 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/parser.h"
-#include "pawndb/traits/queue.h"
+#include "pawndb/traits/stack.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/types/buffer_table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {
-
-class CommitIt;
 
 /**
  * @brief Entry in commit table storing operation details
@@ -69,7 +67,6 @@ class CommitEntry : public CommitTrait<CommitEntry>,
   TableTupleKey key_; /**< Table-tuple key */
   OpType op_;         /**< Operation type */
 
-  friend class CommitIt;
   friend class CommitTable;
 };
 
@@ -87,7 +84,7 @@ class CommitEntry : public CommitTrait<CommitEntry>,
  * - Sized: Size tracking
  * - Container: Capacity operations
  */
-class CommitTable : public QueueTrait<CommitTable, CommitEntry>,
+class CommitTable : public StackTrait<CommitTable, CommitEntry>,
                     public SizedTrait<CommitTable>,
                     public ContainerTrait<CommitTable> {
   /** @brief Maximum entries per transaction */

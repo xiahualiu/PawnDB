@@ -2,6 +2,7 @@
 #define PAWNDB_TRAITS_TUPLE_TABLE_H
 
 #include "pawndb/result.h"
+#include "pawndb/types/commit_table.h"
 
 namespace PawnDB {
 /**
@@ -98,6 +99,10 @@ class TupleTableTrait {
    */
   void notify_not_full() noexcept {
     return static_cast<Derived*>(this)->trait_notify_not_full();
+  }
+
+  void rollback() noexcept {
+    return static_cast<Derived*>(this)->trait_rollback();
   }
 
  protected:
