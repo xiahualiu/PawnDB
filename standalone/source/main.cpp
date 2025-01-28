@@ -1,14 +1,3 @@
-/**
- * @file main.cpp
- * @author Xiahua Liu @xiahualiu
- * @brief Demo application for PawnDB.
- * @version 0.1
- * @date 2025-01-03
- *
- * @copyright Copyright (c) 2025
- *
- */
-
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
