@@ -1,6 +1,7 @@
 #ifndef PAWNDB_TRAITS_LOCK_MANAGER_H
 #define PAWNDB_TRAITS_LOCK_MANAGER_H
 
+#include <cstdint>
 #include "pawndb/result.h"
 #include "pawndb/types/table_tuple_key.h"
 
@@ -17,7 +18,7 @@ enum class LockError {
   Full         /**< No more locks available */
 };
 
-enum class LockType {
+enum class LockType : std::uint8_t {
   SHARED,   /**< SHARED read lock */
   EXCLUSIVE /**< Exclusive write lock */
 };
@@ -25,27 +26,49 @@ enum class LockType {
 /**
  * @brief CRTP interface for lock implementations
  * @tparam Derived The derived lock class
+ *
+ * The derived class must implement the following methods:
+ * - `trait_lock_type()`: Returns the type of the lock.
+ * - `trait_key()`: Returns the key associated with the lock.
  */
 template <typename Derived>
 class LockTrait {
  public:
   /** @brief Get lock type */
   LockType lock_type() const noexcept {
-    return static_cast<const Derived*>(this)->trait_lock_type();
+    return derived().trait_lock_type();
   }
 
   /** @brief Get table-tuple key */
-  const TableTupleKey& key() const noexcept {
-    return static_cast<const Derived*>(this)->trait_key();
+  TableTupleKey key() const noexcept {
+    return derived().trait_key();
   }
 
  protected:
+  // Protected constructor and destructor
   LockTrait() = default;
   ~LockTrait() = default;
+
+  // CRTP constructor
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 /**
  * @brief CRTP interface for lock manager implementations
+ * @tparam Derived The derived lock manager class
+ * @tparam KeyType The type of the key used for locking
+ *
+ * The derived class must implement the following methods:
+ * - `trait_add_lock(const KeyType&, LockType)`: Adds a new lock.
+ * - `trait_rm_lock(const KeyType&)`: Removes an existing lock.
+ * - `trait_promote_lock(const KeyType&)`: Promotes a shared lock to exclusive.
+ * - `trait_get_lock(const KeyType&)`: Retrieves lock information.
  */
 template <typename Derived, typename KeyType>
 class LockManagerTrait {
@@ -60,7 +83,7 @@ class LockManagerTrait {
    * @return Result with lock or error
    */
   LockError add_lock(const KeyType& key, LockType type) noexcept {
-    return static_cast<Derived*>(this)->trait_add_lock(key, type);
+    return derived().trait_add_lock(key, type);
   }
 
   /**
@@ -69,7 +92,7 @@ class LockManagerTrait {
    * @return Error status
    */
   LockError rm_lock(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_rm_lock(key);
+    return derived().trait_rm_lock(key);
   }
 
   /**
@@ -78,7 +101,7 @@ class LockManagerTrait {
    * @return Result with lock or error
    */
   LockError promote_lock(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_promote_lock(key);
+    return derived().trait_promote_lock(key);
   }
 
   /**
@@ -87,13 +110,22 @@ class LockManagerTrait {
    * @return Result with lock or error
    */
   LockR get_lock(const KeyType& key) noexcept {
-    return static_cast<Derived*>(this)->trait_get_lock(key);
+    return derived().trait_get_lock(key);
   }
 
  protected:
   // Protected constructor and destructor
   LockManagerTrait() = default;
   ~LockManagerTrait() = default;
+
+  // CRTP constructor
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

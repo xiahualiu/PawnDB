@@ -8,8 +8,9 @@
 #include <mutex>
 
 #include "pawndb/params.h"
+#include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
-#include "pawndb/traits/queue.h"
+#include "pawndb/traits/deque.h"
 #include "pawndb/traits/sized.h"
 
 namespace PawnDB {
@@ -23,7 +24,8 @@ namespace PawnDB {
  * - Size tracking
  * - Non-blocking operations
  */
-class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
+class RetChannel : public DequeTrait<RetChannel, txn_id_t>,
+                   public ChannelTrait<RetChannel, txn_id_t>,
                    public SizedTrait<RetChannel>,
                    public ContainerTrait<RetChannel> {
  private:
@@ -41,34 +43,36 @@ class RetChannel : public QueueTrait<RetChannel, txn_id_t>,
   RetChannel(const RetChannel& other) noexcept = delete;
   RetChannel& operator=(const RetChannel& other) noexcept = delete;
 
-  // Queue operations
-  /** @brief Get next transaction without blocking */
-  queue_r trait_get() noexcept;
+  // Deque trait
+  /** @brief Push transaction to the channel */
+  DequeError trait_push_back(const txn_id_t& txn) noexcept;
 
-  /** @brief Wait for and get next transaction */
-  // queue_r trait_recv() noexcept;
+  /** @brief Get front dead transacion id */
+  deque_cp_r trait_front() const noexcept;
 
-  /** @brief Add dead transaction */
-  QueueError trait_send(const txn_id_t& txn) noexcept;
+  /** @brief Pop transaction from the channel */
+  DequeError trait_pop_front() noexcept;
 
-  /** @brief Remove front transaction */
-  void trait_pop() noexcept;
+  // Channel trait
+  /** @brief Send transaction to the channel */
+  ChannelError trait_send(const txn_id_t& txn) noexcept;
 
-  /** @brief Clear all transactions */
-  void trait_clear() noexcept;
+  /** @brief Receive transaction from the channel */
+  channel_r trait_recv() noexcept;
 
-  /** @brief Signal not empty condition */
-  // void trait_notify_not_empty() noexcept;
-
-  // Size tracking
+  // Size trait
   /** @brief Get current transaction count */
   std::size_t trait_size() const noexcept;
 
+  // Container trait
   /** @brief Check if channel is full */
   bool trait_full() const noexcept;
 
   /** @brief Check if channel is empty */
   bool trait_empty() const noexcept;
+
+  /** @brief Clear all transactions */
+  void trait_clear() noexcept;
 };
 
 }  // namespace PawnDB

@@ -57,8 +57,8 @@ using cksum_t = std::uint32_t;
 /// full is UB in PawnDB.
 constexpr tbl_row_t BUFFER_ROWS = 64;
 
-/// @brief Each channel has 16 rows.
-constexpr tbl_row_t MAX_ITEM_PER_CHANNEL = 16;
+/// @brief Job channel rows.
+constexpr tbl_row_t MAX_JOB_CHANNEL = 8;
 
 /// @brief Buffer alignment. Should be same as the system page size.
 constexpr std::size_t BUFFER_ALIGNMENT = 4096;

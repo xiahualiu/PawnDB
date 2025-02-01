@@ -5,7 +5,7 @@
 
 #include "pawndb/params.h"
 #include "pawndb/traits/database.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buffer_manager.h"
 #include "pawndb/types/student_table.h"
 
 namespace PawnDB {

@@ -87,103 +87,100 @@ class ParserTrait {
   /** @brief Get operation type
    *  @return Result containing operation type or error */
   op_r get_op() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_op();
+    return derived().trait_get_op();
   }
 
   /** @brief Get operation ID
    *  @return Result containing operation ID or error */
   op_id_r get_op_id() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_op_id();
+    return derived().trait_get_op_id();
   }
 
   /** @brief Get transaction ID
    *  @return Result containing transaction ID or error */
   txn_id_r get_txn() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_txn();
+    return derived().trait_get_txn();
   }
 
   /** @brief Get operation acknowledgment status
    *  @return Result containing acknowledgment status or error */
   op_ack_r get_ack() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_ack();
+    return derived().trait_get_ack();
   }
 
   /** @brief Get table ID
    *  @return Result containing table ID or error */
   tbl_id_r get_tbl() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_tbl();
-  }
-
-  /** @brief Get tuple key
-   *  @return Result containing tuple key or error */
-  tp_key_r get_key() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_key();
+    return derived().trait_get_tbl();
   }
 
   /** @brief Get tuple offset in the buffer
    *  @return Tuple offset */
   constexpr std::size_t get_tuple_offset() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_tuple_offset();
+    return derived().trait_get_tuple_offset();
   }
 
   /** @brief Set operation type
    * @param _op Operation type */
   void set_op(OpType _op) noexcept {
-    static_cast<Derived*>(this)->trait_set_op(_op);
+    derived().trait_set_op(_op);
   }
 
   /** @brief Set operation ID
    * @param _op_id Operation ID */
   void set_op_id(op_t _op_id) noexcept {
-    static_cast<Derived*>(this)->trait_set_op_id(_op_id);
+    derived().trait_set_op_id(_op_id);
   }
 
   /** @brief Set transaction id
    * @param _txn Transaction id */
   void set_txn(txn_id_t _txn) noexcept {
-    static_cast<Derived*>(this)->trait_set_txn(_txn);
+    derived().trait_set_txn(_txn);
   }
 
   /** @brief Set operation acknowledgment status
    *  @param _ack Acknowledgment status */
   void set_ack(OpAck _ack) noexcept {
-    static_cast<Derived*>(this)->trait_set_ack(_ack);
+    derived().trait_set_ack(_ack);
   }
 
   /** @brief Set table id
    * @param _tbl Table id */
   void set_tbl(tp_id_t _tbl) noexcept {
-    static_cast<Derived*>(this)->trait_set_tbl(_tbl);
-  }
-
-  /** @brief Set key field in the buffer
-   * @param _key Key value */
-  void set_key(tbl_row_t _key) noexcept {
-    static_cast<Derived*>(this)->trait_set_key(_key);
+    derived().trait_set_tbl(_tbl);
   }
 
   /** @brief Set buffer size for parsing
    * @param _size Buffer size */
   void set_buffer_size(std::size_t _size) noexcept {
-    static_cast<Derived*>(this)->trait_set_buffer_size(_size);
+    derived().trait_set_buffer_size(_size);
   }
 
   /** @brief Get buffer size
    * @return Buffer size */
   std::size_t get_buffer_size() const noexcept {
-    return static_cast<const Derived*>(this)->trait_get_buffer_size();
+    return derived().trait_get_buffer_size();
   }
 
   /** @brief Get buffer
    * @return Buffer */
   buffer_t& get_buffer() noexcept {
-    return static_cast<Derived*>(this)->trait_get_buffer();
+    return derived().trait_get_buffer();
   }
 
  protected:
   // Protected constructor and destructor
   ParserTrait() = default;
   ~ParserTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

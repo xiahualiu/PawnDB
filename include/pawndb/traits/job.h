@@ -3,7 +3,7 @@
 
 #include <sys/socket.h>
 
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buffer_manager.h"
 
 namespace PawnDB {
 
@@ -16,32 +16,41 @@ class JobTrait {
  public:
   /** @brief Get buffer reference
    *  @return Reference to job buffer */
-  BufferRef buffer() const noexcept {
-    return static_cast<const Derived*>(this)->trait_buffer();
+  BufferRef buf() const noexcept {
+    return derived().trait_buf();
   }
 
   /** @brief Get buffer size
    *  @return Size of buffer in bytes */
-  std::size_t buffer_size() const noexcept {
-    return static_cast<const Derived*>(this)->trait_buffer_size();
+  std::size_t buf_size() const noexcept {
+    return derived().trait_buf_size();
   }
 
   /** @brief Get client address
    *  @return A pointer to client sockaddr */
   const sockaddr* c_addr() const noexcept {
-    return static_cast<const Derived*>(this)->trait_c_addr();
+    return derived().trait_c_addr();
   }
 
   /** @brief Get client address length
    *  @return Length of client address */
   socklen_t c_addr_len() const noexcept {
-    return static_cast<const Derived*>(this)->trait_c_addr_len();
+    return derived().trait_c_addr_len();
   }
 
  protected:
   // Protected constructor and destructor
   JobTrait() = default;
   ~JobTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

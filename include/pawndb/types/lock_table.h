@@ -6,7 +6,6 @@
 #include "pawndb/params.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
-#include "pawndb/traits/eq.h"
 #include "pawndb/traits/iterator.h"
 #include "pawndb/traits/lock_manager.h"
 #include "pawndb/traits/sized.h"
@@ -17,9 +16,7 @@ namespace PawnDB {
 
 class LockRecordIterator;
 
-/**
- * @brief Lock entry storing lock information
- */
+/** @brief Lock entry storing lock information */
 class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
  public:
   using key_t = TableTupleKey; /**< Key type alias */
@@ -45,14 +42,7 @@ class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
   LockType trait_lock_type() const noexcept;
 
   /** @brief Get lock key */
-  const TableTupleKey& trait_key() const noexcept;
-
-  // CopyTrait Implementation
-  /** @brief Create deep copy */
-  LockEntry trait_clone() const noexcept;
-
-  /** @brief Copy from other lock */
-  void trait_copy(const LockEntry& other) noexcept;
+  TableTupleKey trait_key() const noexcept;
 
  private:
   TableTupleKey key_; /**< Tuple identifier */
@@ -141,14 +131,6 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
    *  @return Error status */
   TableError trait_remove(const TableTupleKey& key) noexcept;
 
-  /** @brief Update existing lock
-   *  @param entry Lock with updated values
-   *  @return Error status */
-  // TableError trait_write(const LockEntry& entry) noexcept;
-
-  /** @brief Clear all locks */
-  void trait_clear() noexcept;
-
   /** @brief Get current number of locks
    *  @return Number of active locks */
   std::size_t trait_size() const noexcept;
@@ -180,7 +162,7 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
 class LockRecordIterator
     : public IterTypeTrait<LockRecordIterator, const LockEntry>,
       public CopyTrait<LockRecordIterator>,
-      public EqTrait<LockRecordIterator> {
+      public EqTrait<LockRecordIterator, LockRecordIterator> {
  public:
   /**
    * @brief Construct iterator
@@ -201,12 +183,6 @@ class LockRecordIterator
    * @return Reference to current lock
    */
   const LockEntry& trait_deref() noexcept;
-
-  /** @brief Copy iterator */
-  void trait_copy(const LockRecordIterator& other) noexcept;
-
-  /** @brief Create a copy */
-  LockRecordIterator trait_clone() const noexcept;
 
   /**
    * @brief Compare iterator positions

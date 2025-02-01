@@ -6,14 +6,14 @@
 
 #include "pawndb/params.h"
 #include "pawndb/traits/parser.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buffer_manager.h"
 
 namespace PawnDB {
 
 class Parser : public ParserTrait<Parser> {
  public:
   Parser(const BufferRef& _buffers, std::size_t _size) noexcept
-      : buffers_(_buffers.buffer()), size_(_size) {}
+      : buffers_(_buffers.buf()), size_(_size) {}
 
   Parser(buffer_t& _buffer, std::size_t _size) noexcept
       : buffers_(_buffer), size_(_size) {}
@@ -53,11 +53,6 @@ class Parser : public ParserTrait<Parser> {
     return static_cast<tp_id_t>(buffers_[7]);
   }
 
-  tp_key_r trait_get_key() const noexcept {
-    if (size_ < 9) return ParserError::ReadAfterEnd;
-    return static_cast<tbl_row_t>(buffers_[8]);
-  }
-
   constexpr std::size_t trait_get_tuple_offset() const noexcept {
     return 9;
   }
@@ -80,10 +75,6 @@ class Parser : public ParserTrait<Parser> {
 
   void trait_set_tbl(tp_id_t _tbl) noexcept {
     buffers_[7] = static_cast<char>(_tbl);
-  }
-
-  void trait_set_key(tbl_row_t _key) noexcept {
-    buffers_[8] = static_cast<char>(_key);
   }
 
   void trait_set_buffer_size(std::size_t _size) noexcept {

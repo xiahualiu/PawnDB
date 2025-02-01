@@ -18,26 +18,26 @@ class IterTypeTrait {
  public:
   /** @brief Advance iterator to next element */
   void next() noexcept {
-    return static_cast<DerivedIter*>(this)->trait_next();
+    return derived().trait_next();
   }
 
   /** @brief Dereference operator
    *  @return Reference to current element */
   DerefType& operator*() noexcept {
-    return static_cast<DerivedIter*>(this)->trait_deref();
+    return derived().trait_deref();
   }
 
   /** @brief Pre-increment operator
    *  @return Reference to incremented iterator */
   DerivedIter& operator++() noexcept {
-    return static_cast<DerivedIter*>(this)->trait_next();
+    return derived().trait_next();
   }
 
   /** @brief Post-increment operator
    *  @return Copy of iterator before increment */
   DerivedIter& operator++(int) noexcept {
-    auto& tmp = *static_cast<DerivedIter*>(this);
-    static_cast<DerivedIter*>(this)->trait_next();
+    auto& tmp = derived();
+    derived().trait_next();
     return tmp;
   }
 
@@ -45,6 +45,15 @@ class IterTypeTrait {
   // Protected constructor and destructor
   IterTypeTrait() = default;
   ~IterTypeTrait() = default;
+
+  // CRTP helpers
+  DerivedIter& derived() noexcept {
+    return static_cast<DerivedIter&>(*this);
+  }
+
+  const DerivedIter& derived() const noexcept {
+    return static_cast<const DerivedIter&>(*this);
+  }
 };
 
 /**
@@ -60,17 +69,26 @@ template <typename Derived, typename DerivedIter>
 class IterTrait {
  public:
   DerivedIter begin() const noexcept {
-    return static_cast<const Derived*>(this)->trait_begin();
+    return derived().trait_begin();
   }
 
   DerivedIter end() const noexcept {
-    return static_cast<const Derived*>(this)->trait_end();
+    return derived().trait_end();
   }
 
  protected:
   // Protected constructor and destructor
   IterTrait() = default;
   ~IterTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

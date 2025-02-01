@@ -80,16 +80,6 @@ TableError LockRecords::trait_remove(const TableTupleKey& _key) noexcept {
   }
 }
 
-// Hide definition of trait_write because it is not used
-// TableError LockRecords::trait_write(const LockEntry& _entry) noexcept;
-
-void LockRecords::trait_clear() noexcept {
-  for (auto& lock : locks_) {
-    lock.is_used_ = false;
-  }
-  size_ = 0;
-}
-
 LockError LockRecords::trait_add_lock(const TableTupleKey& _key,
                                       LockType _type) noexcept {
   if (size_ >= N) return LockError::Full;

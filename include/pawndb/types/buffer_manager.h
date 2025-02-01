@@ -109,21 +109,9 @@ class BufferRef : public CopyTrait<BufferRef>,
   BufferRef(const BufferRef& other) noexcept;
   BufferRef& operator=(const BufferRef& other) noexcept;
 
-  // CopyTrait Implementation
-  /** @brief Create clone of this reference */
-  BufferRef trait_clone() const noexcept;
-
-  /** @brief Copy from another reference
-   *  @param other Source reference */
-  void trait_copy(const BufferRef& other) noexcept;
-
-  /** @brief Check if reference is null
-   *  @return true if reference is invalid */
-  bool _test_null() const noexcept;
-
   // BufferEntryTrait Implementation
   /** @brief Get underlying buffer */
-  buffer_t& trait_buffer() const noexcept;
+  buffer_t& trait_buf() const noexcept;
 
   /** @brief Release buffer back to pool */
   void trait_release() noexcept;
@@ -131,6 +119,10 @@ class BufferRef : public CopyTrait<BufferRef>,
   /** @brief Test helper to get buffer index
    *  @return Buffer index */
   std::size_t _test_index() const noexcept;
+
+  /** @brief Check if reference is null
+   *  @return true if reference is invalid */
+  bool _test_null() const noexcept;
 };
 
 }  // namespace PawnDB

@@ -3,7 +3,7 @@
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buffer_manager.h"
 
 namespace PawnDB {
 /**
@@ -37,8 +37,7 @@ class SerializerTrait {
    * @return Bytes write to the buffer
    */
   serial_r serialize(BufferRef _buffer, std::size_t _offset) const noexcept {
-    return static_cast<const Derived*>(this)->trait_serialize(_buffer.buffer(),
-                                                              _offset);
+    return derived().trait_serialize(_buffer.buf(), _offset);
   }
 
   /**
@@ -48,7 +47,7 @@ class SerializerTrait {
    * @return Bytes write to the buffer
    */
   serial_r serialize(buffer_t& _buffer, std::size_t _offset) const noexcept {
-    return static_cast<const Derived*>(this)->trait_serialize(_buffer, _offset);
+    return derived().trait_serialize(_buffer, _offset);
   }
 
   /**
@@ -58,8 +57,7 @@ class SerializerTrait {
    * @return SerializeR Success: bytes read, Error: code
    */
   serial_r deserialize(const BufferRef _buffer, std::size_t _offset) noexcept {
-    return static_cast<Derived*>(this)->trait_deserialize(_buffer.buffer(),
-                                                          _offset);
+    return derived().trait_deserialize(_buffer.buf(), _offset);
   }
 
   /**
@@ -69,13 +67,22 @@ class SerializerTrait {
    * @return SerializeR Success: bytes read, Error: code
    */
   serial_r deserialize(const buffer_t& _buffer, std::size_t _offset) noexcept {
-    return static_cast<Derived*>(this)->trait_deserialize(_buffer, _offset);
+    return derived().trait_deserialize(_buffer, _offset);
   }
 
  protected:
   // Protected constructor and destructor
   SerializerTrait() = default;
   ~SerializerTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

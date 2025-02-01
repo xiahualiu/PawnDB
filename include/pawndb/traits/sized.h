@@ -20,13 +20,22 @@ class SizedTrait {
    * @return Number of elements
    */
   std::size_t size() const noexcept {
-    return static_cast<const Derived*>(this)->trait_size();
+    return derived().trait_size();
   }
 
  protected:
   // Protected constructor and destructor
   SizedTrait() = default;
   ~SizedTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

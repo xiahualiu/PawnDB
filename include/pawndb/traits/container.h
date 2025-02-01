@@ -3,17 +3,6 @@
 
 namespace PawnDB {
 
-/**
- * @brief CRTP interface for container implementations
- * @tparam Derived Class implementing container interface
- *
- * Provides common container operations like capacity checking and empty/full
- * status.
- *
- * Required trait implementations:
- * - trait_empty() -> bool
- * - trait_full() -> bool
- */
 template <typename Derived>
 class ContainerTrait {
  public:
@@ -33,10 +22,23 @@ class ContainerTrait {
     return static_cast<const Derived*>(this)->trait_full();
   }
 
+  /** @brief Clear container */
+  void clear() noexcept {
+    static_cast<Derived*>(this)->trait_clear();
+  }
+
  protected:
-  // Protected constructor and destructor
+  // Hide constructors
   ContainerTrait() = default;
   ~ContainerTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() {
+    return static_cast<Derived&>(*this);
+  }
+  const Derived& derived() const {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

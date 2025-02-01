@@ -5,7 +5,7 @@
 #include <cstring>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/composite_key.h"
+#include "pawndb/traits/comp_key.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/eq.h"
 #include "pawndb/traits/hash.h"
@@ -21,7 +21,7 @@ namespace PawnDB {
 class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
                       public CopyTrait<TableTupleKey>,
                       public HashTrait<TableTupleKey>,
-                      public EqTrait<TableTupleKey> {
+                      public EqTrait<TableTupleKey, TableTupleKey> {
  public:
   /** @brief Default constructor */
   constexpr TableTupleKey() noexcept : table_id_(0), tuple_key_(0) {}
@@ -75,4 +75,4 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TYPES_SIMPLE_KEY_H
+#endif  // PAWNDB_TYPES_TABLE_TUPLE_KEY_H

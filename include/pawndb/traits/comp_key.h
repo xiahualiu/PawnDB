@@ -34,7 +34,7 @@ class CompositeKeyTrait {
    * @post Key contains combined table_id and tuple_key
    */
   void assemble(table_key_t _table_id, tuple_key_t _tuple_key) noexcept {
-    return static_cast<Derived*>(this)->trait_assemble(_table_id, _tuple_key);
+    return derived().trait_assemble(_table_id, _tuple_key);
   }
 
   /**
@@ -42,15 +42,23 @@ class CompositeKeyTrait {
    * @return Pair of {table_id, tuple_key}
    */
   std::pair<table_key_t, tuple_key_t> disassemble() const noexcept {
-    return static_cast<const Derived*>(this)->trait_disassemble();
+    return derived().trait_disassemble();
   }
 
  protected:
-  // Protected constructor and destructor
+  // Hide constructors
   CompositeKeyTrait() = default;
   ~CompositeKeyTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() {
+    return static_cast<Derived&>(*this);
+  }
+  const Derived& derived() const {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TRAITS_KEY_H
+#endif  // PAWNDB_TRAITS_COMPOSITE_KEY_H

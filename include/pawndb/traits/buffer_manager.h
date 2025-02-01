@@ -1,5 +1,5 @@
-#ifndef PAWNDB_TRAITS_BUFFER_TABLE_H
-#define PAWNDB_TRAITS_BUFFER_TABLE_H
+#ifndef PAWNDB_TRAITS_BUFFER_MANAGER_H
+#define PAWNDB_TRAITS_BUFFER_MANAGER_H
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
@@ -7,30 +7,35 @@
 namespace PawnDB {
 
 /**
- * @brief CRTP base class for buffer reference management
+ * @brief CRTP base class for buffer entries providing access to underlying
+ * buffer
  * @tparam Derived The derived buffer entry class
  *
  * Required implementations:
- * - trait_buffer() -> buffer_t& : Get buffer reference
- * - trait_release() -> void : Release buffer resources
- * - trait_null() -> bool : Test if buffer is null.
+ * - trait_buf() -> buffer_t& : Get reference to underlying buffer
+ * - trait_release() : Release buffer resources
  */
 template <typename Derived>
 class BufferRefTrait {
  public:
   /** @brief Get reference to underlying buffer */
-  buffer_t& buffer() const noexcept {
-    return static_cast<const Derived*>(this)->trait_buffer();
+  buffer_t& buf() const noexcept {
+    return derived().trait_buf();
   }
 
   /** @brief Release buffer resources */
   void release() noexcept {
-    static_cast<Derived*>(this)->trait_release();
+    derived().trait_release();
   }
 
- protected:
-  BufferRefTrait() = default;
-  ~BufferRefTrait() = default;
+ private:
+  // CRTP helpers
+  Derived& derived() {
+    return static_cast<Derived&>(*this);
+  }
+  const Derived& derived() const {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 /** @brief Result type for buffer requests */
@@ -56,20 +61,23 @@ class BufferManagerTrait {
 
   /** @brief Request new buffer allocation */
   request_r request() noexcept {
-    return static_cast<Derived*>(this)->trait_request();
-  }
-
-  /** @brief Clear all buffers & ownerships */
-  void clear() noexcept {
-    static_cast<Derived*>(this)->trait_clear();
+    return derived().trait_request();
   }
 
  protected:
-  // Protected constructor and destructor
+  // Hide constructor
   BufferManagerTrait() = default;
   ~BufferManagerTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() {
+    return static_cast<Derived&>(*this);
+  }
+  const Derived& derived() const {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TRAITS_BUFFER_TABLE_H
+#endif  // PAWNDB_TRAITS_BUFFER_MANAGER_H

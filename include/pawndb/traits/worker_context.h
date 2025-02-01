@@ -17,33 +17,42 @@ class WorkerContextTrait {
  public:
   /** @brief Get job channel */
   JobChannel& job_ch() const noexcept {
-    return static_cast<const Derived*>(this)->trait_job_ch();
+    return derived().trait_job_ch();
   }
 
   /** @brief Get return channel */
   RetChannel& ret_ch() const noexcept {
-    return static_cast<const Derived*>(this)->trait_ret_ch();
+    return derived().trait_ret_ch();
   }
 
   /** @brief Get database instance */
   Database& db() const noexcept {
-    return static_cast<const Derived*>(this)->trait_db();
+    return derived().trait_db();
   }
 
   /** @brief Get transaction ID */
   txn_id_t txn_id() const noexcept {
-    return static_cast<const Derived*>(this)->trait_txn_id();
+    return derived().trait_txn_id();
   }
 
   /** @brief Get server socket descriptor */
   int fd() const noexcept {
-    return static_cast<const Derived*>(this)->trait_fd();
+    return derived().trait_fd();
   }
 
  protected:
   // Protected constructor and destructor
   WorkerContextTrait() = default;
   ~WorkerContextTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

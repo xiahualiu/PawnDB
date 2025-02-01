@@ -24,7 +24,7 @@ enum class TableError {
  * - trait_insert(const entry_type&) -> table_r
  * - trait_search(const key_type&) -> table_r
  * - trait_remove(const key_type&) -> TableError
- * - trait_write(const entry_type&) -> table_r
+ * - trait_update(const entry_type&) -> TableError
  */
 template <typename Derived, typename EntryType>
 class TableTrait {
@@ -44,7 +44,7 @@ class TableTrait {
    * @return Result containing reference to inserted entry or error
    */
   table_r insert(const entry_type& _entry) noexcept {
-    return static_cast<Derived*>(this)->trait_insert(_entry);
+    return derived().trait_insert(_entry);
   }
 
   /**
@@ -53,7 +53,7 @@ class TableTrait {
    * @return Result containing reference to found entry or error
    */
   table_r search(const key_t& _key) noexcept {
-    return static_cast<Derived*>(this)->trait_search(_key);
+    return derived().trait_search(_key);
   }
 
   /**
@@ -62,27 +62,22 @@ class TableTrait {
    * @return Error status of operation
    */
   TableError remove(const key_t& _key) noexcept {
-    return static_cast<Derived*>(this)->trait_remove(_key);
-  }
-
-  /**
-   * @brief Update existing entry
-   * @param _entry Entry with updated values
-   * @return Result containing reference to updated entry or error
-   */
-  TableError write(const entry_type& _entry) noexcept {
-    return static_cast<Derived*>(this)->trait_write(_entry);
-  }
-
-  /** @brief Clear the hash table */
-  void clear() noexcept {
-    static_cast<Derived*>(this)->trait_clear();
+    return derived().trait_remove(_key);
   }
 
  protected:
   // Protected constructor and destructor
   TableTrait() = default;
   ~TableTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

@@ -20,13 +20,22 @@ class HashTrait {
    * @return Computed hash value
    */
   std::size_t hash() const noexcept {
-    return static_cast<const Derived*>(this)->trait_hash();
+    return derived().trait_hash();
   }
 
  protected:
   // Protected constructor and destructor
   HashTrait() = default;
   ~HashTrait() = default;
+
+  // CRTP helpers
+  Derived& derived() noexcept {
+    return static_cast<Derived&>(*this);
+  }
+
+  const Derived& derived() const noexcept {
+    return static_cast<const Derived&>(*this);
+  }
 };
 
 }  // namespace PawnDB

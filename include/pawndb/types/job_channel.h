@@ -10,12 +10,13 @@
 #include <mutex>
 
 #include "pawndb/params.h"
+#include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
+#include "pawndb/traits/deque.h"
 #include "pawndb/traits/job.h"
-#include "pawndb/traits/queue.h"
 #include "pawndb/traits/sized.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buffer_manager.h"
 
 namespace PawnDB {
 
@@ -43,23 +44,16 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
 
   // JobTrait Implementation
   /** @brief Get buffer reference */
-  BufferRef trait_buffer() const noexcept;
+  BufferRef trait_buf() const noexcept;
 
   /** @brief Get buffer size */
-  std::size_t trait_buffer_size() const noexcept;
+  std::size_t trait_buf_size() const noexcept;
 
   /** @brief Get client address */
   const sockaddr* trait_c_addr() const noexcept;
 
   /** @brief Get address length */
   socklen_t trait_c_addr_len() const noexcept;
-
-  // CopyTrait Implementation
-  /** @brief Create deep copy */
-  Job trait_clone() const noexcept;
-
-  /** @brief Copy from other job */
-  void trait_copy(const Job& other) noexcept;
 
  private:
   BufferRef buffer_;          /**< Request data buffer */
@@ -78,15 +72,17 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
  * - Size tracking
  *
  * Implemented traits:
- * - QueueTrait: FIFO operations
+ * - DequeTrait: FIFO operations
+ * - ChannelTrait: Blocking operations
  * - SizedTrait: Size tracking
- * - ContainerTrait: Capacity checks
+ * - ContainerTrait: Capacity operations
  */
-class JobChannel : public QueueTrait<JobChannel, Job>,
+class JobChannel : public DequeTrait<JobChannel, Job>,
+                   public ChannelTrait<JobChannel, Job>,
                    public SizedTrait<JobChannel>,
                    public ContainerTrait<JobChannel> {
   /** @brief Maximum jobs per channel */
-  constexpr static std::size_t MaxJobs = MAX_ITEM_PER_CHANNEL;
+  constexpr static std::size_t MaxJobs = MAX_JOB_CHANNEL;
 
  public:
   /** @brief Initialize empty channel */
@@ -96,24 +92,22 @@ class JobChannel : public QueueTrait<JobChannel, Job>,
   JobChannel(const JobChannel& other) noexcept = delete;
   JobChannel& operator=(const JobChannel& other) noexcept = delete;
 
-  // QueueTrait Implementation
-  /** @brief Non-blocking get */
-  queue_r trait_get() noexcept;
+  // DequeueTrait Implementation
+  /** @brief Get front job */
+  deque_r trait_front() noexcept;
 
-  /** @brief Blocking receive */
-  queue_r trait_recv() noexcept;
+  /** @brief Pop job from front */
+  DequeError trait_pop_front() noexcept;
 
-  /** @brief Send job */
-  QueueError trait_send(const Job& job) noexcept;
+  /** @brief Push job to back */
+  DequeError trait_push_back(const Job& _job) noexcept;
 
-  /** @brief Remove front job */
-  void trait_pop() noexcept;
+  // ChannelTrait Implementation
+  /** @brief Send job to channel */
+  ChannelError trait_send(const Job& _job) noexcept;
 
-  /** @brief Clear all jobs */
-  void trait_clear() noexcept;
-
-  /** @brief Signal not empty */
-  void trait_notify_not_empty() noexcept;
+  /** @brief Wait for and get next job */
+  channel_r trait_recv() noexcept;
 
   // SizedTrait Implementation
   /** @brief Get job count */
@@ -125,6 +119,9 @@ class JobChannel : public QueueTrait<JobChannel, Job>,
 
   /** @brief Check if empty */
   bool trait_empty() const noexcept;
+
+  /** @brief Clear job channel */
+  void trait_clear() noexcept;
 
  private:
   std::array<Job, MaxJobs> jobs_;     /**< Job storage */
