@@ -11,7 +11,7 @@
 #include "pawndb/traits/parser.h"
 #include "pawndb/traits/rollback.h"
 #include "pawndb/traits/sized.h"
-#include "pawndb/types/buffer_manager.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {

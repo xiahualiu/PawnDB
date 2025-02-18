@@ -7,7 +7,7 @@
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/iterator.h"
-#include "pawndb/traits/lock_manager.h"
+#include "pawndb/traits/lock_table.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/table.h"
 #include "pawndb/types/table_tuple_key.h"
@@ -17,7 +17,7 @@ namespace PawnDB {
 class LockRecordIterator;
 
 /** @brief Lock entry storing lock information */
-class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
+class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
  public:
   using key_t = TableTupleKey; /**< Key type alias */
 
@@ -70,7 +70,7 @@ class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
  * - ContainerTrait: Capacity management
  */
 class LockRecords : public TableTrait<LockRecords, LockEntry>,
-                    public LockManagerTrait<LockRecords, TableTupleKey>,
+                    public LockTableTrait<LockRecords, TableTupleKey>,
                     public IterTrait<LockRecords, LockRecordIterator>,
                     public SizedTrait<LockRecords>,
                     public ContainerTrait<LockRecords> {
@@ -85,7 +85,7 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
   LockRecords(const LockRecords& other) noexcept = delete;
   LockRecords& operator=(const LockRecords& other) noexcept = delete;
 
-  // LockManagerTrait Implementation
+  // LockTableTrait Implementation
   /** @brief Add new lock
    *  @param key Key to lock
    *  @param type Lock type
@@ -161,7 +161,7 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
  */
 class LockRecordIterator
     : public IterTypeTrait<LockRecordIterator, const LockEntry>,
-      public CopyTrait<LockRecordIterator>,
+      private CopyTrait<LockRecordIterator>,
       public EqTrait<LockRecordIterator, LockRecordIterator> {
  public:
   /**

@@ -1,6 +1,7 @@
 #ifndef PAWNDB_TRAITS_WORKER_CONTEXT_H
 #define PAWNDB_TRAITS_WORKER_CONTEXT_H
 
+#include <atomic>
 #include "pawndb/params.h"
 #include "pawndb/schema/demo.h"
 #include "pawndb/types/job_channel.h"
@@ -11,6 +12,14 @@ namespace PawnDB {
 /**
  * @brief CRTP interface for worker context implementations
  * @tparam Derived The derived context class
+ *
+ * Required implementations:
+ * - JobChannel& trait_job_ch() noexcept
+ * - RetChannel& trait_ret_ch() noexcept
+ * - Database& trait_db() noexcept
+ * - txn_id_t trait_txn_id() noexcept
+ * - int trait_fd() noexcept
+ * - std::atomic_flag& trait_running() noexcept
  */
 template <typename Derived>
 class WorkerContextTrait {
@@ -38,6 +47,11 @@ class WorkerContextTrait {
   /** @brief Get server socket descriptor */
   int fd() const noexcept {
     return derived().trait_fd();
+  }
+
+  /** @brief Get running flag */
+  std::atomic_flag& running() noexcept {
+    return derived().trait_running();
   }
 
  protected:

@@ -3,7 +3,9 @@
 
 #include <sys/socket.h>
 
-#include "pawndb/types/buffer_manager.h"
+#include <cstddef>
+
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 

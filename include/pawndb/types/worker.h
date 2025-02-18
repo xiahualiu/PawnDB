@@ -5,11 +5,11 @@
 
 #include "pawndb/schema/demo.h"
 #include "pawndb/traits/thread.h"
-#include "pawndb/types/commit_table.h"
 #include "pawndb/types/job_channel.h"
-#include "pawndb/types/lock_records.h"
+#include "pawndb/types/lock_table.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
+#include "pawndb/types/rollback_deque.h"
 #include "pawndb/types/worker_table.h"
 
 namespace PawnDB {
@@ -78,10 +78,10 @@ class Worker : public ThreadTrait<Worker> {
   WorkerContext::key_t txn_id_; /**< Transaction ID */
   const int fd_;                /**< Server socket */
 
-  std::uint8_t timeout_cnt_; /**< Timeout counter */
-  CommitTable commit_table_; /**< Commit buffer table */
-  TxnStatus status_;         /**< Current transaction status */
-  LockRecords lock_table_;   /**< Lock table */
+  std::uint8_t timeout_cnt_;  /**< Timeout counter */
+  RollbackDeque rollback_dq_; /**< Commit buffer table */
+  TxnStatus status_;          /**< Current transaction status */
+  LockRecords lock_table_;    /**< Lock table */
 };
 
 }  // namespace PawnDB

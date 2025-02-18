@@ -2,7 +2,6 @@
 #define PAWNDB_TRAITS_RECORD_TABLE_H
 
 #include "pawndb/result.h"
-#include "pawndb/types/rollback_deque.h"
 
 namespace PawnDB {
 /**

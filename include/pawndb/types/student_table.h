@@ -14,11 +14,11 @@
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/eq.h"
 #include "pawndb/traits/hash.h"
+#include "pawndb/traits/record.h"
+#include "pawndb/traits/record_table.h"
 #include "pawndb/traits/serializer.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/table.h"
-#include "pawndb/traits/tuple.h"
-#include "pawndb/traits/tuple_table.h"
 
 namespace PawnDB {
 
@@ -32,29 +32,29 @@ namespace PawnDB {
  * - Lock management
  * - Hash-based lookup
  */
-class StudentTuple : public TupleTrait<StudentTuple>,
-                     public SerializerTrait<StudentTuple>,
-                     public CopyTrait<StudentTuple>,
-                     public HashTrait<StudentTuple>,
-                     public EqTrait<StudentTuple> {
+class StudentRecord : public RecordTrait<StudentRecord>,
+                      public SerializerTrait<StudentRecord>,
+                      private CopyTrait<StudentRecord>,
+                      public HashTrait<StudentRecord>,
+                      public EqTrait<StudentRecord, StudentRecord> {
  public:
   using key_t = tbl_row_t;                       /**< Key type alias */
   constexpr static std::size_t NAME_LENGTH = 32; /**< Fixed name length */
 
   // Constexpr Constructors
-  constexpr StudentTuple() noexcept
+  constexpr StudentRecord() noexcept
       : checksum_(0), tickstamp_(0), name_({0}), age_(0), key_(0) {}
 
   /** @brief Construct student record
    *  @param _name Student name
    *  @param _age Student age
    *  @param _key Entry key */
-  StudentTuple(std::string _name, const std::uint8_t _age,
-               const tbl_row_t _key) noexcept;
+  StudentRecord(std::string _name, const std::uint8_t _age,
+                const tbl_row_t _key) noexcept;
 
   // Copyable
-  StudentTuple(const StudentTuple& other) noexcept;
-  StudentTuple& operator=(const StudentTuple& other) noexcept;
+  StudentRecord(const StudentRecord& other) noexcept;
+  StudentRecord& operator=(const StudentRecord& other) noexcept;
 
   // TupleTrait Implementation
   /** @brief Set entry checksum */
@@ -62,12 +62,6 @@ class StudentTuple : public TupleTrait<StudentTuple>,
 
   /** @brief Validate checksum */
   bool trait_val_checksum() const noexcept;
-
-  /** @brief Set entry timestamp */
-  void trait_set_tickstamp(const tick_t tickstamp) noexcept;
-
-  /** @brief Get entry timestamp */
-  tick_t trait_read_tickstamp() const noexcept;
 
   /** @brief Get entry key */
   tbl_row_t trait_key() const noexcept;
@@ -92,16 +86,9 @@ class StudentTuple : public TupleTrait<StudentTuple>,
     return std::string(name_.data());
   }
 
-  // CopyTrait Implementation
-  /** @brief Clone entry */
-  StudentTuple trait_clone() const noexcept;
-
-  /** @brief Copy entry */
-  void trait_copy(const StudentTuple& other) noexcept;
-
   // EqTrait Implementation
   /** @brief Compare entries */
-  bool trait_equals(const StudentTuple& other) const noexcept;
+  bool trait_equals(const StudentRecord& other) const noexcept;
 
  private:
   /** @brief Compute checksum */
@@ -124,19 +111,19 @@ class StudentTuple : public TupleTrait<StudentTuple>,
  * - Checksum validation
  * - Concurrency control
  */
-class StudentTable : public TableTrait<StudentTable, StudentTuple>,
-                     public TupleTableTrait<StudentTable, StudentTuple>,
+class StudentTable : public TableTrait<StudentTable, StudentRecord>,
+                     public RecordTableTrait<StudentTable, StudentRecord>,
                      public SizedTrait<StudentTable>,
                      public ContainerTrait<StudentTable> {
  public:
   constexpr static std::size_t Rows = 10;
 
   using key_t = tbl_row_t;
-  using tuple_t = StudentTuple;
+  using tuple_t = StudentRecord;
 
   /** @brief Entry in student table */
   struct Entry {
-    StudentTuple tuple_;
+    StudentRecord tuple_;
     lk_t lock_;
     bool is_used_;
     bool is_deleted_;
@@ -169,29 +156,12 @@ class StudentTable : public TableTrait<StudentTable, StudentTuple>,
    *  @return Error status */
   TableError trait_remove(const key_t& _key) noexcept;
 
-  /** @brief Clear the student table */
-  void trait_clear() noexcept;
-
   /** @brief Update student record
    *  @param _tuple Tuple with updated values
    *  @return Error status */
-  TableError trait_write(const tuple_t& _tuple) noexcept;
+  TableError trait_update(const tuple_t& _tuple) noexcept;
 
   // TupleTableTrait Implementation
-  /** @brief Wait for shared access */
-  ttable_r trait_wait_shared() noexcept;
-
-  /** @brief Wait for exclusive access */
-  ttable_r trait_wait_exclusive() noexcept;
-
-  /** @brief Promote lock mode
-   *  @param _key Key of entry to promote
-   *  @return Error status */
-  TupleTableError trait_promote(const key_t& _key) noexcept;
-
-  /** @brief Release all locks on entry
-   *  @param _key Key of entry to release */
-  void trait_release(const key_t& _key) noexcept;
 
   // Condition Variable Notifications
   /** @brief Signal shared lock available */

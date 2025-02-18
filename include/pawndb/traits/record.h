@@ -1,5 +1,5 @@
-#ifndef PAWNDB_TRAITS_TUPLE_H
-#define PAWNDB_TRAITS_TUPLE_H
+#ifndef PAWNDB_TRAITS_RECORD_H
+#define PAWNDB_TRAITS_RECORD_H
 
 #include <ctime>
 

@@ -1,5 +1,5 @@
-#ifndef PAWNDB_TRAITS_BUFFER_MANAGER_H
-#define PAWNDB_TRAITS_BUFFER_MANAGER_H
+#ifndef PAWNDB_TRAITS_BUFFER_TABLE_H
+#define PAWNDB_TRAITS_BUFFER_TABLE_H
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
@@ -54,7 +54,7 @@ enum class BufferError {
  * - trait_request() -> RequestR : Allocate new buffer entry
  */
 template <typename Derived, typename BufferRefType>
-class BufferManagerTrait {
+class BufferTableTrait {
  public:
   /** @brief Request result type */
   using request_r = Result<BufferRefType, BufferError>;
@@ -66,8 +66,8 @@ class BufferManagerTrait {
 
  protected:
   // Hide constructor
-  BufferManagerTrait() = default;
-  ~BufferManagerTrait() = default;
+  BufferTableTrait() = default;
+  ~BufferTableTrait() = default;
 
   // CRTP helpers
   Derived& derived() {
@@ -80,4 +80,4 @@ class BufferManagerTrait {
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TRAITS_BUFFER_MANAGER_H
+#endif  // PAWNDB_TRAITS_BUFFER_TABLE_H

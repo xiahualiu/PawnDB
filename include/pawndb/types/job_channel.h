@@ -16,7 +16,7 @@
 #include "pawndb/traits/deque.h"
 #include "pawndb/traits/job.h"
 #include "pawndb/traits/sized.h"
-#include "pawndb/types/buffer_manager.h"
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 

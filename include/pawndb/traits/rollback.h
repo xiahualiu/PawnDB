@@ -2,7 +2,7 @@
 #define PAWNDB_TRAITS_ROLLBACK_H
 
 #include "pawndb/traits/parser.h"
-#include "pawndb/types/buffer_manager.h"
+#include "pawndb/types/buffer_table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {

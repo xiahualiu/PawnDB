@@ -60,14 +60,6 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
    * @return true if keys are equal */
   bool trait_equals(const TableTupleKey& other) const noexcept;
 
-  // CopyTrait implementation
-  /** @brief Create clone of this key */
-  TableTupleKey trait_clone() const noexcept;
-
-  /** @brief Copy from another key
-   * @param other Source key to copy from */
-  void trait_copy(const TableTupleKey& other) noexcept;
-
  private:
   std::uint8_t table_id_;
   std::uint8_t tuple_key_;

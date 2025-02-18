@@ -17,6 +17,7 @@
 #include "pawndb/traits/sized.h"
 #include "pawndb/traits/table.h"
 #include "pawndb/traits/thread.h"
+#include "pawndb/traits/worker_context.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
@@ -29,10 +30,10 @@ namespace PawnDB {
  * - O(1) hash-based lookup
  * - Thread lifecycle management
  * - Size tracking */
-class WorkerContext : public HashTrait<WorkerContext>,
+class WorkerContext : public WorkerContextTrait<WorkerContext>,
+                      public HashTrait<WorkerContext>,
                       public ThreadTrait<WorkerContext>,
-                      private CopyTrait<WorkerContext>,
-                      public QueueTrait<WorkerContext, Job> {
+                      private CopyTrait<WorkerContext> {
  public:
   using key_t = txn_id_t;
 
@@ -69,31 +70,24 @@ class WorkerContext : public HashTrait<WorkerContext>,
   /** @brief Check if thread is running */
   bool trait_is_running() noexcept;
 
-  // CopyTrait Implementation
-  /** @brief Create deep copy */
-  WorkerContext trait_clone() const noexcept;
+  // WorkerContextTrait Implementation
+  /** @brief Get transaction ID */
+  key_t trait_txn_id() const noexcept;
 
-  /** @brief Copy from other entry */
-  void trait_copy(const WorkerContext& other) noexcept;
+  /** @brief Get database instance */
+  Database* trait_db() const noexcept;
 
-  // QueueTrait Implementation
-  /** @brief Get job without blocking */
-  queue_r trait_get() noexcept;
+  /** @brief Get server socket */
+  int trait_fd() const noexcept;
 
-  /** @brief Wait for and get job */
-  queue_r trait_recv() noexcept;
+  /** @brief Get job channel */
+  JobChannel& trait_job_ch() noexcept;
 
-  /** @brief Add job to queue */
-  QueueError trait_send(const Job& job) noexcept;
+  /** @brief Get return channel */
+  RetChannel& trait_ret_ch() noexcept;
 
-  /** @brief Remove front job */
-  void trait_pop() noexcept;
-
-  /** @brief Clear all jobs */
-  void trait_clear() noexcept;
-
-  /** @brief Signal job available */
-  void trait_notify_not_empty() noexcept;
+  /** @brief Get running flag */
+  std::atomic_flag& trait_running() noexcept;
 
  private:
   // Reply functions
@@ -106,8 +100,8 @@ class WorkerContext : public HashTrait<WorkerContext>,
   /** @brief Release all locks */
   void release_locks() noexcept;
 
-  /** @brief Clear commit table */
-  void clear_commit_table() noexcept;
+  /** @brief Rollback all pending rollback */
+  void rollback() noexcept;
 
   // Process functions
   void process_commit(Parser& _parser, Job& _job) noexcept;

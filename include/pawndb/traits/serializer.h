@@ -3,7 +3,7 @@
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
-#include "pawndb/types/buffer_manager.h"
+#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 /**

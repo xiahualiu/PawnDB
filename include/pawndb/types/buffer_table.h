@@ -6,7 +6,7 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/buffer_manager.h"
+#include "pawndb/traits/buffer_table.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/sized.h"
@@ -25,11 +25,11 @@ class BufferRef;
  * - O(1) allocation via next-fit strategy
  *
  * Implemented traits:
- * - BufferManagerTrait: Buffer allocation
+ * - BufferTableTrait: Buffer allocation
  * - Sized: Size tracking
  * - Container: Capacity operations
  */
-class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
+class BufferTable : public BufferTableTrait<BufferTable, BufferRef>,
                     public SizedTrait<BufferTable>,
                     public ContainerTrait<BufferTable> {
  private:
@@ -62,7 +62,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
   BufferTable(const BufferTable& other) noexcept = delete;
   BufferTable& operator=(const BufferTable& other) noexcept = delete;
 
-  // BufferManagerTrait Implementation
+  // BufferTableTrait Implementation
   /** @brief Request new buffer allocation
    *  @return Result with buffer reference or error */
   request_r trait_request() noexcept;

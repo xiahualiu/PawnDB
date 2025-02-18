@@ -30,9 +30,6 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   /** @brief Stop main thread */
   void trait_stop() noexcept;
 
-  /** @brief Join main thread */
-  // void trait_join() noexcept;
-
   /** @brief Check if main thread is running */
   bool trait_is_running() noexcept;
 

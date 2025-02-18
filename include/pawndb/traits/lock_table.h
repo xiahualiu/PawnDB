@@ -1,5 +1,5 @@
-#ifndef PAWNDB_TRAITS_LOCK_MANAGER_H
-#define PAWNDB_TRAITS_LOCK_MANAGER_H
+#ifndef PAWNDB_TRAITS_LOCK_TABLE_H
+#define PAWNDB_TRAITS_LOCK_TABLE_H
 
 #include <cstdint>
 #include "pawndb/result.h"
@@ -71,7 +71,7 @@ class LockTrait {
  * - `trait_get_lock(const KeyType&)`: Retrieves lock information.
  */
 template <typename Derived, typename KeyType>
-class LockManagerTrait {
+class LockTableTrait {
  public:
   /** @brief Result type for lock operations */
   using LockR = Result<LockType, LockError>;
@@ -115,8 +115,8 @@ class LockManagerTrait {
 
  protected:
   // Protected constructor and destructor
-  LockManagerTrait() = default;
-  ~LockManagerTrait() = default;
+  LockTableTrait() = default;
+  ~LockTableTrait() = default;
 
   // CRTP constructor
   Derived& derived() noexcept {
@@ -130,4 +130,4 @@ class LockManagerTrait {
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TRAITS_LOCK_MANAGER_H
+#endif  // PAWNDB_TRAITS_LOCK_TABLE_H
