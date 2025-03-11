@@ -94,7 +94,7 @@ class WorkerContext : public WorkerContextTrait<WorkerContext>,
   void reply(OpAck _ack, Parser& _parser, std::size_t _size,
              Job& _job) noexcept;
 
-  /** @brief Worker quit function */
+  /** @brief Worker graceful quit function */
   void worker_quit() noexcept;
 
   /** @brief Release all locks */

@@ -74,7 +74,7 @@ template <typename Derived, typename KeyType>
 class LockTableTrait {
  public:
   /** @brief Result type for lock operations */
-  using LockR = Result<LockType, LockError>;
+  using lock_r = Result<LockType, LockError>;
 
   /**
    * @brief Add new lock
@@ -109,7 +109,7 @@ class LockTableTrait {
    * @param key Table-tuple key
    * @return Result with lock or error
    */
-  LockR get_lock(const KeyType& key) noexcept {
+  lock_r get_lock(const KeyType& key) noexcept {
     return derived().trait_get_lock(key);
   }
 

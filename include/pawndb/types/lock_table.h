@@ -14,7 +14,7 @@
 
 namespace PawnDB {
 
-class LockRecordIterator;
+class LockTableIterator;
 
 /** @brief Lock entry storing lock information */
 class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
@@ -50,8 +50,8 @@ class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
   bool is_used_;      /**< Usage flag */
   bool is_deleted_;   /**< Deletion flag */
 
-  friend class LockRecords;
-  friend class LockRecordIterator;
+  friend class LockTable;
+  friend class LockTableIterator;
 };
 
 /**
@@ -69,21 +69,21 @@ class LockEntry : public LockTrait<LockEntry>, private CopyTrait<LockEntry> {
  * - SizedTrait: Lock count tracking
  * - ContainerTrait: Capacity management
  */
-class LockRecords : public TableTrait<LockRecords, LockEntry>,
-                    public LockTableTrait<LockRecords, TableTupleKey>,
-                    public IterTrait<LockRecords, LockRecordIterator>,
-                    public SizedTrait<LockRecords>,
-                    public ContainerTrait<LockRecords> {
+class LockTable : public TableTrait<LockTable, LockEntry>,
+                    public LockTableTrait<LockTable, TableTupleKey>,
+                    public IterTrait<LockTable, LockTableIterator>,
+                    public SizedTrait<LockTable>,
+                    public ContainerTrait<LockTable> {
   /** @brief Maximum locks per transaction */
   constexpr static std::size_t N = MAX_LOCK_PER_TRANSACTION;
 
  public:
   /** @brief Initialize empty lock table */
-  constexpr LockRecords() noexcept : locks_(), size_(0), next_() {}
+  constexpr LockTable() noexcept : locks_(), size_(0), next_() {}
 
   // Non-copyable
-  LockRecords(const LockRecords& other) noexcept = delete;
-  LockRecords& operator=(const LockRecords& other) noexcept = delete;
+  LockTable(const LockTable& other) noexcept = delete;
+  LockTable& operator=(const LockTable& other) noexcept = delete;
 
   // LockTableTrait Implementation
   /** @brief Add new lock
@@ -105,15 +105,15 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
   /** @brief Get lock information
    *  @param key Key to query
    *  @return Result with lock or error */
-  LockR trait_get_lock(const TableTupleKey& key) noexcept;
+  lock_r trait_get_lock(const TableTupleKey& key) noexcept;
 
   /** @brief Get iterator to first lock
    *  @return Iterator positioned at first valid lock */
-  LockRecordIterator trait_begin() const noexcept;
+  LockTableIterator trait_begin() const noexcept;
 
   /** @brief Get end iterator
    *  @return Iterator positioned after last lock */
-  LockRecordIterator trait_end() const noexcept;
+  LockTableIterator trait_end() const noexcept;
 
   // TableTrait Implementation
   /** @brief Insert new lock entry
@@ -148,7 +148,7 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
   std::size_t size_;               /**< Current lock count */
   TableTupleKey next_;             /**< Next free key */
 
-  friend class LockRecordIterator;
+  friend class LockTableIterator;
 };
 
 /**
@@ -159,24 +159,24 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
  * - Skips deleted/unused entries
  * - Const access to lock entries
  */
-class LockRecordIterator
-    : public IterTypeTrait<LockRecordIterator, const LockEntry>,
-      private CopyTrait<LockRecordIterator>,
-      public EqTrait<LockRecordIterator, LockRecordIterator> {
+class LockTableIterator
+    : public IterTypeTrait<LockTableIterator, const LockEntry>,
+      private CopyTrait<LockTableIterator>,
+      public EqTrait<LockTableIterator, LockTableIterator> {
  public:
   /**
    * @brief Construct iterator
    * @param table Parent lock table
    * @param idx Starting position
    */
-  LockRecordIterator(const LockRecords* table, const std::size_t idx) noexcept;
+  LockTableIterator(const LockTable* table, const std::size_t idx) noexcept;
 
   // Copyable
-  LockRecordIterator(const LockRecordIterator& other) noexcept;
-  LockRecordIterator& operator=(const LockRecordIterator& other) noexcept;
+  LockTableIterator(const LockTableIterator& other) noexcept;
+  LockTableIterator& operator=(const LockTableIterator& other) noexcept;
 
   /** @brief Move to next valid lock */
-  LockRecordIterator& trait_next() noexcept;
+  LockTableIterator& trait_next() noexcept;
 
   /**
    * @brief Get current lock entry
@@ -189,7 +189,7 @@ class LockRecordIterator
    * @param other Iterator to compare with
    * @return true if at same position
    */
-  bool trait_equals(const LockRecordIterator& other) const noexcept;
+  bool trait_equals(const LockTableIterator& other) const noexcept;
 
   /**
    * @brief Get current storage index
@@ -203,10 +203,10 @@ class LockRecordIterator
   /** @brief Advance to next valid entry */
   void advance_to_valid() noexcept;
 
-  const LockRecords* table_; /**< Parent table */
+  const LockTable* table_; /**< Parent table */
   std::size_t idx_;          /**< Current position */
 
-  friend class LockRecords;
+  friend class LockTable;
 };
 
 }  // namespace PawnDB

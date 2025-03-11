@@ -81,7 +81,7 @@ class Worker : public ThreadTrait<Worker> {
   std::uint8_t timeout_cnt_;  /**< Timeout counter */
   RollbackDeque rollback_dq_; /**< Commit buffer table */
   TxnStatus status_;          /**< Current transaction status */
-  LockRecords lock_table_;    /**< Lock table */
+  LockTable lock_table_;    /**< Lock table */
 };
 
 }  // namespace PawnDB

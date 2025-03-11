@@ -10,7 +10,6 @@
 #include "pawndb/params.h"
 #include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
-#include "pawndb/traits/deque.h"
 #include "pawndb/traits/sized.h"
 
 namespace PawnDB {
@@ -24,8 +23,7 @@ namespace PawnDB {
  * - Size tracking
  * - Non-blocking operations
  */
-class RetChannel : public DequeTrait<RetChannel, txn_id_t>,
-                   public ChannelTrait<RetChannel, txn_id_t>,
+class RetChannel : public ChannelTrait<RetChannel, txn_id_t>,
                    public SizedTrait<RetChannel>,
                    public ContainerTrait<RetChannel> {
  private:
@@ -42,16 +40,6 @@ class RetChannel : public DequeTrait<RetChannel, txn_id_t>,
   // Non-copyable
   RetChannel(const RetChannel& other) noexcept = delete;
   RetChannel& operator=(const RetChannel& other) noexcept = delete;
-
-  // Deque trait
-  /** @brief Push transaction to the channel */
-  DequeError trait_push_back(const txn_id_t& txn) noexcept;
-
-  /** @brief Get front dead transacion id */
-  deque_cp_r trait_front() const noexcept;
-
-  /** @brief Pop transaction from the channel */
-  DequeError trait_pop_front() noexcept;
 
   // Channel trait
   /** @brief Send transaction to the channel */

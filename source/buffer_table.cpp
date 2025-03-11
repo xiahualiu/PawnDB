@@ -53,20 +53,11 @@ BufferRef &BufferRef::operator=(const BufferRef &_other) noexcept {
   return *this;
 }
 
-BufferRef BufferRef::trait_clone() const noexcept {
-  return BufferRef{table_, index_};
-}
-
-void BufferRef::trait_copy(const BufferRef &_other) noexcept {
-  table_ = _other.table_;
-  index_ = _other.index_;
-}
-
 bool BufferRef::_test_null() const noexcept {
   return table_ == nullptr;
 }
 
-buffer_t &BufferRef::trait_buffer() const noexcept {
+buffer_t &BufferRef::trait_buf() const noexcept {
   return table_->buffers_[index_].buffer_;
 }
 

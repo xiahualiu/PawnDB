@@ -93,19 +93,23 @@ class RollbackDeque : public DequeTrait<RollbackDeque, RollbackEntry>,
   RollbackDeque& operator=(const RollbackDeque& other) noexcept = delete;
 
   // Deque trait
-  /** @brief Push entry to the back of the deque */
+  /** @brief Push entry to the back of the deque
+   * @param entry Entry to push
+   * @return Error code */
   DequeError trait_push_back(const RollbackEntry& entry) noexcept;
 
   /** @brief Get front entry */
-  deque_r trait_front() const noexcept;
+  deque_r trait_front() noexcept;
 
   /** @brief Get back entry */
-  deque_r trait_back() const noexcept;
+  deque_r trait_back() noexcept;
 
-  /** @brief Pop front entry */
+  /** @brief Pop front entry
+    * @return Error code */
   DequeError trait_pop_front() noexcept;
 
-  /** @brief Pop back entry */
+  /** @brief Pop back entry
+    * @return Error code */
   DequeError trait_pop_back() noexcept;
 
   // Size trait

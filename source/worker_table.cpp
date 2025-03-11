@@ -1,11 +1,12 @@
 #include "pawndb/types/worker_table.h"
 
 #include <sys/socket.h>
+#include <sys/types.h>
 
 #include <atomic>
 #include <cstring>
-#include <iostream>
 
+#include "pawndb/traits/parser.h"
 #include "pawndb/traits/table.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/worker.h"
@@ -72,13 +73,9 @@ void WorkerContext::trait_join() noexcept {
   thread_.join();
   // Ack all unfinished jobs that worker has not acked
   while (!job_ch_.empty()) {
-    auto job = job_ch_.get().unwrap();
-    auto parser = Parser(job.buffer(), job.buffer_size());
-    parser.set_ack(OpAck::DEAD_TXN);
-    sendto(fd_, parser.get_buffer().data(), 7, 0, job.c_addr(),
-           job.c_addr_len());
-    job.buffer().release();
-    job_ch_.pop();
+    auto job = job_ch_.recv().unwrap();
+    auto parser = Parser(job.buf(), job.buf_size());
+    reply(OpAck::DEAD_TXN, parser, 7, job);
   }
 }
 
@@ -90,37 +87,48 @@ bool WorkerContext::trait_is_running() noexcept {
   return true;
 }
 
-WorkerContext WorkerContext::trait_clone() const noexcept {
-  return *this;
+WorkerContext::key_t WorkerContext::trait_txn_id() const noexcept {
+  return txn_id_;
 }
 
-void WorkerContext::trait_copy(const WorkerContext& _other) noexcept {
-  this->operator=(_other);
+Database* WorkerContext::trait_db() const noexcept {
+  return db_;
 }
 
-WorkerContext::queue_r WorkerContext::trait_get() noexcept {
-  return job_ch_.get();
+int WorkerContext::trait_fd() const noexcept {
+  return fd_;
 }
 
-WorkerContext::queue_r WorkerContext::trait_recv() noexcept {
-  return job_ch_.recv();
+JobChannel& WorkerContext::trait_job_ch() noexcept {
+  return job_ch_;
 }
 
-QueueError WorkerContext::trait_send(const Job& job) noexcept {
-  return job_ch_.send(job);
+RetChannel& WorkerContext::trait_ret_ch() noexcept {
+  return *ret_ch_;
 }
 
-void WorkerContext::trait_pop() noexcept {
-  job_ch_.pop();
+std::atomic_flag& WorkerContext::trait_running() noexcept {
+  return running_;
 }
 
-void WorkerContext::trait_clear() noexcept {
-  job_ch_.clear();
+void WorkerContext::reply(OpAck _ack, Parser& _parser, std::size_t _size,
+                          Job& _job) noexcept {
+  _parser.set_ack(_ack);
+  sendto(fd_, _parser.get_buffer().data(), _size, 0, _job.c_addr(),
+         _job.c_addr_len());
+  _job.buf().release();
 }
 
-void WorkerContext::trait_notify_not_empty() noexcept {
-  job_ch_.notify_not_empty();
+void WorkerContext::worker_quit() noexcept {
+  // Ack all unfinished jobs
+  while (!job_ch_.empty()) {
+    auto job = job_ch_.recv().unwrap();
+    auto parser = Parser(job.buf(), job.buf_size());
+    reply(OpAck::DEAD_TXN, parser, 7, job);
+  }
 }
+
+
 
 WorkerTable::WorkerTable() noexcept : table_{}, size_(0) {}
 

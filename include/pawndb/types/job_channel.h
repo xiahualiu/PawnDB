@@ -13,7 +13,6 @@
 #include "pawndb/traits/channel.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
-#include "pawndb/traits/deque.h"
 #include "pawndb/traits/job.h"
 #include "pawndb/traits/sized.h"
 #include "pawndb/types/buffer_table.h"
@@ -77,8 +76,7 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
  * - SizedTrait: Size tracking
  * - ContainerTrait: Capacity operations
  */
-class JobChannel : public DequeTrait<JobChannel, Job>,
-                   public ChannelTrait<JobChannel, Job>,
+class JobChannel : public ChannelTrait<JobChannel, Job>,
                    public SizedTrait<JobChannel>,
                    public ContainerTrait<JobChannel> {
   /** @brief Maximum jobs per channel */
@@ -92,22 +90,15 @@ class JobChannel : public DequeTrait<JobChannel, Job>,
   JobChannel(const JobChannel& other) noexcept = delete;
   JobChannel& operator=(const JobChannel& other) noexcept = delete;
 
-  // DequeueTrait Implementation
-  /** @brief Get front job */
-  deque_r trait_front() noexcept;
-
-  /** @brief Pop job from front */
-  DequeError trait_pop_front() noexcept;
-
-  /** @brief Push job to back */
-  DequeError trait_push_back(const Job& _job) noexcept;
-
   // ChannelTrait Implementation
   /** @brief Send job to channel */
   ChannelError trait_send(const Job& _job) noexcept;
 
   /** @brief Wait for and get next job */
   channel_r trait_recv() noexcept;
+
+  /** @brief Notify waiting threads */
+  void trait_notify() noexcept;
 
   // SizedTrait Implementation
   /** @brief Get job count */
