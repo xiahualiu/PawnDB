@@ -8,9 +8,7 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/channel.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/sized.h"
+#include "pawndb/result.h"
 
 namespace PawnDB {
 
@@ -23,9 +21,7 @@ namespace PawnDB {
  * - Size tracking
  * - Non-blocking operations
  */
-class RetChannel : public ChannelTrait<RetChannel, txn_id_t>,
-                   public SizedTrait<RetChannel>,
-                   public ContainerTrait<RetChannel> {
+class RetChannel{
  private:
   std::array<txn_id_t, MAX_TRANSACTIONS> txns_;
   std::size_t head_ = 0;
@@ -34,6 +30,14 @@ class RetChannel : public ChannelTrait<RetChannel, txn_id_t>,
   std::mutex mtx_;
 
  public:
+  enum class ChannelError {
+    None,          /**< No error */
+    Full,          /**< Channel is full */
+    Empty,         /**< Channel is empty */
+  };
+
+  using channel_r = Result<txn_id_t, ChannelError>;
+
   /** @brief Default constructor */
   constexpr RetChannel() noexcept : txns_{}, head_(0), tail_(0), count_(0) {}
 
@@ -43,24 +47,24 @@ class RetChannel : public ChannelTrait<RetChannel, txn_id_t>,
 
   // Channel trait
   /** @brief Send transaction to the channel */
-  ChannelError trait_send(const txn_id_t& txn) noexcept;
+  ChannelError send(const txn_id_t& txn) noexcept;
 
   /** @brief Receive transaction from the channel */
-  channel_r trait_recv() noexcept;
+  channel_r recv() noexcept;
 
   // Size trait
   /** @brief Get current transaction count */
-  std::size_t trait_size() const noexcept;
+  std::size_t size() const noexcept;
 
   // Container trait
   /** @brief Check if channel is full */
-  bool trait_full() const noexcept;
+  bool full() const noexcept;
 
   /** @brief Check if channel is empty */
-  bool trait_empty() const noexcept;
+  bool empty() const noexcept;
 
   /** @brief Clear all transactions */
-  void trait_clear() noexcept;
+  void clear() noexcept;
 };
 
 }  // namespace PawnDB

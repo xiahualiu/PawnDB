@@ -10,14 +10,21 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/channel.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/job.h"
-#include "pawndb/traits/sized.h"
+#include "pawndb/result.h"
 #include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
+
+/**
+ * @brief Client connection information
+ *
+ * Contains client address and length for socket communication.
+ * Used to track client connections in job processing.
+ */
+struct ClientInfo {
+  sockaddr_un addr;   /**< Client address */
+  socklen_t addr_len; /**< Address length */
+};
 
 /**
  * @brief Database job containing client request data
@@ -27,7 +34,7 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for job passing
  */
-class Job : public JobTrait<Job>, public CopyTrait<Job> {
+class Job {
  public:
   /** @brief Initialize empty job */
   constexpr Job() noexcept
@@ -41,18 +48,14 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
   Job(const Job& other) noexcept;
   Job& operator=(const Job& other) noexcept;
 
-  // JobTrait Implementation
   /** @brief Get buffer reference */
-  BufferRef trait_buf() const noexcept;
+  BufferRef buf() const noexcept;
 
   /** @brief Get buffer size */
-  std::size_t trait_buf_size() const noexcept;
+  std::size_t buf_size() const noexcept;
 
   /** @brief Get client address */
-  const sockaddr* trait_c_addr() const noexcept;
-
-  /** @brief Get address length */
-  socklen_t trait_c_addr_len() const noexcept;
+  const ClientInfo& client_info() const noexcept;
 
  private:
   BufferRef buffer_;          /**< Request data buffer */
@@ -76,13 +79,22 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
  * - SizedTrait: Size tracking
  * - ContainerTrait: Capacity operations
  */
-class JobChannel : public ChannelTrait<JobChannel, Job>,
-                   public SizedTrait<JobChannel>,
-                   public ContainerTrait<JobChannel> {
+class JobChannel {
   /** @brief Maximum jobs per channel */
   constexpr static std::size_t MaxJobs = MAX_JOB_CHANNEL;
 
  public:
+  /** @brief Channel error codes */
+  enum class Error {
+    None,    /**< Operation successful */
+    Full,    /**< Channel is full */
+    Empty,   /**< Channel is empty */
+    Timeout, /**< Operation timed out */
+  };
+
+  /** @brief Result type for job operations */
+  using channel_r = Result<Job, Error>;
+
   /** @brief Initialize empty channel */
   JobChannel() noexcept;
 
@@ -90,29 +102,26 @@ class JobChannel : public ChannelTrait<JobChannel, Job>,
   JobChannel(const JobChannel& other) noexcept = delete;
   JobChannel& operator=(const JobChannel& other) noexcept = delete;
 
-  // ChannelTrait Implementation
   /** @brief Send job to channel */
-  ChannelError trait_send(const Job& _job) noexcept;
+  Error send(const Job& _job) noexcept;
 
   /** @brief Wait for and get next job */
-  channel_r trait_recv() noexcept;
+  channel_r recv() noexcept;
 
   /** @brief Notify waiting threads */
-  void trait_notify() noexcept;
+  void notify() noexcept;
 
-  // SizedTrait Implementation
   /** @brief Get job count */
-  std::size_t trait_size() const noexcept;
+  std::size_t size() const noexcept;
 
-  // ContainerTrait Implementation
   /** @brief Check if full */
-  bool trait_full() const noexcept;
+  bool full() const noexcept;
 
   /** @brief Check if empty */
-  bool trait_empty() const noexcept;
+  bool empty() const noexcept;
 
   /** @brief Clear job channel */
-  void trait_clear() noexcept;
+  void clear() noexcept;
 
  private:
   std::array<Job, MaxJobs> jobs_;     /**< Job storage */

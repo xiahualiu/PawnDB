@@ -16,6 +16,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Export compile commands for tools like clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # Build shared libraries by default
 option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
 

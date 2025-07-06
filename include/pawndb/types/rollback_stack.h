@@ -5,14 +5,9 @@
 #include <cstddef>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/deque.h"
-#include "pawndb/traits/parser.h"
-#include "pawndb/traits/rollback.h"
-#include "pawndb/traits/sized.h"
+#include "pawndb/types/parser.h"
 #include "pawndb/types/buffer_table.h"
-#include "pawndb/types/table_tuple_key.h"
+#include "pawndb/types/tuple_uid.h"
 
 namespace PawnDB {
 
@@ -22,45 +17,15 @@ namespace PawnDB {
  * Stores buffer reference, key, operation type and hash table flags.
  * Implements hash and copy operations for table storage.
  */
-class RollbackEntry : public RollbackTrait<RollbackEntry>,
-                      public CopyTrait<RollbackEntry> {
+class RollbackEntry {
  public:
   /** @brief Key type alias */
-  using key_t = TableTupleKey;
+  using key_t = TupleUID;
 
   /** @brief Default constructor creates invalid entry */
   constexpr RollbackEntry() noexcept
       : buffer_(), key_(), op_(OpType::MAX_OP_VALUE) {}
 
-  /**
-   * @brief Construct entry with values
-   * @param key Table-tuple key
-   * @param op Operation type
-   * @param buffer Associated buffer
-   */
-  RollbackEntry(const TableTupleKey& key, OpType op,
-                const BufferRef& buffer) noexcept;
-
-  // Copyable
-  RollbackEntry(const RollbackEntry& other) noexcept;
-  RollbackEntry& operator=(const RollbackEntry& other) noexcept;
-
-  // CommitTrait Implementation
-  /** @brief Get buffer reference */
-  BufferRef trait_buf() const noexcept;
-
-  /** @brief Get table-tuple key */
-  TableTupleKey trait_key() const noexcept;
-
-  /** @brief Get operation type */
-  OpType trait_op() const noexcept;
-
- private:
-  BufferRef buffer_;  /**< Associated buffer */
-  TableTupleKey key_; /**< Table-tuple key */
-  OpType op_;         /**< Operation type */
-
-  friend class CommitTable;
 };
 
 /**

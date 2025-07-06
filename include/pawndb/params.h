@@ -20,15 +20,15 @@ namespace PawnDB {
 
 /// @brief Table row size type, uint8_t is enough if the max row size is fewer
 /// than 255.
-using tbl_row_t = std::uint8_t;
+using tbl_row_t = std::uint32_t;
 
-/// @brief Tuple id type, uint8_t is enough if the max tuple id is fewer than
-/// 255.
-using tp_id_t = std::uint8_t;
+/// @brief Tuple id type, uint32_t is enough if the max tuple id is fewer than
+/// 4,294,967,295.
+using tp_id_t = std::uint32_t;
 
-/// @brief Data id type, uint8_t is enough if the max data id is fewer than
-/// 255.
-using d_id_t = std::uint8_t;
+/// @brief Data id type, uint32_t is enough if the max data id is fewer than
+/// 4,294,967,295.
+using d_id_t = std::uint32_t;
 
 /// @brief Transaction id type, uint32_t is enough if the max transaction id
 /// is fewer than 4,294,967,295.

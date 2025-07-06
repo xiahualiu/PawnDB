@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(CLANG_VERSION_SUFFIX "-18")
-
-# Use Ninja generator by default
-set(CMAKE_GENERATOR "Ninja")
+set(CLANG_VERSION_SUFFIX "-19")
 
 # Disable the C compiler
 set(CMAKE_C_COMPILER "")
