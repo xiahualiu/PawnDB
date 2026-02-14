@@ -33,9 +33,10 @@ jobs:
           sudo ./llvm.sh 18
 
       - name: configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DPAWNDB_ENABLE_TEST=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+        run: cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_TEST=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: build & run test apps
         run: |
+          cmake --build build --target clean-coverage
           cmake --build build --target run-all-tests
           cmake --build build --target show-test-coverage

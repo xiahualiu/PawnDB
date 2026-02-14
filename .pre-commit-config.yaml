@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cmake-check-format
+        name: cmake check-clang-format
+        language: system
+        entry: >-
+          bash -c 'cmake -S . -B build -DPAWNDB_ENABLE_STYLE=ON &&
+          cmake --build build --target check-clang-format'
+        pass_filenames: false

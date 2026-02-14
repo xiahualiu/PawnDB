@@ -17,12 +17,12 @@ jobs:
         with:
           submodules: 'true'
 
-      - uses: uraimo/run-on-arch-action@v2
+      - uses: uraimo/run-on-arch-action@v3
         with:
           arch: riscv64
           distro: ubuntu_latest
           install: | 
             apt-get update && apt-get install -y cmake build-essential ninja-build
           run: |
-            cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/gcc.cmake
-            cmake --build build --target pawndb -j
+            cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/gcc.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            cmake --build build --target pawndb-app -j

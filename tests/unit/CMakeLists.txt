@@ -1,0 +1,8 @@
+add_subdirectory(buffer_table)
+add_subdirectory(commit_table)
+add_subdirectory(job_channel)
+add_subdirectory(lock_table)
+add_subdirectory(parser)
+add_subdirectory(ret_channel)
+add_subdirectory(student_table)
+add_subdirectory(table_tuple_key)

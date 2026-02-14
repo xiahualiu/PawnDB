@@ -35,14 +35,14 @@ Hard requirements:
 * `gcovr` for showing test coverage report. (Optional)
 * `clang-format` version > 18.0. (Optional)
 
-### Build and run the standalone target
+### Build and run the CLI target
 
 Use the following command to build and run the executable target.
 
 ```bash
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build --target pawndb-app
-./build/standalone/pawndb-app
+./build/apps/pawndb-cli/pawndb-app
 ```
 
 ### Build and run test suite
@@ -50,30 +50,52 @@ cmake --build build --target pawndb-app
 Use the following commands from the project's root directory to run the test suite.
 
 ```bash
-cmake -S . -B build -DPAWNDB_ENABLE_TEST -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_TEST=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build --target clean-coverage
 cmake --build build --target run-all-tests
 cmake --build build --target show-test-coverage
+```
 
+You can run a specific test target, for example:
+
+```bash
+cmake --build build --target parser-test
+./build/tests-unit/parser/parser-test
 ```
 
 ### Check clang-format
 
 ```bash
-cmake -S . -B build -DPAWNDB_ENABLE_STYLE -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_STYLE=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake
 cmake --build build --target check-clang-format
 ```
 
 ### Apply clang-format
 
 ```bash
-cmake -S . -B build -DPAWNDB_ENABLE_STYLE -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_STYLE=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake
 cmake --build build --target apply-clang-format
+```
+
+### Pre-commit hook (format check)
+
+This repo includes a `.pre-commit-config.yaml` hook that runs the CMake
+`check-clang-format` target before each commit.
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Run it manually on all files:
+
+```bash
+pre-commit run --all-files
 ```
 
 ### Build Docs
 
 ```bash
-cmake -S . -B build -DPAWNDB_ENABLE_DOXYGEN -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain/clang.cmake
+cmake -S . -B build -G Ninja -DPAWNDB_ENABLE_DOXYGEN=ON -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake
 cmake --build build --target doxygen
 ```
