@@ -3,63 +3,133 @@
 namespace PawnDB {
 
 BufferTable::request_r BufferTable::trait_request() noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (trait_full()) {
-    return BufferError::Full;
+  std::size_t index = 0;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (size_ >= N) {
+      return BufferError::Full;
+    }
+    while (buffers_[next_].ref_count_ > 0) {
+      next_ = (next_ + 1) % N;
+    }
+    index = next_;
+    buffers_[index].ref_count_ = 1;
+    next_ = (index + 1) % N;
+    size_++;
   }
-  while (buffers_[next_].is_used_ > 0) {
-    next_ = (next_ + 1) % N;
-  }
-  auto result = BufferRef{this, next_};
-  buffers_[next_].is_used_ = true;
-  next_ = (next_ + 1) % N;
-  size_++;
-  return result;
+  return BufferRef{this, index};
 }
 
 void BufferTable::trait_clear() noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto &buffer : buffers_) {
-    buffer.is_used_ = false;
+    buffer.ref_count_ = 0;
   }
   size_ = 0;
+  next_ = 0;
 }
 
 bool BufferTable::trait_empty() const noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
   return size_ == 0;
 }
 
 bool BufferTable::trait_full() const noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
   return size_ >= N;
 }
 
 std::size_t BufferTable::trait_size() const noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
   return size_;
 }
 
 std::uint8_t BufferTable::_test_is_used(std::size_t _i) const noexcept {
-  return buffers_[_i].is_used_;
+  std::lock_guard<std::mutex> lock(mutex_);
+  return buffers_[_i].ref_count_ > 0;
+}
+
+std::uint16_t BufferTable::_test_ref_count(std::size_t _i) const noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return buffers_[_i].ref_count_;
+}
+
+void BufferTable::retain_ref_(std::size_t index) noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto &entry = buffers_[index];
+  if (entry.ref_count_ == 0) {
+    size_++;
+  }
+  entry.ref_count_++;
+}
+
+void BufferTable::release_ref_(std::size_t index) noexcept {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto &entry = buffers_[index];
+  if (entry.ref_count_ == 0) {
+    return;
+  }
+  entry.ref_count_--;
+  if (entry.ref_count_ == 0 && size_ > 0) {
+    size_--;
+  }
 }
 
 BufferRef::BufferRef(BufferTable *_table, std::size_t _index) noexcept
     : table_(_table), index_(_index) {}
 
 BufferRef::BufferRef(const BufferRef &_other) noexcept
-    : table_(_other.table_), index_(_other.index_) {}
+    : table_(_other.table_), index_(_other.index_) {
+  if (table_ != nullptr) {
+    table_->retain_ref_(index_);
+  }
+}
+
+BufferRef::BufferRef(BufferRef &&_other) noexcept
+    : table_(_other.table_), index_(_other.index_) {
+  _other.table_ = nullptr;
+  _other.index_ = 0;
+}
 
 BufferRef &BufferRef::operator=(const BufferRef &_other) noexcept {
+  if (this == &_other) {
+    return *this;
+  }
+  if (_other.table_ != nullptr) {
+    _other.table_->retain_ref_(_other.index_);
+  }
+  if (table_ != nullptr) {
+    table_->release_ref_(index_);
+  }
   table_ = _other.table_;
   index_ = _other.index_;
   return *this;
 }
 
+BufferRef &BufferRef::operator=(BufferRef &&_other) noexcept {
+  if (this == &_other) {
+    return *this;
+  }
+  if (table_ != nullptr) {
+    table_->release_ref_(index_);
+  }
+  table_ = _other.table_;
+  index_ = _other.index_;
+  _other.table_ = nullptr;
+  _other.index_ = 0;
+  return *this;
+}
+
+BufferRef::~BufferRef() noexcept {
+  release_ref_();
+}
+
 BufferRef BufferRef::trait_clone() const noexcept {
-  return BufferRef{table_, index_};
+  return BufferRef{*this};
 }
 
 void BufferRef::trait_copy(const BufferRef &_other) noexcept {
-  table_ = _other.table_;
-  index_ = _other.index_;
+  *this = _other;
 }
 
 bool BufferRef::_test_null() const noexcept {
@@ -70,10 +140,15 @@ buffer_t &BufferRef::trait_buffer() const noexcept {
   return table_->buffers_[index_].buffer_;
 }
 
-void BufferRef::trait_release() noexcept {
-  std::lock_guard<std::mutex> lock(table_->mutex_);
-  table_->buffers_[index_].is_used_ = false;
-  table_->size_--;
+void BufferRef::release_ref_() noexcept {
+  if (table_ == nullptr) {
+    return;
+  }
+  auto *table = table_;
+  auto index = index_;
+  table_ = nullptr;
+  index_ = 0;
+  table->release_ref_(index);
 }
 
 // Test functions

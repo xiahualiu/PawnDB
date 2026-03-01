@@ -38,9 +38,7 @@ TEST_CASE("BufferTable Full #1") {
   CHECK(ref_r.getError() == BufferError::Full);
 
   // Release all buffers
-  for (auto& ref : refs) {
-    ref.release();
-  }
+  refs.clear();
   CHECK(table.empty());
 }
 
@@ -59,7 +57,7 @@ TEST_CASE("BufferTable Full #2") {
   CHECK(table.size() == BUFFER_ROWS);
 
   // Release the last buffer
-  refs.back().release();
+  refs.pop_back();
   CHECK(!table.full());
   CHECK(table._test_is_used(BUFFER_ROWS - 1) == false);
 
@@ -104,7 +102,7 @@ TEST_CASE("BufferTable Release #1") {
   CHECK(ref_r);
   CHECK(table.size() == 1);
 
-  ref_r.unwrap().release();
+  ref_r.unwrap() = BufferRef{};
   CHECK(table.empty());
   CHECK(table.size() == 0);
 }
@@ -118,7 +116,7 @@ TEST_CASE("BufferTable Next Fit #1") {
   CHECK(ref1_r.unwrap()._test_index() == 0);
 
   // Release first buffer
-  ref1_r.unwrap().release();
+  ref1_r.unwrap() = BufferRef{};
 
   // Next request should be 1
   auto ref2_r = table.request();
@@ -151,6 +149,25 @@ TEST_CASE("BufferRef Copy Operations #1") {
   CHECK(ref3._test_index() == 0);
 }
 
+TEST_CASE("BufferRef Reference Count #1") {
+  BufferTable table;
+  auto ref1_r = table.request();
+  CHECK(ref1_r);
+  CHECK(table._test_ref_count(0) == 1);
+
+  BufferRef ref2(ref1_r.unwrap());
+  CHECK(table._test_ref_count(0) == 2);
+  CHECK(table.size() == 1);
+
+  ref2 = BufferRef{};
+  CHECK(table._test_ref_count(0) == 1);
+  CHECK(table.size() == 1);
+
+  ref1_r.unwrap() = BufferRef{};
+  CHECK(table._test_ref_count(0) == 0);
+  CHECK(table.size() == 0);
+}
+
 TEST_CASE("BufferRef Buffer Access #1") {
   BufferTable table;
   auto ref_r = table.request();
@@ -158,7 +175,7 @@ TEST_CASE("BufferRef Buffer Access #1") {
   auto& buf = ref_r.unwrap().buffer();
   buf[0] = 'x';
   CHECK(buf[0] == 'x');
-  ref_r.unwrap().release();
+  ref_r.unwrap() = BufferRef{};
 }
 
 TEST_CASE("BufferRef Clone #1") {

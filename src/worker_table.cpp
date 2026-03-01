@@ -77,7 +77,6 @@ void WorkerContext::trait_join() noexcept {
     parser.set_ack(OpAck::DEAD_TXN);
     sendto(fd_, parser.get_buffer().data(), 7, 0, job.c_addr(),
            job.c_addr_len());
-    job.buffer().release();
     job_ch_.pop();
   }
 }

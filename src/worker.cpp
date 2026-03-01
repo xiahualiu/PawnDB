@@ -71,7 +71,6 @@ void Worker::release_locks() noexcept {
 void Worker::clear_commit_table() noexcept {
   while (!commit_table_.empty()) {
     auto commit = commit_table_.get().unwrap();
-    commit.buffer().release();
     commit_table_.pop();
   }
 }
@@ -80,7 +79,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::SHRINKING) {
     reply(OpAck::SUCCESS, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -100,7 +98,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
             table_ref.notify_not_empty();
             table_ref.notify_shared();
             table_ref.notify_exclusive();
-            commit.buffer().release();
             break;
           }
           default: {
@@ -134,7 +131,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
             auto& table_ref = db_.students_;
             std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
             table_ref.write(new_tuple);
-            commit.buffer().release();
             break;
           }
           default: {
@@ -150,7 +146,6 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
     commit_table_.pop();
   }
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-  _job.buffer().release();
   job_ch_.pop();
   return;
 }
@@ -164,7 +159,6 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -178,7 +172,6 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
       if (!bytes_read_r) {
         _parser.set_buffer_size(7);
         reply(OpAck::BAD_DATA, _parser, 7, _job);
-        _job.buffer().release();
         job_ch_.pop();
         return;
       }
@@ -190,7 +183,6 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
     default: {
       _parser.set_buffer_size(7);
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -201,7 +193,6 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
   // Check if commit table is full
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -216,7 +207,6 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -224,7 +214,6 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -236,7 +225,6 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           reply(OpAck::TIMEOUT, _parser, 7, _job);
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -244,7 +232,6 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
         if (!is_running()) {
           reply(OpAck::ABORTED, _parser, 7, _job);
           status_ = TxnStatus::ABORTED;
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -258,7 +245,6 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
         // Check if lock is valid
         if (add_lock_r != LockError::None) {
           reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-          _job.buffer().release();
           job_ch_.pop();
         }
         auto student_entry = wait_r.unwrap();
@@ -267,14 +253,12 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
             student_entry.serialize(_job.buffer(), _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset_r.unwrap());
         reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-        _job.buffer().release();
         job_ch_.pop();
         return;
       }
     }
     default: {
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -285,7 +269,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -293,7 +276,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -305,7 +287,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
       while (true) {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           reply(OpAck::TIMEOUT, _parser, 7, _job);
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -313,7 +294,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
         if (!is_running()) {
           reply(OpAck::ABORTED, _parser, 7, _job);
           status_ = TxnStatus::ABORTED;
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -327,7 +307,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
         // Check if lock is valid
         if (add_lock_r != LockError::None) {
           reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -337,14 +316,12 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
             student_entry.serialize(_job.buffer(), _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset_r.unwrap());
         reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-        _job.buffer().release();
         job_ch_.pop();
         return;
       }
     }
     default: {
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -354,7 +331,6 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
 void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -362,7 +338,6 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -370,7 +345,6 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   // Check if tuple key is valid
   if (!tuple_key_r) {
     reply(OpAck::BAD_TP, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -380,7 +354,6 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::SHARED) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -392,13 +365,11 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
       auto& table_ref = db_.students_;
       table_ref.release(tuple_key);
       reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
     default: {
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -409,7 +380,6 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -417,7 +387,6 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -425,7 +394,6 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   // Check if tuple key is valid
   if (!tuple_key_r) {
     reply(OpAck::BAD_TP, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -435,7 +403,6 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::SHARED) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -448,14 +415,12 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
         if (timeout_cnt >= MAX_TIMEOUT_RETRY) {
           reply(OpAck::TIMEOUT, _parser, 7, _job);
           status_ = TxnStatus::ABORTED;
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
         // If the transaction is no longer running, abort the operation
         if (!is_running()) {
           reply(OpAck::ABORTED, _parser, 7, _job);
-          _job.buffer().release();
           job_ch_.pop();
           return;
         }
@@ -469,13 +434,11 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
       // Promote the lock in the lock table
       lock_table_.promote_lock({table_id, tuple_key});
       reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
     default: {
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -490,7 +453,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -498,7 +460,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   // Check if tuple key is valid
   if (!tuple_key_r) {
     reply(OpAck::BAD_TP, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -508,7 +469,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::EXCLUSIVE) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -517,7 +477,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
       auto new_entry = StudentTuple{};
       if (!new_entry.deserialize(_job.buffer(), _parser.get_tuple_offset())) {
         reply(OpAck::BAD_DATA, _parser, 7, _job);
-        _job.buffer().release();
         job_ch_.pop();
         return;
       }
@@ -528,7 +487,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
     }
     default: {
       reply(OpAck::BAD_TABLE, _parser, 7, _job);
-      _job.buffer().release();
       job_ch_.pop();
       return;
     }
@@ -537,7 +495,6 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
       {{table_id, tuple_key}, OpType::UPDATE, _job.buffer()});
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -557,7 +514,6 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
   // Check if table ID is valid
   if (!table_id_r) {
     reply(OpAck::BAD_TABLE, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -565,7 +521,6 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
   // Check if tuple key is valid
   if (!tuple_key_r) {
     reply(OpAck::BAD_TP, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -576,7 +531,6 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::EXCLUSIVE) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
@@ -584,12 +538,10 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
   // Check if commit table is full
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
-    _job.buffer().release();
     job_ch_.pop();
     return;
   }
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-  _job.buffer().release();
   job_ch_.pop();
   return;
 }
@@ -618,7 +570,6 @@ void Worker::trait_start() noexcept {
     auto op_r = parser.get_op();
     if (!op_r) {
       reply(OpAck::BAD_OP, parser, 7, job);
-      job.buffer().release();
       job_ch_.pop();
       continue;
     }
@@ -627,7 +578,6 @@ void Worker::trait_start() noexcept {
       case OpType::START_TXN:
         parser.set_txn(txn_id_);
         reply(OpAck::SUCCESS, parser, 7, job);
-        job.buffer().release();
         job_ch_.pop();
         break;
       case OpType::COMMIT_TXN: {
@@ -637,7 +587,6 @@ void Worker::trait_start() noexcept {
       }
       case OpType::ABORT_TXN: {
         reply(OpAck::SUCCESS, parser, 7, job);
-        job.buffer().release();
         job_ch_.pop();
         worker_quit();
         return;

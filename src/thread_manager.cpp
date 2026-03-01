@@ -100,14 +100,12 @@ void ThreadManager::trait_start() noexcept {
     if (0 == recv_size) {
       std::cout << "Socket has been shut down. Stop receiving messages."
                 << std::endl;
-      recv_buffer.release();
       break;
     }
     // Check if received error
     if (recv_size < 0) {
       std::cerr << "Failed to receive from client: " << strerror(errno)
                 << std::endl;
-      recv_buffer.release();
       continue;
     }
 
@@ -118,7 +116,6 @@ void ThreadManager::trait_start() noexcept {
     if (!op_r || !op_id_r) {
       std::cerr << "Failed to parse operation" << std::endl;
       reply(OpAck::BAD_OP, parser, client_addr, client_addr_len);
-      recv_buffer.release();
       continue;
     }
     auto op = op_r.unwrap();
@@ -137,7 +134,6 @@ void ThreadManager::trait_start() noexcept {
         // Check if worker was inserted
         if (!insert_r) {
           reply(OpAck::BUSY, parser, client_addr, client_addr_len);
-          recv_buffer.release();
           continue;
         }
         auto& worker_entry = insert_r.unwrap();
@@ -163,7 +159,6 @@ void ThreadManager::trait_start() noexcept {
         if (!txn_id_r) {
           std::cerr << "Failed to parse transaction ID" << std::endl;
           reply(OpAck::BAD_TXN, parser, client_addr, client_addr_len);
-          recv_buffer.release();
           continue;
         }
         // Search for the txn worker
@@ -171,7 +166,6 @@ void ThreadManager::trait_start() noexcept {
         if (!search_r) {
           std::cerr << "Failed to find worker" << std::endl;
           reply(OpAck::BAD_TXN, parser, client_addr, client_addr_len);
-          recv_buffer.release();
           continue;
         }
         // Send the job to the worker
@@ -181,7 +175,6 @@ void ThreadManager::trait_start() noexcept {
         if (send_r != QueueError::None) {
           std::cerr << "Failed to send job to worker" << std::endl;
           reply(OpAck::BUSY, parser, client_addr, client_addr_len);
-          recv_buffer.release();
           continue;
         }
         // If the operation is abort, kill the worker if the worker is waiting.
