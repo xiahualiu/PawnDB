@@ -52,7 +52,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
    * @brief Buffer table entry containing buffer and metadata
    */
   struct BufferTableEntry {
-    buffer_t buffer_; /**< Fixed-size character buffer */
+    buffer_t buffer_;         /**< Fixed-size character buffer */
     std::uint16_t ref_count_; /**< Reference count for this slot */
 
     /** @brief Default constructor */

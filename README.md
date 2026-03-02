@@ -58,7 +58,7 @@ cd /workspaces
 sudo chown -R ubuntu:ubuntu /workspaces/*
 
 # Populate the volume with this git repo
-git clone https://github.com/xiahualiu/PawnDB.git PawnDB
+git clone --recurse-submodules https://github.com/xiahualiu/PawnDB.git PawnDB
 
 # Install pre-commit hook
 cd PawnDB

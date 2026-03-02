@@ -1,5 +1,5 @@
-[submodule "test/doctest"]
-	path = test/doctest
+[submodule "tests/doctest"]
+	path = tests/doctest
 	url = https://github.com/doctest/doctest.git
 [submodule "wiki"]
 	path = wiki

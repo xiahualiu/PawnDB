@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Clang Toolchain (Ninja)",
+    "preferredGenerator": {
+      "name": "Ninja"
+    },
+    "toolchainFile": "${workspaceFolder}/cmake/toolchains/clang.cmake",
+    "cmakeSettings": {
+      "CMAKE_BUILD_TYPE": "Debug",
+      "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+      "PAWNDB_ENABLE_ASAN": "ON",
+      "PAWNDB_ENABLE_COVERAGE": "ON",
+      "PAWNDB_ENABLE_TEST": "ON",
+      "PAWNDB_ENABLE_DOXYGEN": "ON",
+      "PAWNDB_ENABLE_STYLE": "ON"
+    }
+  },
+  {
+    "name": "GCC Toolchain (Ninja)",
+    "preferredGenerator": {
+      "name": "Ninja"
+    },
+    "toolchainFile": "${workspaceFolder}/cmake/toolchains/gcc.cmake",
+    "cmakeSettings": {
+      "CMAKE_BUILD_TYPE": "Debug",
+      "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+      "PAWNDB_ENABLE_ASAN": "ON",
+      "PAWNDB_ENABLE_COVERAGE": "ON",
+      "PAWNDB_ENABLE_TEST": "ON",
+      "PAWNDB_ENABLE_DOXYGEN": "ON",
+      "PAWNDB_ENABLE_STYLE": "ON"
+    }
+  }
+]
