@@ -23,6 +23,52 @@ An **ultra lightweight & fast**, **portable** & **type-safe** in-memory database
 
 ## Build the Project
 
+### Build in Dev Container
+
+This repository includes a dev container in `.devcontainer/` based on Ubuntu,
+with `cmake`, `ninja`, `clang/gcc`, `doxygen`, `gcovr`, `pre-commit`, and `gh`.
+
+The image build requires a GitHub token secret and will fail if `gh` login fails.
+
+1. Create a GitHub token with the scopes you need and export it as an environment variable:
+
+```bash
+export GH_TOKEN=<your-github-token>
+```
+
+2. Open this repository in VS Code and run:
+
+>Dev Containers: Rebuild and Reopen in Container
+
+Or build from CLI with BuildKit:
+
+```bash
+docker build \
+	-f .devcontainer/Dockerfile \
+	--tag=pawndb-dev:latest \
+	--secret id=gh_token,env=GH_TOKEN \
+	.
+```
+
+3. If this is your first time, clone the repo into the workspace folder and build:
+
+```bash
+cd /workspaces
+# Change volume owner to ubuntu, by default it is root
+sudo chown -R ubuntu:ubuntu /workspaces/*
+
+# Populate the volume with this git repo
+git clone https://github.com/xiahualiu/PawnDB.git PawnDB
+
+# Install pre-commit hook
+cd PawnDB
+pre-commit install
+
+# Build for the first time
+cmake -S . -B build -G Ninja -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/clang.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake --build build --target pawndb-app
+```
+
 ### Prerequisites
 
 Hard requirements:
@@ -82,10 +128,7 @@ cmake --build build --target apply-clang-format
 This repo includes a `.pre-commit-config.yaml` hook that runs the CMake
 `check-clang-format` target before each commit.
 
-```bash
-pip install pre-commit
-pre-commit install
-```
+In the dev container, `pre-commit` is preinstalled via apt:
 
 Run it manually on all files:
 

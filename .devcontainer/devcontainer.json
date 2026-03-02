@@ -1,0 +1,26 @@
+{
+  "name": "PawnDB Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "options": [
+      "--tag=pawndb-dev:latest",
+      "--secret=id=gh_token,env=GH_TOKEN"
+    ]
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceMount": "source=repo-volume,target=/workspaces/${localWorkspaceFolderBasename},type=volume",
+  "remoteUser": "ubuntu",
+  "containerUser": "ubuntu",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-python.python"
+      ]
+    }
+  },
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/${localWorkspaceFolderBasename} || true"
+}
