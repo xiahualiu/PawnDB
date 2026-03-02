@@ -11,6 +11,6 @@ if(DOXYGEN_FOUND)
     ${CMAKE_SOURCE_DIR}/include/
     ${CMAKE_SOURCE_DIR}/src/
     ${CMAKE_SOURCE_DIR}/apps/pawndb-cli/source/
-    ${CMAKE_SOURCE_DIR}/tests/unit/
+    ${CMAKE_SOURCE_DIR}/tests/units/
     COMMENT "Generate HTML documentation")
 endif()

@@ -6,7 +6,7 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/tests/doctest ${CMAKE_BINARY_DIR}/tests-doc
 include(${CMAKE_SOURCE_DIR}/tests/doctest/scripts/cmake/doctest.cmake)
 
 # ---- Project unit tests ----
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests/unit ${CMAKE_BINARY_DIR}/tests-unit)
+add_subdirectory(${CMAKE_SOURCE_DIR}/tests/units ${CMAKE_BINARY_DIR}/tests-units)
 
 # ---- Convenience target: build test executables + run ctest ----
 set(ALL_TEST_TARGETS "")
@@ -28,7 +28,7 @@ function(get_test_targets dir)
   set(ALL_TEST_TARGETS ${ALL_TEST_TARGETS} PARENT_SCOPE)
 endfunction()
 
-get_test_targets("${CMAKE_SOURCE_DIR}/tests/unit")
+get_test_targets("${CMAKE_SOURCE_DIR}/tests/units")
 list(REMOVE_DUPLICATES ALL_TEST_TARGETS)
 
 add_custom_target(

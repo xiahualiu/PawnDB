@@ -11,7 +11,7 @@ file(GLOB_RECURSE all_sources CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/include/*.h
   ${CMAKE_SOURCE_DIR}/src/*.cpp
   ${CMAKE_SOURCE_DIR}/apps/pawndb-cli/source/*.cpp
-  ${CMAKE_SOURCE_DIR}/tests/unit/*.cpp
+  ${CMAKE_SOURCE_DIR}/tests/units/*.cpp
 )
 
 # ---- Check formatting (non-mutating) ----
