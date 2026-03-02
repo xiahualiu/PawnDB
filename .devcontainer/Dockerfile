@@ -9,8 +9,9 @@ RUN apt-get update \
         build-essential \
         ca-certificates \
         ccache \
-        clang \
-        clang-format \
+        clang-20 \
+        clang-format-20 \
+        libclang-rt-20-dev \
         cmake \
         curl \
         doxygen \
@@ -22,7 +23,7 @@ RUN apt-get update \
         ninja-build \
         pkg-config \
         pre-commit \
-        llvm \
+        llvm-20 \
         python3 \
         sudo \
     && mkdir -p -m 755 /etc/apt/keyrings \

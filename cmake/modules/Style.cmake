@@ -1,5 +1,5 @@
 # ---- Style tool discovery ----
-find_program(CLANG_FORMAT_PROGRAM NAMES clang-format)
+find_program(CLANG_FORMAT_PROGRAM NAMES clang-format clang-format-20)
 
 if(NOT CLANG_FORMAT_PROGRAM)
   message(WARNING "clang-format not found; style targets are not created")
