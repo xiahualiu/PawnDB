@@ -10,6 +10,7 @@ RUN apt-get update \
         ca-certificates \
         ccache \
         clang-20 \
+        clangd-20 \
         clang-format-20 \
         libclang-rt-20-dev \
         cmake \
