@@ -6,9 +6,9 @@
 
 namespace PawnDB {
 
-TEST_CASE("LockEntry Clone #1") {
+TEST_CASE("LockEntry CopyValue #1") {
   LockEntry lock_entry({1, 1}, LockType::SHARED);
-  auto lock_entry_clone = lock_entry.clone();
+  auto lock_entry_clone = lock_entry.copy();
   CHECK(lock_entry.key() == lock_entry_clone.key());
   CHECK(lock_entry.lock_type() == lock_entry_clone.lock_type());
 }
@@ -23,7 +23,7 @@ TEST_CASE("LockEntry Copy #1") {
 TEST_CASE("LockEntry Copy #2") {
   LockEntry lock_entry({1, 1}, LockType::SHARED);
   LockEntry lock_entry_copy;
-  lock_entry_copy.copy(lock_entry);
+  lock_entry_copy.copy_from(lock_entry);
   CHECK(lock_entry.key() == lock_entry_copy.key());
   CHECK(lock_entry.lock_type() == lock_entry_copy.lock_type());
 }
@@ -47,10 +47,10 @@ TEST_CASE("LockRecords Get Lock Not Found #1") {
   CHECK(lock_table.get_lock({1, 1}).getError() == LockError::NotFound);
 }
 
-TEST_CASE("LockRecordIterator Clone #1") {
+TEST_CASE("LockRecordIterator CopyValue #1") {
   LockRecords lock_table;
   auto it = lock_table.begin();
-  auto it_clone = it.clone();
+  auto it_clone = it.copy();
   CHECK(it._test_index() == it_clone._test_index());
 }
 
@@ -65,7 +65,7 @@ TEST_CASE("LockRecordIterator Copy #2") {
   LockRecords lock_table;
   auto it = lock_table.begin();
   auto it2 = lock_table.end();
-  it2.copy(it);
+  it2.copy_from(it);
   CHECK(it2._test_index() == it._test_index());
 }
 

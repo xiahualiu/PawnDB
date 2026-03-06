@@ -9,6 +9,7 @@
 #include "pawndb/traits/copy.h"
 #include "pawndb/traits/eq.h"
 #include "pawndb/traits/hash.h"
+#include "pawndb/traits/move.h"
 
 namespace PawnDB {
 
@@ -20,6 +21,7 @@ namespace PawnDB {
  */
 class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
                       public CopyTrait<TableTupleKey>,
+                      public MoveTrait<TableTupleKey>,
                       public HashTrait<TableTupleKey>,
                       public EqTrait<TableTupleKey> {
  public:
@@ -61,12 +63,18 @@ class TableTupleKey : public CompositeKeyTrait<TableTupleKey>,
   bool trait_equals(const TableTupleKey& other) const noexcept;
 
   // CopyTrait implementation
-  /** @brief Create clone of this key */
-  TableTupleKey trait_clone() const noexcept;
+  /** @brief Create a value copy of this key */
+  TableTupleKey trait_copy() const noexcept;
 
   /** @brief Copy from another key
    * @param other Source key to copy from */
-  void trait_copy(const TableTupleKey& other) noexcept;
+  void trait_copy_from(const TableTupleKey& other) noexcept;
+  // MoveTrait implementation
+  /** @brief Move out a new key from this one */
+  TableTupleKey trait_move() noexcept;
+
+  /** @brief Move-assign from another key */
+  void trait_move_from(TableTupleKey&& other) noexcept;
 
  private:
   std::uint8_t table_id_;

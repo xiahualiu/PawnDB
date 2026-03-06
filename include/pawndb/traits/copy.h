@@ -2,34 +2,59 @@
 #define PAWNDB_TRAITS_COPY_H
 
 /**
- * @brief Trait class providing copy functionality through CRTP pattern
+ * @file
+ * @brief Copy trait for CRTP-based copyable objects.
  *
- * This trait provides copy semantics to derived classes through the Curiously
- * Recurring Template Pattern (CRTP). Classes inheriting from this trait must
- * implement:
- * - trait_clone(): Creates a copy of the derived object
- * - trait_copy(const Derived&): Copies state from another derived object
+ * Alongside `MoveTrait`, PawnDB provides a small set of CRTP "trait"
+ * classes to unify common operations across many types. `CopyTrait` offers a
+ * uniform interface for copy semantics while leaving the actual copy logic to
+ * the derived type.  It is intentionally minimal; users of the derived type
+ * should implement the necessary operations themselves.
  *
+ * Required implementation in the derived class:
+ *  - `Derived trait_copy() const noexcept`           : produce a new
+ *      instance that is a copy of `*this` (typically implemented by
+ *      returning `Derived(*this)` or simply `return *this;`).
+ *  - `void trait_copy_from(const Derived& other) noexcept` : copy state from
+ *      `other` (usually `*this = other;`).
+ *
+ * The public API exposed by the trait mirrors the names used by
+ * `MoveTrait`:
+ *  * `Derived copy() const noexcept`          - returns a copied instance
+ *  * `void copy_from(const Derived& other)`   - copy‑assign from `other`
  */
+
 namespace PawnDB {
 
 template <typename Derived>
 class CopyTrait {
  public:
+  /**
+   * @brief type-level flag, true when a type supports the trait
+   */
   constexpr static bool is_copyable = true;
 
-  /** @brief Create a copy of this object */
-  Derived clone() const noexcept {
-    return static_cast<const Derived*>(this)->trait_clone();
+  /**
+   * @brief Create a new object by copying this one
+   *
+   * Calls the derived class's `trait_copy()` implementation. After the call
+   * both objects contain equivalent state.
+   */
+  Derived copy() const noexcept {
+    return static_cast<const Derived*>(this)->trait_copy();
   }
 
-  /** @brief Copy from another object */
-  void copy(const Derived& other) noexcept {
-    static_cast<Derived*>(this)->trait_copy(other);
+  /**
+   * @brief Assign from another object using copy semantics
+   *
+   * Delegates to the derived class implementation of `trait_copy_from`.
+   */
+  void copy_from(const Derived& other) noexcept {
+    static_cast<Derived*>(this)->trait_copy_from(other);
   }
 
  protected:
-  // Protected constructor and destructor
+  // Protected ctor/dtor to prevent instantiation of the base class directly.
   CopyTrait() = default;
   ~CopyTrait() = default;
 };

@@ -1,5 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
+#include <utility>
+
 #include "doctest/doctest.h"
 #include "pawndb/types/buffer_table.h"
 
@@ -187,8 +189,8 @@ TEST_CASE("BufferRef Clone #1") {
   CHECK(ref2_r);
   CHECK(ref2_r.unwrap()._test_index() == 1);
 
-  // Clone
-  auto ref3 = ref2_r.unwrap().clone();
+  // Copy value
+  auto ref3 = ref2_r.unwrap().copy();
   CHECK(!ref3._test_null());
   CHECK(table.size() == 2);
   CHECK(ref3._test_index() == 1);
@@ -207,10 +209,42 @@ TEST_CASE("BufferRef Copy #1") {
   BufferRef ref3(ref1_r.unwrap());
   CHECK(!ref3._test_null());
   CHECK(table.size() == 2);
-  ref3.copy(ref2_r.unwrap());
+  ref3.copy_from(ref2_r.unwrap());
   CHECK(ref3._test_index() == 1);
   CHECK(table.size() == 2);
   CHECK(table._test_is_used(1) == true);
+}
+
+// --- new move tests ---
+TEST_CASE("BufferRef Move Operations #1") {
+  BufferTable table;
+  auto ref1_r = table.request();
+  CHECK(ref1_r);
+
+  // normal move constructor
+  BufferRef ref1 = ref1_r.unwrap();
+  BufferRef ref2(std::move(ref1));
+  CHECK(ref1._test_null());
+  CHECK(!ref2._test_null());
+  CHECK(table.size() == 1);
+
+  // move assignment
+  BufferRef ref3;
+  ref3 = std::move(ref2);
+  CHECK(ref2._test_null());
+  CHECK(!ref3._test_null());
+  CHECK(table.size() == 1);
+
+  // trait_move
+  auto ref4 = ref3.move();
+  CHECK(ref3._test_null());
+  CHECK(!ref4._test_null());
+  CHECK(table.size() == 1);
+
+  // move_from via trait
+  ref3.move_from(std::move(ref4));
+  CHECK(ref4._test_null());
+  CHECK(!ref3._test_null());
 }
 
 }  // namespace PawnDB

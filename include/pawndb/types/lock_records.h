@@ -49,10 +49,10 @@ class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
 
   // CopyTrait Implementation
   /** @brief Create deep copy */
-  LockEntry trait_clone() const noexcept;
+  LockEntry trait_copy() const noexcept;
 
   /** @brief Copy from other lock */
-  void trait_copy(const LockEntry& other) noexcept;
+  void trait_copy_from(const LockEntry& other) noexcept;
 
  private:
   TableTupleKey key_; /**< Tuple identifier */
@@ -203,10 +203,10 @@ class LockRecordIterator
   const LockEntry& trait_deref() noexcept;
 
   /** @brief Copy iterator */
-  void trait_copy(const LockRecordIterator& other) noexcept;
+  void trait_copy_from(const LockRecordIterator& other) noexcept;
 
   /** @brief Create a copy */
-  LockRecordIterator trait_clone() const noexcept;
+  LockRecordIterator trait_copy() const noexcept;
 
   /**
    * @brief Compare iterator positions

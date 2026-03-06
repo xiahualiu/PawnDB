@@ -71,10 +71,10 @@ class WorkerContext : public HashTrait<WorkerContext>,
 
   // CopyTrait Implementation
   /** @brief Create deep copy */
-  WorkerContext trait_clone() const noexcept;
+  WorkerContext trait_copy() const noexcept;
 
   /** @brief Copy from other entry */
-  void trait_copy(const WorkerContext& other) noexcept;
+  void trait_copy_from(const WorkerContext& other) noexcept;
 
   // QueueTrait Implementation
   /** @brief Get job without blocking */

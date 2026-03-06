@@ -89,11 +89,11 @@ bool WorkerContext::trait_is_running() noexcept {
   return true;
 }
 
-WorkerContext WorkerContext::trait_clone() const noexcept {
+WorkerContext WorkerContext::trait_copy() const noexcept {
   return *this;
 }
 
-void WorkerContext::trait_copy(const WorkerContext& _other) noexcept {
+void WorkerContext::trait_copy_from(const WorkerContext& _other) noexcept {
   this->operator=(_other);
 }
 

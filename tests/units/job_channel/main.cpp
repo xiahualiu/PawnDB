@@ -87,14 +87,14 @@ TEST_CASE("Job Copy #1") {
 TEST_CASE("Job Copy #2") {
   Job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
   Job job2;
-  job2.copy(job1);
+  job2.copy_from(job1);
   CHECK(job1.buffer_size() == job2.buffer_size());
   CHECK(job1.c_addr_len() == job2.c_addr_len());
 }
 
-TEST_CASE("Job Clone #1") {
+TEST_CASE("Job CopyValue #1") {
   Job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
-  Job job2 = job1.clone();
+  Job job2 = job1.copy();
   CHECK(job1.buffer_size() == job2.buffer_size());
   CHECK(job1.c_addr_len() == job2.c_addr_len());
 }

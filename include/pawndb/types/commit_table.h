@@ -49,10 +49,10 @@ class CommitEntry : public CommitTrait<CommitEntry>,
 
   // CopyTrait Implementation
   /** @brief Create deep copy */
-  CommitEntry trait_clone() const noexcept;
+  CommitEntry trait_copy() const noexcept;
 
   /** @brief Copy from another entry */
-  void trait_copy(const CommitEntry& other) noexcept;
+  void trait_copy_from(const CommitEntry& other) noexcept;
 
   // CommitTrait Implementation
   /** @brief Get buffer reference */

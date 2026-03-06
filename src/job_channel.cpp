@@ -29,11 +29,11 @@ Job& Job::operator=(const Job& other) noexcept {
   return *this;
 }
 
-Job Job::trait_clone() const noexcept {
+Job Job::trait_copy() const noexcept {
   return Job(*this);
 }
 
-void Job::trait_copy(const Job& other) noexcept {
+void Job::trait_copy_from(const Job& other) noexcept {
   buffer_ = other.buffer_;
   buffer_size_ = other.buffer_size_;
   client_addr_len_ = other.client_addr_len_;

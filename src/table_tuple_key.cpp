@@ -1,5 +1,7 @@
 #include "pawndb/types/table_tuple_key.h"
 
+#include <utility>
+
 namespace PawnDB {
 
 // Value constructor
@@ -35,13 +37,21 @@ std::size_t TableTupleKey::trait_hash() const noexcept {
 }
 
 // CopyTrait implementation
-TableTupleKey TableTupleKey::trait_clone() const noexcept {
+TableTupleKey TableTupleKey::trait_copy() const noexcept {
   return TableTupleKey(*this);
 }
 
-void TableTupleKey::trait_copy(const TableTupleKey& other) noexcept {
-  table_id_ = other.table_id_;
+void TableTupleKey::trait_copy_from(const TableTupleKey& other) noexcept {
   tuple_key_ = other.tuple_key_;
+}
+
+// MoveTrait implementation
+TableTupleKey TableTupleKey::trait_move() noexcept {
+  return std::move(*this);
+}
+
+void TableTupleKey::trait_move_from(TableTupleKey&& other) noexcept {
+  *this = std::move(other);
 }
 
 // EqTrait implementation

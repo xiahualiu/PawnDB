@@ -86,11 +86,11 @@ cksum_t StudentTuple::compute_checksum() const noexcept {
   return result;
 }
 
-StudentTuple StudentTuple::trait_clone() const noexcept {
+StudentTuple StudentTuple::trait_copy() const noexcept {
   return *this;
 }
 
-void StudentTuple::trait_copy(const StudentTuple& other) noexcept {
+void StudentTuple::trait_copy_from(const StudentTuple& other) noexcept {
   checksum_ = other.checksum_;
   tickstamp_ = other.tickstamp_;
   name_ = other.name_;

@@ -96,7 +96,7 @@ TEST_CASE("CommitEntry Copy #1") {
 
   // Copy entry
   CommitEntry copy_entry;
-  copy_entry.copy(entry);
+  copy_entry.copy_from(entry);
   CHECK(copy_entry.key() == entry.key());
   CHECK(copy_entry.op() == entry.op());
 }
@@ -111,8 +111,8 @@ TEST_CASE("CommitEntry Clone #1") {
   CommitEntry entry({1, 2}, OpType::ADD_TUPLE, buffer_r.unwrap());
   CHECK(table.send(entry) == QueueError::None);
 
-  // Clone entry
-  auto clone_entry = entry.clone();
+  // Copy value
+  auto clone_entry = entry.copy();
   CHECK(clone_entry.key() == entry.key());
   CHECK(clone_entry.op() == entry.op());
 }

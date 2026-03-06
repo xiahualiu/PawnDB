@@ -16,11 +16,11 @@ CommitEntry& CommitEntry::operator=(const CommitEntry& other) noexcept {
   return *this;
 }
 
-CommitEntry CommitEntry::trait_clone() const noexcept {
+CommitEntry CommitEntry::trait_copy() const noexcept {
   return CommitEntry(*this);
 }
 
-void CommitEntry::trait_copy(const CommitEntry& other) noexcept {
+void CommitEntry::trait_copy_from(const CommitEntry& other) noexcept {
   *this = other;
 }
 

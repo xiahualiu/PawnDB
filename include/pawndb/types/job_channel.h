@@ -56,10 +56,10 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
 
   // CopyTrait Implementation
   /** @brief Create deep copy */
-  Job trait_clone() const noexcept;
+  Job trait_copy() const noexcept;
 
   /** @brief Copy from other job */
-  void trait_copy(const Job& other) noexcept;
+  void trait_copy_from(const Job& other) noexcept;
 
  private:
   BufferRef buffer_;          /**< Request data buffer */

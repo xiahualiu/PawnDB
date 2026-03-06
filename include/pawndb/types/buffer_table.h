@@ -21,6 +21,7 @@
 #include "pawndb/traits/buffer_manager.h"
 #include "pawndb/traits/container.h"
 #include "pawndb/traits/copy.h"
+#include "pawndb/traits/move.h"
 #include "pawndb/traits/sized.h"
 
 namespace PawnDB {
@@ -65,7 +66,11 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
   mutable std::mutex mutex_;                /**< Thread safety lock */
 
   friend class BufferRef; /**< Allow buffer access */
+
+  /* Retain a reference to buffer at index (increment ref count) */
   void retain_ref_(std::size_t index) noexcept;
+
+  /* Release a reference to buffer at index (decrement ref count) */
   void release_ref_(std::size_t index) noexcept;
 
  public:
@@ -110,6 +115,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
  * @brief Buffer reference wrapper
  */
 class BufferRef : public CopyTrait<BufferRef>,
+                  public MoveTrait<BufferRef>,
                   public BufferRefTrait<BufferRef> {
  private:
   BufferTable* table_; /**< Owner table reference */
@@ -127,17 +133,27 @@ class BufferRef : public CopyTrait<BufferRef>,
   // Copyable
   BufferRef(const BufferRef& other) noexcept;
   BufferRef& operator=(const BufferRef& other) noexcept;
+
+  // Movable
   BufferRef(BufferRef&& other) noexcept;
   BufferRef& operator=(BufferRef&& other) noexcept;
   ~BufferRef() noexcept;
 
   // CopyTrait Implementation
-  /** @brief Create clone of this reference */
-  BufferRef trait_clone() const noexcept;
+  /** @brief Create a value copy of this reference */
+  BufferRef trait_copy() const noexcept;
 
   /** @brief Copy from another reference
    *  @param other Source reference */
-  void trait_copy(const BufferRef& other) noexcept;
+  void trait_copy_from(const BufferRef& other) noexcept;
+
+  // MoveTrait Implementation
+  /** @brief Create new object by moving from this reference */
+  BufferRef trait_move() noexcept;
+
+  /** @brief Move from another reference
+   *  @param other Source rvalue reference */
+  void trait_move_from(BufferRef&& other) noexcept;
 
   /** @brief Check if reference is null
    *  @return true if reference is invalid */

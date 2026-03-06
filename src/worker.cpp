@@ -93,7 +93,8 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
             auto& table_ref = db_.students_;
-            std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
+            std::memcpy(reinterpret_cast<void*>(&new_tuple),
+                        buffer.buffer().data(), sizeof(new_tuple));
             table_ref.insert(new_tuple);
             table_ref.notify_not_empty();
             table_ref.notify_shared();
@@ -129,7 +130,8 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
             auto& table_ref = db_.students_;
-            std::memcpy(&new_tuple, buffer.buffer().data(), sizeof(new_tuple));
+            std::memcpy(reinterpret_cast<void*>(&new_tuple),
+                        buffer.buffer().data(), sizeof(new_tuple));
             table_ref.write(new_tuple);
             break;
           }

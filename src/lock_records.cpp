@@ -19,11 +19,11 @@ LockEntry& LockEntry::operator=(const LockEntry& other) noexcept {
   return *this;
 }
 
-LockEntry LockEntry::trait_clone() const noexcept {
+LockEntry LockEntry::trait_copy() const noexcept {
   return LockEntry(*this);
 }
 
-void LockEntry::trait_copy(const LockEntry& other) noexcept {
+void LockEntry::trait_copy_from(const LockEntry& other) noexcept {
   key_ = other.key_;
   type_ = other.type_;
 }
@@ -173,12 +173,13 @@ const LockEntry& LockRecordIterator::trait_deref() noexcept {
   return table_->locks_[idx_];
 }
 
-void LockRecordIterator::trait_copy(const LockRecordIterator& other) noexcept {
+void LockRecordIterator::trait_copy_from(
+    const LockRecordIterator& other) noexcept {
   table_ = other.table_;
   idx_ = other.idx_;
 }
 
-LockRecordIterator LockRecordIterator::trait_clone() const noexcept {
+LockRecordIterator LockRecordIterator::trait_copy() const noexcept {
   return LockRecordIterator(*this);
 }
 

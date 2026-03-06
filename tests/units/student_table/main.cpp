@@ -27,15 +27,15 @@ TEST_CASE("StudentTuple Copy #2") {
 TEST_CASE("StudentTuple Copy Trait #1") {
   StudentTuple student = {"Brian", 25, 42};
   StudentTuple student2;
-  student2.copy(student);
+  student2.copy_from(student);
   CHECK(student2._test_name() == "Brian");
   CHECK(student2._test_age() == 25);
   CHECK(student2.key() == 42);
 }
 
-TEST_CASE("StudentTuple Clone Trait #1") {
+TEST_CASE("StudentTuple CopyValue Trait #1") {
   StudentTuple student = {"Brian", 25, 42};
-  auto student2 = student.clone();
+  auto student2 = student.copy();
   CHECK(student2._test_name() == "Brian");
   CHECK(student2._test_age() == 25);
   CHECK(student2.key() == 42);

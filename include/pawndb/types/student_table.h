@@ -94,10 +94,10 @@ class StudentTuple : public TupleTrait<StudentTuple>,
 
   // CopyTrait Implementation
   /** @brief Clone entry */
-  StudentTuple trait_clone() const noexcept;
+  StudentTuple trait_copy() const noexcept;
 
   /** @brief Copy entry */
-  void trait_copy(const StudentTuple& other) noexcept;
+  void trait_copy_from(const StudentTuple& other) noexcept;
 
   // EqTrait Implementation
   /** @brief Compare entries */

@@ -1,5 +1,7 @@
 #include "pawndb/types/buffer_table.h"
 
+#include <utility>
+
 namespace PawnDB {
 
 BufferTable::request_r BufferTable::trait_request() noexcept {
@@ -124,12 +126,22 @@ BufferRef::~BufferRef() noexcept {
   release_ref_();
 }
 
-BufferRef BufferRef::trait_clone() const noexcept {
+BufferRef BufferRef::trait_copy() const noexcept {
   return BufferRef{*this};
 }
 
-void BufferRef::trait_copy(const BufferRef &_other) noexcept {
+void BufferRef::trait_copy_from(const BufferRef &_other) noexcept {
   *this = _other;
+}
+
+// MoveTrait implementation
+BufferRef BufferRef::trait_move() noexcept {
+  // moving out of *this using the move constructor
+  return std::move(*this);
+}
+
+void BufferRef::trait_move_from(BufferRef &&_other) noexcept {
+  *this = std::move(_other);
 }
 
 bool BufferRef::_test_null() const noexcept {
