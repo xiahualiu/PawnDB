@@ -29,26 +29,25 @@ This repository includes a dev container in `.devcontainer/` based on Ubuntu,
 with `cmake`, `ninja`, `clang/gcc`, `doxygen`, `gcovr`, `pre-commit`, `gh`,
 and Node.js (for Claude Code and Continue extensions).
 
-#### Env File Needed
+#### Step 1: Create Env File
 
 Runtime also needs API keys for Claude Code and Continue. Create `.devcontainer/.env` (it is gitignored):
 
 ```bash
-# .devcontainer/.env
+# Create .devcontainer/.env
 ANTHROPIC_AUTH_TOKEN=<your-deepseek-api-key>
 CONTINUE_API_KEY=<your-deepseek-api-key>
 ```
 
-The GitHub token is also needed as a BuildKit secret during image build, so
-export it in your shell:
+#### Step 2: Export GitHub Token
+
+The GitHub token is needed as a BuildKit secret during image build, so export it in your shell:
 
 ```bash
 export GH_TOKEN=<your-github-token>
 ```
 
-#### Build and Run from Terminal
-
-Build the image:
+#### Step 3: Build the Image
 
 ```bash
 docker build \
@@ -58,7 +57,9 @@ docker build \
     .
 ```
 
-2. Open this repository in VS Code and run:
+#### Step 4: Open in Dev Container
+
+Open this repository in VS Code and run:
 
 >Dev Containers: Rebuild and Reopen in Container
 
@@ -72,7 +73,9 @@ docker build \
 	.
 ```
 
-3. If this is your first time, clone the repo into the workspace folder and build:
+#### Step 5: First-Time Setup
+
+If this is your first time, clone the repo into the workspace folder and build:
 
 ```bash
 cd /workspaces
