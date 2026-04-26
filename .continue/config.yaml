@@ -1,0 +1,11 @@
+name: DeepSeek V4 Config
+version: 1.0.0
+schema: v1
+
+models:
+  - name: DeepSeek V4 Pro FIM
+    provider: openai
+    model: deepseek-v4-pro
+    apiBase: https://api.deepseek.com/beta
+    roles:
+      - autocomplete

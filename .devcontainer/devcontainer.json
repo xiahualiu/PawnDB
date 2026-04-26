@@ -12,13 +12,23 @@
   "workspaceMount": "source=repo-volume,target=/workspaces/${localWorkspaceFolderBasename},type=volume",
   "remoteUser": "ubuntu",
   "containerUser": "ubuntu",
+  "containerEnv": {
+    "ANTHROPIC_AUTH_TOKEN": "${localEnv:ANTHROPIC_AUTH_TOKEN}",
+    "CONTINUE_API_KEY": "${localEnv:CONTINUE_API_KEY}"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
         "ms-vscode.cmake-tools",
         "ms-python.python",
-        "llvm-vs-code-extensions.vscode-clangd"
-      ]
+        "llvm-vs-code-extensions.vscode-clangd",
+        "anthropic.claude-code",
+        "Continue.continue"
+      ],
+      "settings": {
+        "claude-code.primaryApiKey": "${env:ANTHROPIC_AUTH_TOKEN}",
+        "continue.apiKey": "${env:CONTINUE_API_KEY}"
+      }
     }
   },
   "postCreateCommand": "git config --global --add safe.directory /workspaces/${localWorkspaceFolderBasename} || true"

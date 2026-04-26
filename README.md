@@ -26,14 +26,36 @@ An **ultra lightweight & fast**, **portable** & **type-safe** in-memory database
 ### Build in Dev Container
 
 This repository includes a dev container in `.devcontainer/` based on Ubuntu,
-with `cmake`, `ninja`, `clang/gcc`, `doxygen`, `gcovr`, `pre-commit`, and `gh`.
+with `cmake`, `ninja`, `clang/gcc`, `doxygen`, `gcovr`, `pre-commit`, `gh`,
+and Node.js (for Claude Code and Continue extensions).
 
-The image build requires a GitHub token secret and will fail if `gh` login fails.
+#### Env File Needed
 
-1. Create a GitHub token with the scopes you need and export it as an environment variable:
+Runtime also needs API keys for Claude Code and Continue. Create `.devcontainer/.env` (it is gitignored):
+
+```bash
+# .devcontainer/.env
+ANTHROPIC_AUTH_TOKEN=<your-deepseek-api-key>
+CONTINUE_API_KEY=<your-deepseek-api-key>
+```
+
+The GitHub token is also needed as a BuildKit secret during image build, so
+export it in your shell:
 
 ```bash
 export GH_TOKEN=<your-github-token>
+```
+
+#### Build and Run from Terminal
+
+Build the image:
+
+```bash
+docker build \
+    -f .devcontainer/Dockerfile \
+    --tag pawndb-dev:latest \
+    --secret id=gh_token,env=GH_TOKEN \
+    .
 ```
 
 2. Open this repository in VS Code and run:
