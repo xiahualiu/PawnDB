@@ -4,7 +4,7 @@
 
 namespace PawnDB {
 
-BufferTable::request_r BufferTable::trait_request() noexcept {
+BufferTable::request_r BufferTable::request() noexcept {
   std::size_t index = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -22,7 +22,7 @@ BufferTable::request_r BufferTable::trait_request() noexcept {
   return BufferRef{this, index};
 }
 
-void BufferTable::trait_clear() noexcept {
+void BufferTable::clear_() noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   for (auto &buffer : buffers_) {
     buffer.ref_count_ = 0;
@@ -31,17 +31,17 @@ void BufferTable::trait_clear() noexcept {
   next_ = 0;
 }
 
-bool BufferTable::trait_empty() const noexcept {
+bool BufferTable::empty() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   return size_ == 0;
 }
 
-bool BufferTable::trait_full() const noexcept {
+bool BufferTable::full() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   return size_ >= N;
 }
 
-std::size_t BufferTable::trait_size() const noexcept {
+std::size_t BufferTable::size() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   return size_;
 }
@@ -126,21 +126,19 @@ BufferRef::~BufferRef() noexcept {
   release_ref_();
 }
 
-BufferRef BufferRef::trait_copy() const noexcept {
+BufferRef BufferRef::copy() const noexcept {
   return BufferRef{*this};
 }
 
-void BufferRef::trait_copy_from(const BufferRef &_other) noexcept {
+void BufferRef::copy_from(const BufferRef &_other) noexcept {
   *this = _other;
 }
 
-// MoveTrait implementation
-BufferRef BufferRef::trait_move() noexcept {
-  // moving out of *this using the move constructor
+BufferRef BufferRef::move() noexcept {
   return std::move(*this);
 }
 
-void BufferRef::trait_move_from(BufferRef &&_other) noexcept {
+void BufferRef::move_from(BufferRef &&_other) noexcept {
   *this = std::move(_other);
 }
 
@@ -148,7 +146,7 @@ bool BufferRef::_test_null() const noexcept {
   return table_ == nullptr;
 }
 
-buffer_t &BufferRef::trait_buffer() const noexcept {
+buffer_t &BufferRef::buffer() const noexcept {
   return table_->buffers_[index_].buffer_;
 }
 
@@ -163,7 +161,6 @@ void BufferRef::release_ref_() noexcept {
   table->release_ref_(index);
 }
 
-// Test functions
 std::size_t BufferRef::_test_index() const noexcept {
   return index_;
 }

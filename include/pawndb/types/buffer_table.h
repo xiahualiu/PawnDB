@@ -18,11 +18,6 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/buffer_manager.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/move.h"
-#include "pawndb/traits/sized.h"
 
 namespace PawnDB {
 
@@ -36,15 +31,12 @@ class BufferRef;
  * - Reference counting and usage tracking
  * - Fixed-size buffer storage (BUFFER_ROWS * BUFFER_SIZE)
  * - O(1) allocation via next-fit strategy
- *
- * Implemented traits:
- * - BufferManagerTrait: Buffer allocation
- * - Sized: Size tracking
- * - Container: Capacity operations
  */
-class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
-                    public SizedTrait<BufferTable>,
-                    public ContainerTrait<BufferTable> {
+class BufferTable {
+ public:
+  /** @brief Result type for request operations */
+  using request_r = Result<BufferRef, BufferError>;
+
  private:
   /** @brief Fixed number of buffers in pool */
   static constexpr std::size_t N = BUFFER_ROWS;
@@ -81,24 +73,27 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
   BufferTable(const BufferTable& other) noexcept = delete;
   BufferTable& operator=(const BufferTable& other) noexcept = delete;
 
-  // BufferManagerTrait Implementation
   /** @brief Request new buffer allocation
    *  @return Result with buffer reference or error */
-  request_r trait_request() noexcept;
+  request_r request() noexcept;
 
-  /**  @brief Release buffer back to pool */
-  void trait_clear() noexcept;
+  /** @brief Release all buffers back to pool */
+  void clear_() noexcept;
 
-  // ContainerTrait Implementation
   /** @brief Check if pool is empty */
-  bool trait_empty() const noexcept;
+  bool empty() const noexcept;
 
   /** @brief Check if pool is full */
-  bool trait_full() const noexcept;
+  bool full() const noexcept;
 
-  // Sized Implementation
   /** @brief Get count of used buffers */
-  std::size_t trait_size() const noexcept;
+  std::size_t size() const noexcept;
+
+  /** @brief Get buffer reference at index */
+  BufferRef get_(std::size_t idx) noexcept;
+
+  /** @brief Zero out buffer at index */
+  void zero_(std::size_t idx) noexcept;
 
   /** @brief Test helper to check buffer usage
    *  @param i Buffer index
@@ -114,9 +109,7 @@ class BufferTable : public BufferManagerTrait<BufferTable, BufferRef>,
 /**
  * @brief Buffer reference wrapper
  */
-class BufferRef : public CopyTrait<BufferRef>,
-                  public MoveTrait<BufferRef>,
-                  public BufferRefTrait<BufferRef> {
+class BufferRef {
  private:
   BufferTable* table_; /**< Owner table reference */
   std::size_t index_;  /**< Buffer index */
@@ -139,29 +132,26 @@ class BufferRef : public CopyTrait<BufferRef>,
   BufferRef& operator=(BufferRef&& other) noexcept;
   ~BufferRef() noexcept;
 
-  // CopyTrait Implementation
   /** @brief Create a value copy of this reference */
-  BufferRef trait_copy() const noexcept;
+  BufferRef copy() const noexcept;
 
   /** @brief Copy from another reference
    *  @param other Source reference */
-  void trait_copy_from(const BufferRef& other) noexcept;
+  void copy_from(const BufferRef& other) noexcept;
 
-  // MoveTrait Implementation
   /** @brief Create new object by moving from this reference */
-  BufferRef trait_move() noexcept;
+  BufferRef move() noexcept;
 
   /** @brief Move from another reference
    *  @param other Source rvalue reference */
-  void trait_move_from(BufferRef&& other) noexcept;
+  void move_from(BufferRef&& other) noexcept;
 
   /** @brief Check if reference is null
    *  @return true if reference is invalid */
   bool _test_null() const noexcept;
 
-  // BufferEntryTrait Implementation
   /** @brief Get underlying buffer */
-  buffer_t& trait_buffer() const noexcept;
+  buffer_t& buffer() const noexcept;
 
   /** @brief Test helper to get buffer index
    *  @return Buffer index */

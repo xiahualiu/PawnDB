@@ -2,50 +2,50 @@
 
 #include <cstddef>
 
-#include "pawndb/traits/queue.h"
-
 namespace PawnDB {
 
-RetChannel::queue_r RetChannel::trait_get() noexcept {
+RetChannel::RetChannel() noexcept : rets_(), head_(0), tail_(0), count_(0) {}
+
+RetChannel::queue_r RetChannel::get() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
-  if (!trait_empty()) {
-    return txns_[head_];
+  if (!empty()) {
+    return rets_[head_];
   } else {
     return QueueError::Empty;
   }
 }
 
-QueueError RetChannel::trait_send(const txn_id_t& _dead_txn) noexcept {
+QueueError RetChannel::send(const Ret& ret) noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
-  txns_[tail_] = _dead_txn;
-  tail_ = (tail_ + 1) % MAX_TRANSACTIONS;
+  rets_[tail_] = ret;
+  tail_ = (tail_ + 1) % MaxRets;
   count_++;
   return QueueError::None;
 }
 
-void RetChannel::trait_clear() noexcept {
+void RetChannel::clear() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
   head_ = 0;
   tail_ = 0;
   count_ = 0;
 }
 
-void RetChannel::trait_pop() noexcept {
+void RetChannel::pop() noexcept {
   std::unique_lock<std::mutex> lock(mtx_);
-  head_ = (head_ + 1) % MAX_TRANSACTIONS;
+  head_ = (head_ + 1) % MaxRets;
   count_--;
 }
 
-std::size_t RetChannel::trait_size() const noexcept {
+std::size_t RetChannel::size() const noexcept {
   return count_;
 }
 
-bool RetChannel::trait_empty() const noexcept {
+bool RetChannel::empty() const noexcept {
   return count_ == 0;
 }
 
-bool RetChannel::trait_full() const noexcept {
-  return count_ == MAX_TRANSACTIONS;
+bool RetChannel::full() const noexcept {
+  return count_ == MaxRets;
 }
 
 }  // namespace PawnDB

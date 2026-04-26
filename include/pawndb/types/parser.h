@@ -1,107 +1,92 @@
+/**
+ * @file parser.h
+ * @author Xiahua Liu @xiahualiu
+ * @brief PawnDB binary protocol parser.
+ * @version 0.1
+ * @date 2025-01-02
+ *
+ * @copyright MIT License
+ *
+ */
+
 #ifndef PAWNDB_TYPES_PARSER_H
 #define PAWNDB_TYPES_PARSER_H
 
+#include <array>
 #include <cstddef>
-#include <cstring>
+#include <cstdint>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/parser.h"
-#include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
 
-class Parser : public ParserTrait<Parser> {
+/**
+ * @brief Binary parser for decoding protocol messages in pawnDB.
+ *
+ * Input format:
+ * | txn_id ( 4 bytes ) | op ( 1 byte ) | table_id ( 1 byte ) | tp_key
+ * ( 1 byte ) | length ( 2 bytes ) | data (length bytes) |
+ *
+ * Output format:
+ * | txn_id ( 4 bytes ) | op_ack ( 1 byte ) | length ( 2 bytes ) | data (length
+ * bytes) |
+ */
+class Parser {
  public:
-  Parser(const BufferRef& _buffers, std::size_t _size) noexcept
-      : buffers_(_buffers.buffer()), size_(_size) {}
+  /**
+   * @brief Initialize parser with a buffer reference.
+   *
+   * @param buffer Buffer containing the message to parse.
+   * @param size Size of the message in the buffer.
+   */
+  Parser(const buffer_t& buffer, std::size_t size) noexcept;
 
-  Parser(buffer_t& _buffer, std::size_t _size) noexcept
-      : buffers_(_buffer), size_(_size) {}
+  /** @brief Get the transaction ID */
+  txn_id_r get_transaction_id() const noexcept;
 
-  // Non-copyable
-  Parser(const Parser& _other) = delete;
-  Parser& operator=(const Parser& _other) = delete;
+  /** @brief Get the operation ID */
+  op_id_r get_operation_id() const noexcept;
 
-  op_r trait_get_op() const noexcept {
-    if (size_ < 1) return ParserError::ReadAfterEnd;
-    auto op = static_cast<OpType>(buffers_[0]);
-    if (op >= OpType::MAX_OP_VALUE) return ParserError::InvalidValue;
-    return op;
-  }
+  /** @brief Get the operation type */
+  op_r get_operation() const noexcept;
 
-  op_id_r trait_get_op_id() const noexcept {
-    if (size_ < 2) return ParserError::ReadAfterEnd;
-    return static_cast<op_t>(buffers_[1]);
-  }
+  /** @brief Get the table identifier */
+  tbl_id_r get_table_id() const noexcept;
 
-  txn_id_r trait_get_txn() const noexcept {
-    if (size_ < 6) return ParserError::ReadAfterEnd;
-    txn_id_t txn;
-    std::memcpy(&txn, &buffers_[2], sizeof(txn_id_t));
-    return txn;
-  }
+  /** @brief Get the tuple key */
+  tp_key_r get_tuple_key() const noexcept;
 
-  op_ack_r trait_get_ack() const noexcept {
-    if (size_ < 7) return ParserError::ReadAfterEnd;
-    auto ack = static_cast<OpAck>(buffers_[6]);
-    if (ack > OpAck::BUSY) return ParserError::InvalidValue;
-    return ack;
-  }
+  /** @brief Get the acknowledgment */
+  op_ack_r get_ack() const noexcept;
 
-  tbl_id_r trait_get_tbl() const noexcept {
-    if (size_ < 8) return ParserError::ReadAfterEnd;
-    return static_cast<tp_id_t>(buffers_[7]);
-  }
+  /** @brief Get a string field */
+  std::string get_string() const noexcept;
 
-  tp_key_r trait_get_key() const noexcept {
-    if (size_ < 9) return ParserError::ReadAfterEnd;
-    return static_cast<tbl_row_t>(buffers_[8]);
-  }
+  /** @brief Get the checksum */
+  cksum_t get_checksum() const noexcept;
 
-  constexpr std::size_t trait_get_tuple_offset() const noexcept {
-    return 9;
-  }
-
-  void trait_set_op(OpType _op) noexcept {
-    buffers_[0] = static_cast<char>(_op);
-  }
-
-  void trait_set_op_id(op_t _op_id) noexcept {
-    buffers_[1] = static_cast<char>(_op_id);
-  }
-
-  void trait_set_ack(OpAck _ack) noexcept {
-    buffers_[6] = static_cast<char>(_ack);
-  }
-
-  void trait_set_txn(txn_id_t _txn) noexcept {
-    std::memcpy(&buffers_[2], &_txn, sizeof(txn_id_t));
-  }
-
-  void trait_set_tbl(tp_id_t _tbl) noexcept {
-    buffers_[7] = static_cast<char>(_tbl);
-  }
-
-  void trait_set_key(tbl_row_t _key) noexcept {
-    buffers_[8] = static_cast<char>(_key);
-  }
-
-  void trait_set_buffer_size(std::size_t _size) noexcept {
-    size_ = _size;
-  }
-
-  std::size_t trait_get_buffer_size() const noexcept {
-    return size_;
-  }
-
-  buffer_t& trait_get_buffer() noexcept {
-    return buffers_;
-  }
+  /** @brief Parse a header field into the given reference */
+  template <typename T>
+  bool parseField(T& value, std::size_t offset) const noexcept;
 
  private:
-  buffer_t& buffers_;
-  std::size_t size_;
+  const buffer_t& buffer_ref_; /**< Reference to the message buffer */
+  std::size_t size_;           /**< Size of the message */
 };
+
+// ============================================================================
+// Template Implementation
+// ============================================================================
+
+template <typename T>
+bool Parser::parseField(T& value, std::size_t offset) const noexcept {
+  if (offset + sizeof(T) > size_) {
+    return false;
+  }
+  std::memcpy(&value, buffer_ref_.data() + offset, sizeof(T));
+  return true;
+}
+
 }  // namespace PawnDB
 
-#endif
+#endif  // PAWNDB_TYPES_PARSER_H

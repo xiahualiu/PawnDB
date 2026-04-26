@@ -16,32 +16,32 @@ CommitEntry& CommitEntry::operator=(const CommitEntry& other) noexcept {
   return *this;
 }
 
-CommitEntry CommitEntry::trait_copy() const noexcept {
+CommitEntry CommitEntry::copy() const noexcept {
   return CommitEntry(*this);
 }
 
-void CommitEntry::trait_copy_from(const CommitEntry& other) noexcept {
+void CommitEntry::copy_from(const CommitEntry& other) noexcept {
   *this = other;
 }
 
-BufferRef CommitEntry::trait_buffer() const noexcept {
+BufferRef CommitEntry::buffer() const noexcept {
   return buffer_;
 }
 
-const TableTupleKey& CommitEntry::trait_key() const noexcept {
+const TableTupleKey& CommitEntry::key() const noexcept {
   return key_;
 }
 
-OpType CommitEntry::trait_op() const noexcept {
+OpType CommitEntry::op() const noexcept {
   return op_;
 }
 
-CommitTable::queue_r CommitTable::trait_get() noexcept {
+CommitTable::queue_r CommitTable::get() noexcept {
   return commits_[tail_];
 }
 
-QueueError CommitTable::trait_send(const CommitEntry& _entry) noexcept {
-  if (trait_full()) {
+QueueError CommitTable::send(const CommitEntry& _entry) noexcept {
+  if (full()) {
     return QueueError::Full;
   }
   commits_[head_] = _entry;
@@ -50,26 +50,26 @@ QueueError CommitTable::trait_send(const CommitEntry& _entry) noexcept {
   return QueueError::None;
 }
 
-void CommitTable::trait_pop() noexcept {
+void CommitTable::pop() noexcept {
   tail_ = (tail_ + 1) % N;
   size_--;
 }
 
-void CommitTable::trait_clear() noexcept {
+void CommitTable::clear() noexcept {
   head_ = 0;
   tail_ = 0;
   size_ = 0;
 }
 
-std::size_t CommitTable::trait_size() const noexcept {
+std::size_t CommitTable::size() const noexcept {
   return size_;
 }
 
-bool CommitTable::trait_empty() const noexcept {
+bool CommitTable::empty() const noexcept {
   return size_ == 0;
 }
 
-bool CommitTable::trait_full() const noexcept {
+bool CommitTable::full() const noexcept {
   return size_ >= N;
 }
 

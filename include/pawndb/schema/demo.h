@@ -15,7 +15,6 @@
 #include <atomic>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/database.h"
 #include "pawndb/types/buffer_table.h"
 #include "pawndb/types/student_table.h"
 
@@ -24,22 +23,22 @@ namespace PawnDB {
 /**
  * @brief Class representing the demo database.
  */
-class Database : public DatabaseTrait<Database> {
-  std::uint32_t trait_get_current_tickstamp() const noexcept {
+class Database {
+ public:
+  std::uint32_t get_current_tickstamp_() const noexcept {
     return tickstamp_.load(std::memory_order_relaxed);
   }
 
-  void trait_increment_tickstamp() noexcept {
+  void increment_tickstamp_() noexcept {
     tickstamp_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  void trait_clear() noexcept {
+  void clear_() noexcept {
     tickstamp_.store(0, std::memory_order_relaxed);
-    students_.clear();
-    buffers_.clear();
+    students_.clear_();
+    buffers_.clear_();
   }
 
- public:
   StudentTable students_;
   std::atomic_uint32_t tickstamp_;
 

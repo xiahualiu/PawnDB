@@ -12,8 +12,6 @@
 #ifndef PAWNDB_RESULT_H
 #define PAWNDB_RESULT_H
 
-#include <type_traits>
-
 namespace PawnDB {
 
 /**
@@ -38,10 +36,6 @@ namespace PawnDB {
  */
 template <typename T, typename E>
 class Result {
-  static_assert(!std::is_same_v<T, E>, "T and E cannot be the same type!");
-  static_assert(!std::is_reference_v<T>, "T cannot be a reference!");
-  static_assert(std::is_enum_v<E>, "E must be an enum type!");
-
  public:
   /**
    * @brief Deleted default constructor.
@@ -112,10 +106,6 @@ class Result {
 
 template <typename T, typename E>
 class Result<T&, E> {
-  static_assert(!std::is_same_v<T, E>, "T and E cannot be the same type!");
-  static_assert(!std::is_reference_v<T>, "T cannot be a reference!");
-  static_assert(std::is_enum_v<E>, "E must be an enum type!");
-
  public:
   /**
    * @brief Deleted default constructor.

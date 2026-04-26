@@ -4,7 +4,6 @@
 #include <atomic>
 
 #include "pawndb/schema/demo.h"
-#include "pawndb/traits/thread.h"
 #include "pawndb/types/commit_table.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/lock_records.h"
@@ -17,7 +16,7 @@ namespace PawnDB {
 /**
  * @brief Worker thread implementation
  */
-class Worker : public ThreadTrait<Worker> {
+class Worker {
  public:
   Worker(WorkerContext* _entry) noexcept;
 
@@ -34,18 +33,17 @@ class Worker : public ThreadTrait<Worker> {
     ABORTED    /**< Transaction has been rolled back */
   };
 
-  // ThreadTrait Implementation
   /** @brief Start worker thread */
-  void trait_start() noexcept;
+  void start_() noexcept;
 
   /** @brief Stop worker thread */
-  void trait_stop() noexcept;
+  void stop_() noexcept;
 
   /** @brief Join worker thread */
-  void trait_join() noexcept;
+  void join_() noexcept;
 
   /** @brief Check if thread is running */
-  bool trait_is_running() noexcept;
+  bool is_running_() noexcept;
 
  private:
   // Reply functions

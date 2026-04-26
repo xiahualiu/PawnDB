@@ -10,13 +10,6 @@
 
 #include "pawndb/params.h"
 #include "pawndb/schema/demo.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/hash.h"
-#include "pawndb/traits/parser.h"
-#include "pawndb/traits/sized.h"
-#include "pawndb/traits/table.h"
-#include "pawndb/traits/thread.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
@@ -29,12 +22,12 @@ namespace PawnDB {
  * - O(1) hash-based lookup
  * - Thread lifecycle management
  * - Size tracking */
-class WorkerContext : public HashTrait<WorkerContext>,
-                      public ThreadTrait<WorkerContext>,
-                      private CopyTrait<WorkerContext>,
-                      public QueueTrait<WorkerContext, Job> {
+class WorkerContext {
  public:
   using key_t = txn_id_t;
+
+  /** @brief Result type for queue operations */
+  using queue_r = Result<Job, QueueError>;
 
   /** @brief Construct a new Worker Entry object */
   WorkerContext() noexcept;
@@ -52,48 +45,44 @@ class WorkerContext : public HashTrait<WorkerContext>,
   /** @brief Copy from other entry */
   WorkerContext& operator=(const WorkerContext& _other) noexcept;
 
-  // HashTrait Implementation
   /** @brief Compute hash from transaction ID */
-  std::size_t trait_hash() const noexcept;
+  std::size_t hash_() const noexcept;
 
-  // ThreadTrait Implementation
   /** @brief Start worker thread */
-  void trait_start() noexcept;
+  void start_() noexcept;
 
   /** @brief Stop worker thread */
-  void trait_stop() noexcept;
+  void stop_() noexcept;
 
   /** @brief Join worker thread */
-  void trait_join() noexcept;
+  void join_() noexcept;
 
   /** @brief Check if thread is running */
-  bool trait_is_running() noexcept;
+  bool is_running_() noexcept;
 
-  // CopyTrait Implementation
   /** @brief Create deep copy */
-  WorkerContext trait_copy() const noexcept;
+  WorkerContext copy_() const noexcept;
 
   /** @brief Copy from other entry */
-  void trait_copy_from(const WorkerContext& other) noexcept;
+  void copy_from_(const WorkerContext& other) noexcept;
 
-  // QueueTrait Implementation
   /** @brief Get job without blocking */
-  queue_r trait_get() noexcept;
+  queue_r get_() noexcept;
 
   /** @brief Wait for and get job */
-  queue_r trait_recv() noexcept;
+  queue_r recv_() noexcept;
 
   /** @brief Add job to queue */
-  QueueError trait_send(const Job& job) noexcept;
+  QueueError send_(const Job& job) noexcept;
 
   /** @brief Remove front job */
-  void trait_pop() noexcept;
+  void pop_() noexcept;
 
   /** @brief Clear all jobs */
-  void trait_clear() noexcept;
+  void clear_() noexcept;
 
   /** @brief Signal job available */
-  void trait_notify_not_empty() noexcept;
+  void notify_not_empty_() noexcept;
 
  private:
   // Reply functions
@@ -136,9 +125,7 @@ class WorkerContext : public HashTrait<WorkerContext>,
  * Features:
  * - O(1) hash-based lookup
  * - Size tracking */
-class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
-                    public SizedTrait<WorkerTable>,
-                    public ContainerTrait<WorkerTable> {
+class WorkerTable {
  public:
   using key_t = WorkerContext::key_t;
   using entry_t = WorkerContext;
@@ -153,46 +140,46 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
   WorkerTable(const WorkerTable& _other) = delete;
   WorkerTable& operator=(const WorkerTable& _other) = delete;
 
-  // TableTrait Implementation
+  /** @brief Result type for table operations */
+  using table_r = Result<entry_t&, TableError>;
+
   /** @brief Insert new worker entry
    *  @param _entry Entry to insert
    *  @return Result containing reference to inserted entry or error */
-  table_r trait_insert(const entry_t& _entry) noexcept;
+  table_r insert_(const entry_t& _entry) noexcept;
 
   /** @brief Search for worker by key
    *  @param _key Key to search for
    *  @return Result containing reference to found entry or error */
-  table_r trait_search(const key_t& _key) noexcept;
+  table_r search_(const key_t& _key) noexcept;
 
   /** @brief Remove worker entry
    *  @param _key Key of entry to remove
    *  @return Error status */
-  TableError trait_remove(const key_t& _key) noexcept;
+  TableError remove_(const key_t& _key) noexcept;
 
   /** @brief Update worker entry
    *  @param _entry Entry with updated values
    *  @return Error status */
-  // TableError trait_write(const entry_t& _entry) noexcept;
+  // TableError write_(const entry_t& _entry) noexcept;
 
-  // SizedTrait Implementation
   /** @brief Get current number of workers */
-  std::size_t trait_size() const noexcept {
-    return size_;
+  std::size_t size_() const noexcept {
+    return entry_count_;
   }
 
-  // ContainerTrait Implementation
   /** @brief Check if no workers */
-  bool trait_empty() const noexcept {
-    return size_ == 0;
+  bool empty_() const noexcept {
+    return entry_count_ == 0;
   }
 
   /** @brief Check if at capacity */
-  bool trait_full() const noexcept {
-    return size_ >= MAX_TRANSACTIONS;
+  bool full_() const noexcept {
+    return entry_count_ >= MAX_TRANSACTIONS;
   }
 
   /** @brief Clear all workers */
-  void trait_clear() noexcept;
+  void clear_() noexcept;
 
   /** @brief Worker Table Entry */
   struct Entry {
@@ -201,9 +188,29 @@ class WorkerTable : public TableTrait<WorkerTable, WorkerContext>,
     bool is_deleted_;
   };
 
+  /** @brief Get raw table data */
+  std::array<Entry, MAX_TRANSACTIONS>& data_() noexcept {
+    return table_;
+  }
+
+  /** @brief Set used flag on an entry */
+  void set_used_(std::size_t idx, bool val) noexcept {
+    table_[idx].is_used_ = val;
+  }
+
+  /** @brief Set deleted flag on an entry */
+  void set_deleted_(std::size_t idx, bool val) noexcept {
+    table_[idx].is_deleted_ = val;
+  }
+
+  /** @brief Get entry at index */
+  WorkerContext& get_entry_(std::size_t idx) noexcept {
+    return table_[idx].context_;
+  }
+
  private:
   std::array<Entry, MAX_TRANSACTIONS> table_;
-  std::size_t size_;
+  std::size_t entry_count_;
 };
 
 }  // namespace PawnDB

@@ -6,7 +6,6 @@
 #include <cstring>
 #include <iostream>
 
-#include "pawndb/traits/table.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/worker.h"
 

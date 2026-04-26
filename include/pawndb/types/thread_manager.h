@@ -6,15 +6,13 @@
 #include <atomic>
 
 #include "pawndb/schema/demo.h"
-#include "pawndb/traits/parser.h"
-#include "pawndb/traits/thread.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
 #include "pawndb/types/worker_table.h"
 
 namespace PawnDB {
 
-class ThreadManager : public ThreadTrait<ThreadManager> {
+class ThreadManager {
  public:
   /** @brief Constructor
    *  @param _db Database instance */
@@ -25,16 +23,16 @@ class ThreadManager : public ThreadTrait<ThreadManager> {
   ThreadManager& operator=(const ThreadManager& _other) = delete;
 
   /** @brief Start main thread */
-  void trait_start() noexcept;
+  void start_() noexcept;
 
   /** @brief Stop main thread */
-  void trait_stop() noexcept;
+  void stop_() noexcept;
 
   /** @brief Join main thread */
-  // void trait_join() noexcept;
+  // void join_() noexcept;
 
   /** @brief Check if main thread is running */
-  bool trait_is_running() noexcept;
+  bool is_running_() noexcept;
 
  private:
   /** @brief Send reply to client */

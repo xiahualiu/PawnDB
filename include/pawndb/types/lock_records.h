@@ -4,13 +4,6 @@
 #include <array>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/eq.h"
-#include "pawndb/traits/iterator.h"
-#include "pawndb/traits/lock_manager.h"
-#include "pawndb/traits/sized.h"
-#include "pawndb/traits/table.h"
 #include "pawndb/types/table_tuple_key.h"
 
 namespace PawnDB {
@@ -20,7 +13,7 @@ class LockRecordIterator;
 /**
  * @brief Lock entry storing lock information
  */
-class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
+class LockEntry {
  public:
   using key_t = TableTupleKey; /**< Key type alias */
 
@@ -40,19 +33,17 @@ class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
   LockEntry(const LockEntry& other) noexcept;
   LockEntry& operator=(const LockEntry& other) noexcept;
 
-  // LockTrait Implementation
   /** @brief Get lock type */
-  LockType trait_lock_type() const noexcept;
+  LockType lock_type() const noexcept;
 
   /** @brief Get lock key */
-  const TableTupleKey& trait_key() const noexcept;
+  const TableTupleKey& key() const noexcept;
 
-  // CopyTrait Implementation
   /** @brief Create deep copy */
-  LockEntry trait_copy() const noexcept;
+  LockEntry copy() const noexcept;
 
   /** @brief Copy from other lock */
-  void trait_copy_from(const LockEntry& other) noexcept;
+  void copy_from(const LockEntry& other) noexcept;
 
  private:
   TableTupleKey key_; /**< Tuple identifier */
@@ -72,18 +63,16 @@ class LockEntry : public LockTrait<LockEntry>, public CopyTrait<LockEntry> {
  * - Iterator support for lock scanning
  * - Fixed maximum locks per transaction
  * - Thread-safe operations
- *
- * Implemented traits:
- * - TableTrait: Lock table operations
- * - IterTrait: Lock scanning
- * - SizedTrait: Lock count tracking
- * - ContainerTrait: Capacity management
  */
-class LockRecords : public TableTrait<LockRecords, LockEntry>,
-                    public LockManagerTrait<LockRecords, TableTupleKey>,
-                    public IterTrait<LockRecords, LockRecordIterator>,
-                    public SizedTrait<LockRecords>,
-                    public ContainerTrait<LockRecords> {
+class LockRecords {
+ public:
+  /** @brief Result type for table operations */
+  using table_r = Result<LockEntry&, TableError>;
+
+  /** @brief Result type for lock queries */
+  using LockR = Result<const LockEntry&, LockError>;
+
+ private:
   /** @brief Maximum locks per transaction */
   constexpr static std::size_t N = MAX_LOCK_PER_TRANSACTION;
 
@@ -95,71 +84,64 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
   LockRecords(const LockRecords& other) noexcept = delete;
   LockRecords& operator=(const LockRecords& other) noexcept = delete;
 
-  // LockManagerTrait Implementation
   /** @brief Add new lock
    *  @param key Key to lock
    *  @param type Lock type
    *  @return Result with lock or error */
-  LockError trait_add_lock(const TableTupleKey& key, LockType type) noexcept;
+  LockError add_lock(const TableTupleKey& key, LockType type) noexcept;
 
   /** @brief Remove existing lock
    *  @param key Key to unlock
    *  @return Error status */
-  LockError trait_rm_lock(const TableTupleKey& key) noexcept;
+  LockError rm_lock(const TableTupleKey& key) noexcept;
 
   /** @brief Promote shared lock to exclusive
    *  @param key Key to promote
    *  @return Result with lock or error */
-  LockError trait_promote_lock(const TableTupleKey& key) noexcept;
+  LockError promote_lock(const TableTupleKey& key) noexcept;
 
   /** @brief Get lock information
    *  @param key Key to query
    *  @return Result with lock or error */
-  LockR trait_get_lock(const TableTupleKey& key) noexcept;
+  LockR get_lock(const TableTupleKey& key) noexcept;
 
   /** @brief Get iterator to first lock
    *  @return Iterator positioned at first valid lock */
-  LockRecordIterator trait_begin() const noexcept;
+  LockRecordIterator begin() const noexcept;
 
   /** @brief Get end iterator
    *  @return Iterator positioned after last lock */
-  LockRecordIterator trait_end() const noexcept;
+  LockRecordIterator end() const noexcept;
 
-  // TableTrait Implementation
   /** @brief Insert new lock entry
    *  @param entry Lock entry to insert
    *  @return Result containing reference to inserted entry or error */
-  table_r trait_insert(const LockEntry& entry) noexcept;
+  table_r insert(const LockEntry& entry) noexcept;
 
   /** @brief Search for lock by key
    *  @param key Key to search for
    *  @return Result containing reference to found entry or error */
-  table_r trait_search(const TableTupleKey& key) noexcept;
+  table_r search(const TableTupleKey& key) noexcept;
 
   /** @brief Remove lock by key
    *  @param key Key of lock to remove
    *  @return Error status */
-  TableError trait_remove(const TableTupleKey& key) noexcept;
-
-  /** @brief Update existing lock
-   *  @param entry Lock with updated values
-   *  @return Error status */
-  // TableError trait_write(const LockEntry& entry) noexcept;
+  TableError remove(const TableTupleKey& key) noexcept;
 
   /** @brief Clear all locks */
-  void trait_clear() noexcept;
+  void clear() noexcept;
 
   /** @brief Get current number of locks
    *  @return Number of active locks */
-  std::size_t trait_size() const noexcept;
+  std::size_t size() const noexcept;
 
   /** @brief Check if no locks held
    *  @return true if no active locks */
-  bool trait_empty() const noexcept;
+  bool empty() const noexcept;
 
   /** @brief Check if at capacity
    *  @return true if no more locks can be acquired */
-  bool trait_full() const noexcept;
+  bool full() const noexcept;
 
  private:
   std::array<LockEntry, N> locks_; /**< Lock storage */
@@ -177,10 +159,7 @@ class LockRecords : public TableTrait<LockRecords, LockEntry>,
  * - Skips deleted/unused entries
  * - Const access to lock entries
  */
-class LockRecordIterator
-    : public IterTypeTrait<LockRecordIterator, const LockEntry>,
-      public CopyTrait<LockRecordIterator>,
-      public EqTrait<LockRecordIterator> {
+class LockRecordIterator {
  public:
   /**
    * @brief Construct iterator
@@ -194,26 +173,26 @@ class LockRecordIterator
   LockRecordIterator& operator=(const LockRecordIterator& other) noexcept;
 
   /** @brief Move to next valid lock */
-  LockRecordIterator& trait_next() noexcept;
+  LockRecordIterator& next() noexcept;
 
   /**
    * @brief Get current lock entry
    * @return Reference to current lock
    */
-  const LockEntry& trait_deref() noexcept;
+  const LockEntry& deref() noexcept;
 
   /** @brief Copy iterator */
-  void trait_copy_from(const LockRecordIterator& other) noexcept;
+  void copy_from(const LockRecordIterator& other) noexcept;
 
   /** @brief Create a copy */
-  LockRecordIterator trait_copy() const noexcept;
+  LockRecordIterator copy() const noexcept;
 
   /**
    * @brief Compare iterator positions
    * @param other Iterator to compare with
    * @return true if at same position
    */
-  bool trait_equals(const LockRecordIterator& other) const noexcept;
+  bool equals(const LockRecordIterator& other) const noexcept;
 
   /**
    * @brief Get current storage index

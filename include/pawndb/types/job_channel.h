@@ -10,11 +10,6 @@
 #include <mutex>
 
 #include "pawndb/params.h"
-#include "pawndb/traits/container.h"
-#include "pawndb/traits/copy.h"
-#include "pawndb/traits/job.h"
-#include "pawndb/traits/queue.h"
-#include "pawndb/traits/sized.h"
 #include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
@@ -27,7 +22,7 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for job passing
  */
-class Job : public JobTrait<Job>, public CopyTrait<Job> {
+class Job {
  public:
   /** @brief Initialize empty job */
   constexpr Job() noexcept
@@ -41,25 +36,23 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
   Job(const Job& other) noexcept;
   Job& operator=(const Job& other) noexcept;
 
-  // JobTrait Implementation
   /** @brief Get buffer reference */
-  BufferRef trait_buffer() const noexcept;
+  BufferRef buffer() const noexcept;
 
   /** @brief Get buffer size */
-  std::size_t trait_buffer_size() const noexcept;
+  std::size_t buffer_size() const noexcept;
 
   /** @brief Get client address */
-  const sockaddr* trait_c_addr() const noexcept;
+  const sockaddr* c_addr() const noexcept;
 
   /** @brief Get address length */
-  socklen_t trait_c_addr_len() const noexcept;
+  socklen_t c_addr_len() const noexcept;
 
-  // CopyTrait Implementation
   /** @brief Create deep copy */
-  Job trait_copy() const noexcept;
+  Job copy() const noexcept;
 
   /** @brief Copy from other job */
-  void trait_copy_from(const Job& other) noexcept;
+  void copy_from(const Job& other) noexcept;
 
  private:
   BufferRef buffer_;          /**< Request data buffer */
@@ -76,15 +69,13 @@ class Job : public JobTrait<Job>, public CopyTrait<Job> {
  * - Blocking and non-blocking operations
  * - Thread synchronization
  * - Size tracking
- *
- * Implemented traits:
- * - QueueTrait: FIFO operations
- * - SizedTrait: Size tracking
- * - ContainerTrait: Capacity checks
  */
-class JobChannel : public QueueTrait<JobChannel, Job>,
-                   public SizedTrait<JobChannel>,
-                   public ContainerTrait<JobChannel> {
+class JobChannel {
+ public:
+  /** @brief Result type for queue operations */
+  using queue_r = Result<Job, QueueError>;
+
+ private:
   /** @brief Maximum jobs per channel */
   constexpr static std::size_t MaxJobs = MAX_ITEM_PER_CHANNEL;
 
@@ -96,35 +87,32 @@ class JobChannel : public QueueTrait<JobChannel, Job>,
   JobChannel(const JobChannel& other) noexcept = delete;
   JobChannel& operator=(const JobChannel& other) noexcept = delete;
 
-  // QueueTrait Implementation
   /** @brief Non-blocking get */
-  queue_r trait_get() noexcept;
+  queue_r get() noexcept;
 
   /** @brief Blocking receive */
-  queue_r trait_recv() noexcept;
+  queue_r recv() noexcept;
 
   /** @brief Send job */
-  QueueError trait_send(const Job& job) noexcept;
+  QueueError send(const Job& job) noexcept;
 
   /** @brief Remove front job */
-  void trait_pop() noexcept;
+  void pop() noexcept;
 
   /** @brief Clear all jobs */
-  void trait_clear() noexcept;
+  void clear() noexcept;
 
   /** @brief Signal not empty */
-  void trait_notify_not_empty() noexcept;
+  void notify_not_empty() noexcept;
 
-  // SizedTrait Implementation
   /** @brief Get job count */
-  std::size_t trait_size() const noexcept;
+  std::size_t size() const noexcept;
 
-  // ContainerTrait Implementation
   /** @brief Check if full */
-  bool trait_full() const noexcept;
+  bool full() const noexcept;
 
   /** @brief Check if empty */
-  bool trait_empty() const noexcept;
+  bool empty() const noexcept;
 
  private:
   std::array<Job, MaxJobs> jobs_;     /**< Job storage */
