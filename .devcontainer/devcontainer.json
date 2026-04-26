@@ -12,10 +12,9 @@
   "workspaceMount": "source=repo-volume,target=/workspaces/${localWorkspaceFolderBasename},type=volume",
   "remoteUser": "ubuntu",
   "containerUser": "ubuntu",
-  "containerEnv": {
-    "ANTHROPIC_AUTH_TOKEN": "${localEnv:ANTHROPIC_AUTH_TOKEN}",
-    "CONTINUE_API_KEY": "${localEnv:CONTINUE_API_KEY}"
-  },
+  "runArgs": [
+    "--env-file=${localWorkspaceFolder}/.devcontainer/.env"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
