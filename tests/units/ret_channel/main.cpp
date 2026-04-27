@@ -9,7 +9,7 @@
 namespace PawnDB {
 
 TEST_CASE("Channel Empty #1") {
-  RetChannel channel;
+  ret_channel channel;
   CHECK(channel.empty());
   CHECK(!channel.full());
 
@@ -19,7 +19,7 @@ TEST_CASE("Channel Empty #1") {
 }
 
 TEST_CASE("Channel Send/Get #1") {
-  RetChannel channel;
+  ret_channel channel;
   CHECK(channel.send(42) == QueueError::None);
   CHECK(!channel.empty());
   auto result = channel.get();
@@ -30,7 +30,7 @@ TEST_CASE("Channel Send/Get #1") {
 }
 
 TEST_CASE("Channel Full #1") {
-  RetChannel channel;
+  ret_channel channel;
   // Fill channel
   for (std::size_t i = 0; i < MAX_TRANSACTIONS; i++) {
     CHECK(channel.send(42) == QueueError::None);
@@ -40,7 +40,7 @@ TEST_CASE("Channel Full #1") {
 }
 
 TEST_CASE("Channel Clear #1") {
-  RetChannel channel;
+  ret_channel channel;
   CHECK(channel.send(42) == QueueError::None);
   CHECK(!channel.empty());
   channel.clear();

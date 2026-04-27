@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "pawndb/params.h"
+#include "pawndb/result.h"
 #include "pawndb/types/buffer_table.h"
 
 namespace PawnDB {
@@ -22,25 +23,25 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for job passing
  */
-class Job {
+class job {
  public:
   /** @brief Initialize empty job */
-  constexpr Job() noexcept
+  constexpr job() noexcept
       : buffer_(), buffer_size_(0), client_addr_(), client_addr_len_(0) {}
 
   /** @brief Initialize job with buffer and client address */
-  Job(BufferRef _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
+  job(buf_ref _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
       socklen_t _addr_len) noexcept;
 
   // Copyable
-  Job(const Job& other) noexcept;
-  Job& operator=(const Job& other) noexcept;
+  job(const job& other) noexcept;
+  job& operator=(const job& other) noexcept;
 
   /** @brief Get buffer reference */
-  BufferRef buffer() const noexcept;
+  buf_ref buf() const noexcept;
 
   /** @brief Get buffer size */
-  std::size_t buffer_size() const noexcept;
+  std::size_t buf_sz() const noexcept;
 
   /** @brief Get client address */
   const sockaddr* c_addr() const noexcept;
@@ -48,14 +49,8 @@ class Job {
   /** @brief Get address length */
   socklen_t c_addr_len() const noexcept;
 
-  /** @brief Create deep copy */
-  Job copy() const noexcept;
-
-  /** @brief Copy from other job */
-  void copy_from(const Job& other) noexcept;
-
  private:
-  BufferRef buffer_;          /**< Request data buffer */
+  buf_ref buffer_;            /**< Request data buffer */
   std::size_t buffer_size_;   /**< Request data size */
   sockaddr_un client_addr_;   /**< Client address */
   socklen_t client_addr_len_; /**< Address length */
@@ -70,10 +65,10 @@ class Job {
  * - Thread synchronization
  * - Size tracking
  */
-class JobChannel {
+class job_channel {
  public:
   /** @brief Result type for queue operations */
-  using queue_r = Result<Job, QueueError>;
+  using queue_r = Result<job, QueueError>;
 
  private:
   /** @brief Maximum jobs per channel */
@@ -81,11 +76,11 @@ class JobChannel {
 
  public:
   /** @brief Initialize empty channel */
-  JobChannel() noexcept;
+  job_channel() noexcept;
 
   // Non-copyable
-  JobChannel(const JobChannel& other) noexcept = delete;
-  JobChannel& operator=(const JobChannel& other) noexcept = delete;
+  job_channel(const job_channel& other) noexcept = delete;
+  job_channel& operator=(const job_channel& other) noexcept = delete;
 
   /** @brief Non-blocking get */
   queue_r get() noexcept;
@@ -94,7 +89,7 @@ class JobChannel {
   queue_r recv() noexcept;
 
   /** @brief Send job */
-  QueueError send(const Job& job) noexcept;
+  QueueError send(const job& job) noexcept;
 
   /** @brief Remove front job */
   void pop() noexcept;
@@ -115,7 +110,7 @@ class JobChannel {
   bool empty() const noexcept;
 
  private:
-  std::array<Job, MaxJobs> jobs_;     /**< Job storage */
+  std::array<job, MaxJobs> jobs_;     /**< Job storage */
   std::size_t head_;                  /**< Read position */
   std::size_t tail_;                  /**< Write position */
   std::size_t count_;                 /**< Current job count */

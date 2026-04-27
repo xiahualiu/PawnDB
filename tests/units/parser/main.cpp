@@ -2,14 +2,13 @@
 
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
-#include "pawndb/traits/parser.h"
 #include "pawndb/types/buffer_table.h"
 #include "pawndb/types/parser.h"
 
 namespace PawnDB {
 
 TEST_CASE("Parser Basic Operation #1") {
-  BufferTable table;
+  buf_table table;
   auto ref_r = table.request();
   auto buffer = ref_r.unwrap();
   auto& buf = buffer.buffer();
@@ -17,7 +16,7 @@ TEST_CASE("Parser Basic Operation #1") {
   buf = {
       static_cast<char>(OpType::START_TXN), 1, 2, 0, 0, 0, 0, 3, 4, 0, 0, 0, 0};
 
-  Parser parser(buffer, 11);
+  buf_parser parser(buffer, 11);
 
   auto op = parser.get_op();
   CHECK(op);
@@ -37,11 +36,11 @@ TEST_CASE("Parser Basic Operation #1") {
 }
 
 TEST_CASE("Parser Basic Operation #2") {
-  BufferTable table;
+  buf_table table;
   auto ref_r = table.request();
   auto buffer = ref_r.unwrap();
   auto& buf = buffer.buffer();
-  Parser parser(buffer, 13);
+  buf_parser parser(buffer, 13);
   parser.set_ack(OpAck::SUCCESS);
   CHECK(buf[6] == static_cast<char>(OpAck::SUCCESS));
   parser.set_txn(std::uint16_t(45678));
@@ -51,20 +50,20 @@ TEST_CASE("Parser Basic Operation #2") {
 }
 
 TEST_CASE("Parser Basic Operation #3") {
-  BufferTable table;
+  buf_table table;
   auto ref_r = table.request();
   auto buffer = ref_r.unwrap();
-  Parser parser(buffer, 13);
+  buf_parser parser(buffer, 13);
   parser.set_buffer_size(20);
   CHECK(parser.get_buffer_size() == 20);
   CHECK(parser.get_tuple_offset() == 9);
 }
 
 TEST_CASE("Parser Bad Operation #1") {
-  BufferTable table;
+  buf_table table;
   auto ref_r = table.request();
   auto buffer = ref_r.unwrap();
-  Parser parser(buffer, 0);
+  buf_parser parser(buffer, 0);
   auto op = parser.get_op();
   CHECK(!op);
   CHECK(op.getError() == ParserError::ReadAfterEnd);
@@ -83,12 +82,12 @@ TEST_CASE("Parser Bad Operation #1") {
 }
 
 TEST_CASE("Parser Bad Operation #2") {
-  BufferTable table;
+  buf_table table;
   auto ref_r = table.request();
   auto buffer = ref_r.unwrap();
   auto& buf = buffer.buffer();
   buf[0] = static_cast<char>(OpType::MAX_OP_VALUE);
-  Parser parser(buffer, 11);
+  buf_parser parser(buffer, 11);
   auto op = parser.get_op();
   CHECK(!op);
   CHECK(op.getError() == ParserError::InvalidValue);

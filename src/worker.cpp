@@ -25,8 +25,8 @@ Worker::Worker(WorkerContext* entry) noexcept
       status_(TxnStatus::GROWING),
       lock_table_() {}
 
-void Worker::reply(OpAck _ack, Parser& _parser, std::size_t _size,
-                   Job& _job) noexcept {
+void Worker::reply(OpAck _ack, buf_parser& _parser, std::size_t _size,
+                   job& _job) noexcept {
   _parser.set_ack(_ack);
   sendto(fd_, _parser.get_buffer().data(), _size, 0, _job.c_addr(),
          _job.c_addr_len());
@@ -75,7 +75,7 @@ void Worker::clear_commit_table() noexcept {
   }
 }
 
-void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
+void Worker::process_commit(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::SHRINKING) {
     reply(OpAck::SUCCESS, _parser, 7, _job);
@@ -87,8 +87,8 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
     auto& commit = commit_table_.get().unwrap();
     switch (commit.op()) {
       case OpType::ADD_TUPLE: {
-        auto [table_id, tuple_key] = commit.key().trait_disassemble();
-        auto buffer = commit.buffer();
+        auto [table_id, tuple_key] = commit.key().disassemble_();
+        auto buffer = commit.buf();
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
@@ -108,8 +108,8 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         break;
       }
       case OpType::DELETE: {
-        auto [table_id, tuple_key] = commit.key().trait_disassemble();
-        lock_table_.rm_lock(commit.trait_key());
+        auto [table_id, tuple_key] = commit.key().disassemble_();
+        lock_table_.rm_lock(commit.key());
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto& table_ref = db_.students_;
@@ -124,8 +124,8 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
         break;
       }
       case OpType::UPDATE: {
-        auto [table_id, tuple_key] = commit.key().trait_disassemble();
-        auto buffer = commit.buffer();
+        auto [table_id, tuple_key] = commit.key().disassemble_();
+        auto buffer = commit.buf();
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto new_tuple = StudentTable::tuple_t{};
@@ -152,7 +152,7 @@ void Worker::process_commit(Parser& _parser, Job& _job) noexcept {
   return;
 }
 
-void Worker::process_add(Parser& _parser, Job& _job) noexcept {
+void Worker::process_add(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ == TxnStatus::GROWING) {
     status_ = TxnStatus::SHRINKING;
@@ -179,7 +179,7 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
       }
       // Reuse buffer, must reply first.
       reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
-      std::memcpy(_job.buffer().buffer().data(), &new_entry, sizeof(new_entry));
+      std::memcpy(_job.buf().buffer().data(), &new_entry, sizeof(new_entry));
       break;
     }
     default: {
@@ -191,7 +191,7 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
   }
   // Insert new tuple into commit table
   auto commit_error =
-      commit_table_.send({{table_id, 0}, OpType::ADD_TUPLE, _job.buffer()});
+      commit_table_.send({{table_id, 0}, OpType::ADD_TUPLE, _job.buf()});
   // Check if commit table is full
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
@@ -205,7 +205,7 @@ void Worker::process_add(Parser& _parser, Job& _job) noexcept {
   return;
 }
 
-void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
+void Worker::process_shared_read(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
@@ -252,7 +252,7 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
         auto student_entry = wait_r.unwrap();
         _parser.set_key(student_entry.key());
         auto offset_r =
-            student_entry.serialize(_job.buffer(), _parser.get_tuple_offset());
+            student_entry.serialize(_job.buf(), _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset_r.unwrap());
         reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
         job_ch_.pop();
@@ -267,7 +267,7 @@ void Worker::process_shared_read(Parser& _parser, Job& _job) noexcept {
   }
 }
 
-void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
+void Worker::process_exclusive_read(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
@@ -315,7 +315,7 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
         auto student_entry = wait_r.unwrap();
         _parser.set_key(student_entry.key());
         auto offset_r =
-            student_entry.serialize(_job.buffer(), _parser.get_tuple_offset());
+            student_entry.serialize(_job.buf(), _parser.get_tuple_offset());
         _parser.set_buffer_size(_parser.get_tuple_offset() + offset_r.unwrap());
         reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
         job_ch_.pop();
@@ -330,7 +330,7 @@ void Worker::process_exclusive_read(Parser& _parser, Job& _job) noexcept {
   }
 }
 
-void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
+void Worker::process_yield(buf_parser& _parser, job& _job) noexcept {
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
     job_ch_.pop();
@@ -378,7 +378,7 @@ void Worker::process_yield(Parser& _parser, Job& _job) noexcept {
   }
 }
 
-void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
+void Worker::process_promote(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ != TxnStatus::GROWING) {
     reply(OpAck::BAD_PHASE, _parser, 7, _job);
@@ -447,7 +447,7 @@ void Worker::process_promote(Parser& _parser, Job& _job) noexcept {
   }
 }
 
-void Worker::process_update(Parser& _parser, Job& _job) noexcept {
+void Worker::process_update(buf_parser& _parser, job& _job) noexcept {
   if (status_ == TxnStatus::GROWING) {
     status_ = TxnStatus::SHRINKING;
   }
@@ -477,14 +477,14 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   switch (table_id) {
     case tbl_id<StudentTable>(): {
       auto new_entry = StudentTuple{};
-      if (!new_entry.deserialize(_job.buffer(), _parser.get_tuple_offset())) {
+      if (!new_entry.deserialize(_job.buf(), _parser.get_tuple_offset())) {
         reply(OpAck::BAD_DATA, _parser, 7, _job);
         job_ch_.pop();
         return;
       }
       // Reuse buffer, must reply first.
       reply(OpAck::SUCCESS, _parser, 7, _job);
-      std::memcpy(_job.buffer().buffer().data(), &new_entry, sizeof(new_entry));
+      std::memcpy(_job.buf().buffer().data(), &new_entry, sizeof(new_entry));
       break;
     }
     default: {
@@ -493,8 +493,8 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
       return;
     }
   }
-  auto commit_error = commit_table_.send(
-      {{table_id, tuple_key}, OpType::UPDATE, _job.buffer()});
+  auto commit_error =
+      commit_table_.send({{table_id, tuple_key}, OpType::UPDATE, _job.buf()});
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
     job_ch_.pop();
@@ -507,7 +507,7 @@ void Worker::process_update(Parser& _parser, Job& _job) noexcept {
   return;
 }
 
-void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
+void Worker::process_rm(buf_parser& _parser, job& _job) noexcept {
   // Check if transaction is in the correct phase
   if (status_ == TxnStatus::GROWING) {
     status_ = TxnStatus::SHRINKING;
@@ -528,7 +528,7 @@ void Worker::process_rm(Parser& _parser, Job& _job) noexcept {
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_record_key = TableTupleKey{table_id, tuple_key};
+  auto lock_record_key = unique_key{table_id, tuple_key};
   auto lock_r = lock_table_.get_lock(lock_record_key);
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::EXCLUSIVE) {
@@ -568,7 +568,7 @@ void Worker::trait_start() noexcept {
               << reinterpret_cast<const sockaddr_un*>(job.c_addr())->sun_path
               << std::endl;
 
-    auto parser = Parser(job.buffer(), job.buffer_size());
+    auto parser = Parser(job.buf(), job.buf_sz());
     auto op_r = parser.get_op();
     if (!op_r) {
       reply(OpAck::BAD_OP, parser, 7, job);

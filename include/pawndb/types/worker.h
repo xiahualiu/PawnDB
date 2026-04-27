@@ -6,7 +6,7 @@
 #include "pawndb/schema/demo.h"
 #include "pawndb/types/commit_table.h"
 #include "pawndb/types/job_channel.h"
-#include "pawndb/types/lock_records.h"
+#include "pawndb/types/lock_list.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
 #include "pawndb/types/worker_table.h"
@@ -47,8 +47,8 @@ class Worker {
 
  private:
   // Reply functions
-  void reply(OpAck _ack, Parser& _parser, std::size_t _size,
-             Job& _job) noexcept;
+  void reply(OpAck _ack, buf_parser& _parser, std::size_t _size,
+             job& _job) noexcept;
 
   /** @brief Worker quit function */
   void worker_quit() noexcept;
@@ -60,26 +60,26 @@ class Worker {
   void clear_commit_table() noexcept;
 
   // Process functions
-  void process_commit(Parser& _parser, Job& _job) noexcept;
-  void process_add(Parser& _parser, Job& _job) noexcept;
-  void process_shared_read(Parser& _parser, Job& _job) noexcept;
-  void process_exclusive_read(Parser& _parser, Job& _job) noexcept;
-  void process_yield(Parser& _parser, Job& _job) noexcept;
-  void process_promote(Parser& _parser, Job& _job) noexcept;
-  void process_update(Parser& _parser, Job& _job) noexcept;
-  void process_rm(Parser& _parser, Job& _job) noexcept;
+  void process_commit(buf_parser& _parser, job& _job) noexcept;
+  void process_add(buf_parser& _parser, job& _job) noexcept;
+  void process_shared_read(buf_parser& _parser, job& _job) noexcept;
+  void process_exclusive_read(buf_parser& _parser, job& _job) noexcept;
+  void process_yield(buf_parser& _parser, job& _job) noexcept;
+  void process_promote(buf_parser& _parser, job& _job) noexcept;
+  void process_update(buf_parser& _parser, job& _job) noexcept;
+  void process_rm(buf_parser& _parser, job& _job) noexcept;
 
   std::atomic_flag& running_;   /**< Running flag */
-  JobChannel& job_ch_;          /**< Job channel */
-  RetChannel& ret_ch_;          /**< Return channel */
+  job_channel& job_ch_;         /**< Job channel */
+  ret_channel& ret_ch_;         /**< Return channel */
   Database& db_;                /**< Database instance */
   WorkerContext::key_t txn_id_; /**< Transaction ID */
   const int fd_;                /**< Server socket */
 
-  std::uint8_t timeout_cnt_; /**< Timeout counter */
-  CommitTable commit_table_; /**< Commit buffer table */
-  TxnStatus status_;         /**< Current transaction status */
-  LockRecords lock_table_;   /**< Lock table */
+  std::uint8_t timeout_cnt_;  /**< Timeout counter */
+  commit_table commit_table_; /**< Commit buffer table */
+  TxnStatus status_;          /**< Current transaction status */
+  lock_list lock_table_;      /**< Lock table */
 };
 
 }  // namespace PawnDB

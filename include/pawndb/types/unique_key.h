@@ -1,5 +1,5 @@
-#ifndef PAWNDB_TYPES_TABLE_TUPLE_KEY_H
-#define PAWNDB_TYPES_TABLE_TUPLE_KEY_H
+#ifndef PAWNDB_TYPES_UNIQUE_KEY_H
+#define PAWNDB_TYPES_UNIQUE_KEY_H
 
 #include <cstddef>
 #include <cstdint>
@@ -16,25 +16,25 @@ namespace PawnDB {
  * Combines table identifier and tuple key into a single entity.
  * Implements hash, copy, move, and equality operations.
  */
-class TableTupleKey {
+class unique_key {
  public:
   /** @brief Default constructor */
-  constexpr TableTupleKey() noexcept : table_id_(0), tuple_key_(0) {}
+  constexpr unique_key() noexcept : table_id_(0), tuple_key_(0) {}
 
   /**
    * @brief Construct key from components
    * @param table_id Table identifier
    * @param tuple_key Tuple key
    */
-  TableTupleKey(tp_id_t table_id, tbl_row_t tuple_key) noexcept;
+  unique_key(tp_id_t table_id, tbl_row_t tuple_key) noexcept;
 
   // Copyable
-  TableTupleKey(const TableTupleKey& other) noexcept;
-  TableTupleKey& operator=(const TableTupleKey& other) noexcept;
+  unique_key(const unique_key& other) noexcept;
+  unique_key& operator=(const unique_key& other) noexcept;
 
   // Movable
-  TableTupleKey(TableTupleKey&& other) noexcept;
-  TableTupleKey& operator=(TableTupleKey&& other) noexcept;
+  unique_key(unique_key&& other) noexcept;
+  unique_key& operator=(unique_key&& other) noexcept;
 
   /**
    * @brief Assemble key from components
@@ -55,20 +55,7 @@ class TableTupleKey {
   /** @brief Compare for equality
    * @param other Key to compare with
    * @return true if keys are equal */
-  bool equals_(const TableTupleKey& other) const noexcept;
-
-  /** @brief Create a value copy of this key */
-  TableTupleKey copy_() const noexcept;
-
-  /** @brief Copy from another key
-   * @param other Source key to copy from */
-  void copy_from_(const TableTupleKey& other) noexcept;
-
-  /** @brief Move out a new key from this one */
-  TableTupleKey move_() noexcept;
-
-  /** @brief Move-assign from another key */
-  void move_from_(TableTupleKey&& other) noexcept;
+  bool equals_(const unique_key& other) const noexcept;
 
   /** @brief Get underlying raw data pointer (for hash computation) */
   const char* data_() const noexcept;
@@ -85,4 +72,4 @@ class TableTupleKey {
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TYPES_TABLE_TUPLE_KEY_H
+#endif  // PAWNDB_TYPES_UNIQUE_KEY_H

@@ -15,7 +15,7 @@
 namespace PawnDB {
 
 TEST_CASE("Channel Empty #1") {
-  JobChannel channel;
+  job_channel channel;
   CHECK(channel.empty());
   CHECK(!channel.full());
 
@@ -25,7 +25,7 @@ TEST_CASE("Channel Empty #1") {
 }
 
 TEST_CASE("Channel Send/Get #1") {
-  JobChannel channel;
+  job_channel channel;
   CHECK(channel.send({{}, 42, sockaddr_un{}, socklen_t{}}) == QueueError::None);
   CHECK(!channel.empty());
   auto result = channel.get();
@@ -36,7 +36,7 @@ TEST_CASE("Channel Send/Get #1") {
 }
 
 TEST_CASE("Channel Full #1") {
-  JobChannel channel;
+  job_channel channel;
   // Fill channel
   for (std::size_t i = 0; i < MAX_ITEM_PER_CHANNEL; i++) {
     CHECK(channel.send({{}, i, sockaddr_un{}, socklen_t{}}) ==
@@ -47,14 +47,14 @@ TEST_CASE("Channel Full #1") {
 }
 
 TEST_CASE("Channel Receive Timeout #1") {
-  JobChannel channel;
+  job_channel channel;
   auto result = channel.recv();
   CHECK(!result);
   CHECK(result.getError() == QueueError::Timeout);
 }
 
 TEST_CASE("Channel Multi-threaded #1") {
-  JobChannel channel;
+  job_channel channel;
   bool received = false;
 
   std::thread consumer([&]() {
@@ -78,29 +78,29 @@ TEST_CASE("Channel Multi-threaded #1") {
 }
 
 TEST_CASE("Job Copy #1") {
-  Job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
-  Job job2 = job1;
+  job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
+  job job2 = job1;
   CHECK(job1.buffer_size() == job2.buffer_size());
   CHECK(job1.c_addr_len() == job2.c_addr_len());
 }
 
 TEST_CASE("Job Copy #2") {
-  Job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
-  Job job2;
+  job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
+  job job2;
   job2.copy_from(job1);
   CHECK(job1.buffer_size() == job2.buffer_size());
   CHECK(job1.c_addr_len() == job2.c_addr_len());
 }
 
 TEST_CASE("Job CopyValue #1") {
-  Job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
-  Job job2 = job1.copy();
+  job job1{{}, 42, sockaddr_un{}, socklen_t{110}};
+  job job2 = job1.copy();
   CHECK(job1.buffer_size() == job2.buffer_size());
   CHECK(job1.c_addr_len() == job2.c_addr_len());
 }
 
 TEST_CASE("Job Channel Clear #1") {
-  JobChannel channel;
+  job_channel channel;
   CHECK(channel.send({{}, 42, sockaddr_un{}, socklen_t{}}) == QueueError::None);
   channel.clear();
   CHECK(channel.empty());
@@ -109,9 +109,9 @@ TEST_CASE("Job Channel Clear #1") {
 }
 
 TEST_CASE("Job Buffer #1") {
-  BufferTable table;
+  buf_table table;
   auto buffer_ref = table.request().unwrap();
-  Job job1{buffer_ref, 42, sockaddr_un{}, socklen_t{110}};
+  job job1{buffer_ref, 42, sockaddr_un{}, socklen_t{110}};
   CHECK(!buffer_ref._test_null());
   CHECK(job1.buffer()._test_index() == buffer_ref._test_index());
   CHECK(!job1.buffer()._test_null());
@@ -121,7 +121,7 @@ TEST_CASE("Job Buffer #1") {
 TEST_CASE("Job Address #1") {
   sockaddr_un addr;
   memcpy(&addr, "/tmp/test.sock", sizeof("/tmp/test.sock"));
-  Job job1{{}, 42, addr, socklen_t{110}};
+  job job1{{}, 42, addr, socklen_t{110}};
   CHECK(job1.c_addr_len() == 110);
   CHECK(memcmp(&addr, job1.c_addr(), sizeof("/tmp/test.sock")) == 0);
 }

@@ -19,7 +19,7 @@ WorkerContext::WorkerContext() noexcept
       fd_(0),
       running_() {}
 
-WorkerContext::WorkerContext(RetChannel* _ret_ch, Database* _db,
+WorkerContext::WorkerContext(ret_channel* _ret_ch, Database* _db,
                              txn_id_t _txn_id, int _fd) noexcept
     : ret_ch_(_ret_ch),
       db_(_db),
@@ -72,7 +72,7 @@ void WorkerContext::trait_join() noexcept {
   // Ack all unfinished jobs that worker has not acked
   while (!job_ch_.empty()) {
     auto job = job_ch_.get().unwrap();
-    auto parser = Parser(job.buffer(), job.buffer_size());
+    auto parser = Parser(job.buf(), job.buf_sz());
     parser.set_ack(OpAck::DEAD_TXN);
     sendto(fd_, parser.get_buffer().data(), 7, 0, job.c_addr(),
            job.c_addr_len());
@@ -104,7 +104,7 @@ WorkerContext::queue_r WorkerContext::trait_recv() noexcept {
   return job_ch_.recv();
 }
 
-QueueError WorkerContext::trait_send(const Job& job) noexcept {
+QueueError WorkerContext::trait_send(const job& job) noexcept {
   return job_ch_.send(job);
 }
 
@@ -128,7 +128,7 @@ WorkerTable::~WorkerTable() noexcept {
 
 WorkerTable::table_r WorkerTable::trait_insert(
     const entry_t& _context) noexcept {
-  if (trait_full()) return TableError::Full;
+  if (trait_full()) return WorkerTableError::Full;
   auto idx = _context.txn_id_ % MAX_TRANSACTIONS;
   while (true) {
     if (!table_[idx].is_used_ || table_[idx].is_deleted_) {
@@ -148,17 +148,17 @@ WorkerTable::table_r WorkerTable::trait_search(const key_t& _key) noexcept {
   auto start = idx;
   do {
     if (!table_[idx].is_used_) {
-      return TableError::NotFound;
+      return WorkerTableError::NotFound;
     }
     if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
       return table_[idx].context_;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
   } while (idx != start);
-  return TableError::NotFound;
+  return WorkerTableError::NotFound;
 }
 
-TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
+WorkerTableError WorkerTable::trait_remove(const key_t& _key) noexcept {
   auto idx = _key % MAX_TRANSACTIONS;
   while (true) {
     if (table_[idx].context_.txn_id_ == _key && !table_[idx].is_deleted_) {
@@ -166,7 +166,7 @@ TableError WorkerTable::trait_remove(const key_t& _key) noexcept {
       table_[idx].context_.join();
       table_[idx].is_deleted_ = true;
       size_--;
-      return TableError::None;
+      return WorkerTableError::None;
     }
     idx = (idx + 1) % MAX_TRANSACTIONS;
   }

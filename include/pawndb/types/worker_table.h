@@ -9,12 +9,20 @@
 #include <thread>
 
 #include "pawndb/params.h"
+#include "pawndb/result.h"
 #include "pawndb/schema/demo.h"
 #include "pawndb/types/job_channel.h"
 #include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
 
 namespace PawnDB {
+
+/** @brief Worker table operation error codes */
+enum class WorkerTableError {
+  None,    /**< Operation successful */
+  Full,    /**< Worker table full */
+  NotFound /**< Worker entry not found */
+};
 
 /** @brief Fixed-size table managing worker threads
  *
@@ -27,7 +35,7 @@ class WorkerContext {
   using key_t = txn_id_t;
 
   /** @brief Result type for queue operations */
-  using queue_r = Result<Job, QueueError>;
+  using queue_r = Result<job, QueueError>;
 
   /** @brief Construct a new Worker Entry object */
   WorkerContext() noexcept;
@@ -36,7 +44,7 @@ class WorkerContext {
   ~WorkerContext() noexcept;
 
   /** @brief Construct a new Worker Entry object */
-  WorkerContext(RetChannel* _ret_ch, Database* _db, txn_id_t _txn_id,
+  WorkerContext(ret_channel* _ret_ch, Database* _db, txn_id_t _txn_id,
                 int _fd) noexcept;
 
   /** @brief Construct a new Worker Entry object */
@@ -73,7 +81,7 @@ class WorkerContext {
   queue_r recv_() noexcept;
 
   /** @brief Add job to queue */
-  QueueError send_(const Job& job) noexcept;
+  QueueError send_(const job& job) noexcept;
 
   /** @brief Remove front job */
   void pop_() noexcept;
@@ -86,8 +94,8 @@ class WorkerContext {
 
  private:
   // Reply functions
-  void reply(OpAck _ack, Parser& _parser, std::size_t _size,
-             Job& _job) noexcept;
+  void reply(OpAck _ack, buf_parser& _parser, std::size_t _size,
+             job& _job) noexcept;
 
   /** @brief Worker quit function */
   void worker_quit() noexcept;
@@ -99,19 +107,19 @@ class WorkerContext {
   void clear_commit_table() noexcept;
 
   // Process functions
-  void process_commit(Parser& _parser, Job& _job) noexcept;
-  void process_add(Parser& _parser, Job& _job) noexcept;
-  void process_shared_read(Parser& _parser, Job& _job) noexcept;
-  void process_exclusive_read(Parser& _parser, Job& _job) noexcept;
-  void process_yield(Parser& _parser, Job& _job) noexcept;
-  void process_promote(Parser& _parser, Job& _job) noexcept;
-  void process_update(Parser& _parser, Job& _job) noexcept;
-  void process_rm(Parser& _parser, Job& _job) noexcept;
+  void process_commit(buf_parser& _parser, job& _job) noexcept;
+  void process_add(buf_parser& _parser, job& _job) noexcept;
+  void process_shared_read(buf_parser& _parser, job& _job) noexcept;
+  void process_exclusive_read(buf_parser& _parser, job& _job) noexcept;
+  void process_yield(buf_parser& _parser, job& _job) noexcept;
+  void process_promote(buf_parser& _parser, job& _job) noexcept;
+  void process_update(buf_parser& _parser, job& _job) noexcept;
+  void process_rm(buf_parser& _parser, job& _job) noexcept;
 
-  RetChannel* ret_ch_;       /**< Return channel */
+  ret_channel* ret_ch_;      /**< Return channel */
   Database* db_;             /**< Database instance */
   std::thread thread_;       /**< Worker thread */
-  JobChannel job_ch_;        /**< Job channel */
+  job_channel job_ch_;       /**< Job channel */
   key_t txn_id_;             /**< Transaction ID */
   int fd_;                   /**< Server socket */
   std::atomic_flag running_; /**< Running flag */
@@ -141,7 +149,7 @@ class WorkerTable {
   WorkerTable& operator=(const WorkerTable& _other) = delete;
 
   /** @brief Result type for table operations */
-  using table_r = Result<entry_t&, TableError>;
+  using table_r = Result<entry_t&, WorkerTableError>;
 
   /** @brief Insert new worker entry
    *  @param _entry Entry to insert
@@ -156,12 +164,12 @@ class WorkerTable {
   /** @brief Remove worker entry
    *  @param _key Key of entry to remove
    *  @return Error status */
-  TableError remove_(const key_t& _key) noexcept;
+  WorkerTableError remove_(const key_t& _key) noexcept;
 
   /** @brief Update worker entry
    *  @param _entry Entry with updated values
    *  @return Error status */
-  // TableError write_(const entry_t& _entry) noexcept;
+  // WorkerTableError write_(const entry_t& _entry) noexcept;
 
   /** @brief Get current number of workers */
   std::size_t size_() const noexcept {

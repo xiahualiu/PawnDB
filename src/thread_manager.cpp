@@ -25,7 +25,7 @@ namespace PawnDB {
 ThreadManager::ThreadManager(Database* _db) noexcept
     : db_(*_db), ret_ch_(), workers_(), running_() {}
 
-void ThreadManager::reply(OpAck _ack, Parser& _parser,
+void ThreadManager::reply(OpAck _ack, buf_parser& _parser,
                           const sockaddr_un& _client_addr,
                           const socklen_t _client_addr_len) noexcept {
   _parser.set_ack(_ack);
@@ -110,7 +110,7 @@ void ThreadManager::trait_start() noexcept {
     }
 
     auto recv_size_u = static_cast<std::size_t>(recv_size);
-    auto parser = Parser(recv_buffer, recv_size_u);
+    auto parser = buf_parser(recv_buffer, recv_size_u);
     auto op_r = parser.get_op();
     auto op_id_r = parser.get_op_id();
     if (!op_r || !op_id_r) {

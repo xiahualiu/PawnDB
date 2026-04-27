@@ -42,7 +42,7 @@ class Database {
   StudentTable students_;
   std::atomic_uint32_t tickstamp_;
 
-  alignas(BUFFER_ALIGNMENT) BufferTable buffers_;
+  alignas(BUFFER_ALIGNMENT) buf_table buffers_;
 };
 
 }  // namespace PawnDB

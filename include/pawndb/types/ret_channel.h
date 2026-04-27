@@ -22,24 +22,24 @@ namespace PawnDB {
  * - Client connection tracking
  * - Copy operations for message passing
  */
-class Ret {
+class ret {
  public:
   /** @brief Initialize empty return message */
-  constexpr Ret() noexcept
+  constexpr ret() noexcept
       : buffer_(), buffer_size_(0), client_addr_(), client_addr_len_(0) {}
 
   /** @brief Initialize return with buffer and client address */
-  Ret(BufferRef _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
+  ret(buf_ref _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
       socklen_t _addr_len) noexcept;
 
   /** @brief Create deep copy */
-  Ret copy() const noexcept;
+  ret copy() const noexcept;
 
   /** @brief Copy from other return */
-  void copy_from(const Ret& other) noexcept;
+  void copy_from(const ret& other) noexcept;
 
   /** @brief Get buffer reference */
-  BufferRef buffer() const noexcept;
+  buf_ref buffer() const noexcept;
 
   /** @brief Get buffer size */
   std::size_t buffer_size() const noexcept;
@@ -51,7 +51,7 @@ class Ret {
   socklen_t c_addr_len() const noexcept;
 
  private:
-  BufferRef buffer_;          /**< Response data buffer */
+  buf_ref buffer_;            /**< Response data buffer */
   std::size_t buffer_size_;   /**< Response data size */
   sockaddr_un client_addr_;   /**< Client address */
   socklen_t client_addr_len_; /**< Address length */
@@ -66,10 +66,10 @@ class Ret {
  * - Thread synchronization
  * - Size tracking
  */
-class RetChannel {
+class ret_channel {
  public:
   /** @brief Result type for queue operations */
-  using queue_r = Result<Ret, QueueError>;
+  using queue_r = Result<ret, QueueError>;
 
  private:
   /** @brief Maximum returns per channel */
@@ -77,11 +77,11 @@ class RetChannel {
 
  public:
   /** @brief Initialize empty channel */
-  RetChannel() noexcept;
+  ret_channel() noexcept;
 
   // Non-copyable
-  RetChannel(const RetChannel& other) noexcept = delete;
-  RetChannel& operator=(const RetChannel& other) noexcept = delete;
+  ret_channel(const ret_channel& other) noexcept = delete;
+  ret_channel& operator=(const ret_channel& other) noexcept = delete;
 
   /** @brief Non-blocking get */
   queue_r get() noexcept;
@@ -90,7 +90,7 @@ class RetChannel {
   queue_r recv() noexcept;
 
   /** @brief Send return */
-  QueueError send(const Ret& ret) noexcept;
+  QueueError send(const ret& _ret) noexcept;
 
   /** @brief Remove front return */
   void pop() noexcept;
@@ -111,7 +111,7 @@ class RetChannel {
   bool empty() const noexcept;
 
  private:
-  std::array<Ret, MaxRets> rets_;     /**< Return storage */
+  std::array<ret, MaxRets> rets_;     /**< Return storage */
   std::size_t head_;                  /**< Read position */
   std::size_t tail_;                  /**< Write position */
   std::size_t count_;                 /**< Current return count */

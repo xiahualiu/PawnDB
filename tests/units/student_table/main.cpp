@@ -61,7 +61,7 @@ TEST_CASE("StudentTuple Hash #1") {
 TEST_CASE("StudentTuple Serialize/Deserialize #1") {
   StudentTuple student = {"Brian", 25, 42};
   student.set_checksum();
-  BufferTable buffer_table;
+  buf_table buffer_table;
   auto buffer = buffer_table.request().unwrap();
   auto r = student.serialize(buffer, 0);
   CHECK(r.unwrap() == 37);
@@ -103,7 +103,7 @@ TEST_CASE("StudentTable Search #2") {
   CHECK(table.trait_size() == StudentTable::Rows);
 
   // Remove last student
-  CHECK(table.trait_remove(StudentTable::Rows - 1) == TableError::None);
+  CHECK(table.trait_remove(StudentTable::Rows - 1) == StudentTableError::None);
   CHECK(!table.trait_full());
   CHECK(table.trait_size() == StudentTable::Rows - 1);
 
@@ -124,7 +124,7 @@ TEST_CASE("StudentTable Search #2") {
 TEST_CASE("StudentTable Search Not Found #2") {
   StudentTable table;
   auto search_r = table.search(0);
-  CHECK(search_r.getError() == TableError::NotFound);
+  CHECK(search_r.getError() == StudentTableError::NotFound);
 }
 
 TEST_CASE("Table Basic Operations #1") {
@@ -220,7 +220,7 @@ TEST_CASE("StudentTable Insert #3") {
   CHECK(table.trait_size() == StudentTable::Rows);
 
   // Remove last student
-  CHECK(table.trait_remove(StudentTable::Rows - 1) == TableError::None);
+  CHECK(table.trait_remove(StudentTable::Rows - 1) == StudentTableError::None);
   CHECK(!table.trait_full());
   CHECK(table.trait_size() == StudentTable::Rows - 1);
 
@@ -421,7 +421,7 @@ TEST_CASE("StudentTable Remove #2") {
   CHECK(table.trait_size() == StudentTable::Rows);
 
   // Remove last student
-  CHECK(table.trait_remove(StudentTable::Rows - 1) == TableError::None);
+  CHECK(table.trait_remove(StudentTable::Rows - 1) == StudentTableError::None);
   CHECK(!table.trait_full());
   CHECK(table.trait_size() == StudentTable::Rows - 1);
 
@@ -435,7 +435,7 @@ TEST_CASE("StudentTable Remove #2") {
   CHECK(table.trait_full());
   CHECK(table.trait_size() == StudentTable::Rows);
   auto remove_r = table.trait_remove(StudentTable::Rows);
-  CHECK(remove_r == TableError::None);
+  CHECK(remove_r == StudentTableError::None);
 }
 
 TEST_CASE("StudentTable Write #1") {
@@ -448,7 +448,7 @@ TEST_CASE("StudentTable Write #1") {
   auto get_r = table._test_get_entry(0);
   CHECK(get_r);
   CHECK(get_r.unwrap().lock_ == -1);
-  CHECK(table.write({"David", 30, 0}) == TableError::None);
+  CHECK(table.write({"David", 30, 0}) == StudentTableError::None);
   CHECK(table._test_get_entry(0).unwrap().tuple_._test_name() == "David");
   CHECK(table._test_get_entry(0).unwrap().lock_ == -1);
   CHECK(table._test_get_entry(0).unwrap().tuple_._test_age() == 30);

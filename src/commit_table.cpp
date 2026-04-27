@@ -2,45 +2,37 @@
 
 namespace PawnDB {
 
-CommitEntry::CommitEntry(const TableTupleKey& _key, OpType _op,
-                         const BufferRef& _buffer) noexcept
+commit_entry::commit_entry(const unique_key& _key, OpType _op,
+                           const buf_ref& _buffer) noexcept
     : buffer_(_buffer), key_(_key), op_(_op) {}
 
-CommitEntry::CommitEntry(const CommitEntry& other) noexcept
+commit_entry::commit_entry(const commit_entry& other) noexcept
     : buffer_(other.buffer_), key_(other.key_), op_(other.op_) {}
 
-CommitEntry& CommitEntry::operator=(const CommitEntry& other) noexcept {
+commit_entry& commit_entry::operator=(const commit_entry& other) noexcept {
   buffer_ = other.buffer_;
   key_ = other.key_;
   op_ = other.op_;
   return *this;
 }
 
-CommitEntry CommitEntry::copy() const noexcept {
-  return CommitEntry(*this);
-}
-
-void CommitEntry::copy_from(const CommitEntry& other) noexcept {
-  *this = other;
-}
-
-BufferRef CommitEntry::buffer() const noexcept {
+buf_ref commit_entry::buf() const noexcept {
   return buffer_;
 }
 
-const TableTupleKey& CommitEntry::key() const noexcept {
+const unique_key& commit_entry::key() const noexcept {
   return key_;
 }
 
-OpType CommitEntry::op() const noexcept {
+OpType commit_entry::op() const noexcept {
   return op_;
 }
 
-CommitTable::queue_r CommitTable::get() noexcept {
+commit_table::queue_r commit_table::get() noexcept {
   return commits_[tail_];
 }
 
-QueueError CommitTable::send(const CommitEntry& _entry) noexcept {
+QueueError commit_table::send(const commit_entry& _entry) noexcept {
   if (full()) {
     return QueueError::Full;
   }
@@ -50,26 +42,26 @@ QueueError CommitTable::send(const CommitEntry& _entry) noexcept {
   return QueueError::None;
 }
 
-void CommitTable::pop() noexcept {
+void commit_table::pop() noexcept {
   tail_ = (tail_ + 1) % N;
   size_--;
 }
 
-void CommitTable::clear() noexcept {
+void commit_table::clear() noexcept {
   head_ = 0;
   tail_ = 0;
   size_ = 0;
 }
 
-std::size_t CommitTable::size() const noexcept {
+std::size_t commit_table::size() const noexcept {
   return size_;
 }
 
-bool CommitTable::empty() const noexcept {
+bool commit_table::empty() const noexcept {
   return size_ == 0;
 }
 
-bool CommitTable::full() const noexcept {
+bool commit_table::full() const noexcept {
   return size_ >= N;
 }
 

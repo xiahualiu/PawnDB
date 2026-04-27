@@ -1,62 +1,43 @@
 #include "pawndb/types/buffer_table.h"
 
-#include <utility>
+#include "pawndb/params.h"
 
 namespace PawnDB {
 
-BufferTable::request_r BufferTable::request() noexcept {
+buf_table::buf_req_r buf_table::request() noexcept {
   std::size_t index = 0;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (size_ >= N) {
+    if (size_ >= BUFFER_ROWS) {
       return BufferError::Full;
     }
     while (buffers_[next_].ref_count_ > 0) {
-      next_ = (next_ + 1) % N;
+      next_ = (next_ + 1) % BUFFER_ROWS;
     }
     index = next_;
     buffers_[index].ref_count_ = 1;
-    next_ = (index + 1) % N;
+    next_ = (index + 1) % BUFFER_ROWS;
     size_++;
   }
-  return BufferRef{this, index};
+  return buf_ref{this, index};
 }
 
-void BufferTable::clear_() noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  for (auto &buffer : buffers_) {
-    buffer.ref_count_ = 0;
-  }
-  size_ = 0;
-  next_ = 0;
-}
-
-bool BufferTable::empty() const noexcept {
+bool buf_table::empty() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   return size_ == 0;
 }
 
-bool BufferTable::full() const noexcept {
+bool buf_table::full() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
-  return size_ >= N;
+  return size_ >= BUFFER_ROWS;
 }
 
-std::size_t BufferTable::size() const noexcept {
+std::size_t buf_table::size() const noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   return size_;
 }
 
-std::uint8_t BufferTable::_test_is_used(std::size_t _i) const noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return buffers_[_i].ref_count_ > 0;
-}
-
-std::uint16_t BufferTable::_test_ref_count(std::size_t _i) const noexcept {
-  std::lock_guard<std::mutex> lock(mutex_);
-  return buffers_[_i].ref_count_;
-}
-
-void BufferTable::retain_ref_(std::size_t index) noexcept {
+void buf_table::retain_ref(std::size_t index) noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   auto &entry = buffers_[index];
   if (entry.ref_count_ == 0) {
@@ -65,7 +46,7 @@ void BufferTable::retain_ref_(std::size_t index) noexcept {
   entry.ref_count_++;
 }
 
-void BufferTable::release_ref_(std::size_t index) noexcept {
+void buf_table::release_ref(std::size_t index) noexcept {
   std::lock_guard<std::mutex> lock(mutex_);
   auto &entry = buffers_[index];
   if (entry.ref_count_ == 0) {
@@ -77,43 +58,43 @@ void BufferTable::release_ref_(std::size_t index) noexcept {
   }
 }
 
-BufferRef::BufferRef(BufferTable *_table, std::size_t _index) noexcept
+buf_ref::buf_ref(buf_table *_table, std::size_t _index) noexcept
     : table_(_table), index_(_index) {}
 
-BufferRef::BufferRef(const BufferRef &_other) noexcept
+buf_ref::buf_ref(const buf_ref &_other) noexcept
     : table_(_other.table_), index_(_other.index_) {
   if (table_ != nullptr) {
-    table_->retain_ref_(index_);
+    table_->retain_ref(index_);
   }
 }
 
-BufferRef::BufferRef(BufferRef &&_other) noexcept
+buf_ref::buf_ref(buf_ref &&_other) noexcept
     : table_(_other.table_), index_(_other.index_) {
   _other.table_ = nullptr;
   _other.index_ = 0;
 }
 
-BufferRef &BufferRef::operator=(const BufferRef &_other) noexcept {
+buf_ref &buf_ref::operator=(const buf_ref &_other) noexcept {
   if (this == &_other) {
     return *this;
   }
   if (_other.table_ != nullptr) {
-    _other.table_->retain_ref_(_other.index_);
+    _other.table_->retain_ref(_other.index_);
   }
   if (table_ != nullptr) {
-    table_->release_ref_(index_);
+    table_->release_ref(index_);
   }
   table_ = _other.table_;
   index_ = _other.index_;
   return *this;
 }
 
-BufferRef &BufferRef::operator=(BufferRef &&_other) noexcept {
+buf_ref &buf_ref::operator=(buf_ref &&_other) noexcept {
   if (this == &_other) {
     return *this;
   }
   if (table_ != nullptr) {
-    table_->release_ref_(index_);
+    table_->release_ref(index_);
   }
   table_ = _other.table_;
   index_ = _other.index_;
@@ -122,35 +103,15 @@ BufferRef &BufferRef::operator=(BufferRef &&_other) noexcept {
   return *this;
 }
 
-BufferRef::~BufferRef() noexcept {
+buf_ref::~buf_ref() noexcept {
   release_ref_();
 }
 
-BufferRef BufferRef::copy() const noexcept {
-  return BufferRef{*this};
-}
-
-void BufferRef::copy_from(const BufferRef &_other) noexcept {
-  *this = _other;
-}
-
-BufferRef BufferRef::move() noexcept {
-  return std::move(*this);
-}
-
-void BufferRef::move_from(BufferRef &&_other) noexcept {
-  *this = std::move(_other);
-}
-
-bool BufferRef::_test_null() const noexcept {
-  return table_ == nullptr;
-}
-
-buffer_t &BufferRef::buffer() const noexcept {
+buf_t &buf_ref::buffer() const noexcept {
   return table_->buffers_[index_].buffer_;
 }
 
-void BufferRef::release_ref_() noexcept {
+void buf_ref::release_ref_() noexcept {
   if (table_ == nullptr) {
     return;
   }
@@ -158,11 +119,7 @@ void BufferRef::release_ref_() noexcept {
   auto index = index_;
   table_ = nullptr;
   index_ = 0;
-  table->release_ref_(index);
-}
-
-std::size_t BufferRef::_test_index() const noexcept {
-  return index_;
+  table->release_ref(index);
 }
 
 }  // namespace PawnDB

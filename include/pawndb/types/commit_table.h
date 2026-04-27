@@ -6,11 +6,10 @@
 
 #include "pawndb/params.h"
 #include "pawndb/types/buffer_table.h"
-#include "pawndb/types/table_tuple_key.h"
+#include "pawndb/types/parser.h"
+#include "pawndb/types/unique_key.h"
 
 namespace PawnDB {
-
-class CommitIt;
 
 /**
  * @brief Entry in commit table storing operation details
@@ -18,13 +17,13 @@ class CommitIt;
  * Stores buffer reference, key, operation type and hash table flags.
  * Implements hash and copy operations for table storage.
  */
-class CommitEntry {
+class commit_entry {
  public:
   /** @brief Key type alias */
-  using key_t = TableTupleKey;
+  using key_t = unique_key;
 
   /** @brief Default constructor creates invalid entry */
-  constexpr CommitEntry() noexcept
+  constexpr commit_entry() noexcept
       : buffer_(), key_(), op_(OpType::MAX_OP_VALUE) {}
 
   /**
@@ -33,35 +32,28 @@ class CommitEntry {
    * @param op Operation type
    * @param buffer Associated buffer
    */
-  CommitEntry(const TableTupleKey& key, OpType op,
-              const BufferRef& buffer) noexcept;
+  commit_entry(const unique_key& key, OpType op,
+               const buf_ref& buffer) noexcept;
 
   // Copyable
-  CommitEntry(const CommitEntry& other) noexcept;
-  CommitEntry& operator=(const CommitEntry& other) noexcept;
-
-  /** @brief Create deep copy */
-  CommitEntry copy() const noexcept;
-
-  /** @brief Copy from another entry */
-  void copy_from(const CommitEntry& other) noexcept;
+  commit_entry(const commit_entry& other) noexcept;
+  commit_entry& operator=(const commit_entry& other) noexcept;
 
   /** @brief Get buffer reference */
-  BufferRef buffer() const noexcept;
+  buf_ref buf() const noexcept;
 
   /** @brief Get table-tuple key */
-  const TableTupleKey& key() const noexcept;
+  const unique_key& key() const noexcept;
 
   /** @brief Get operation type */
   OpType op() const noexcept;
 
  private:
-  BufferRef buffer_;  /**< Associated buffer */
-  TableTupleKey key_; /**< Table-tuple key */
-  OpType op_;         /**< Operation type */
+  buf_ref buffer_; /**< Associated buffer */
+  unique_key key_; /**< Table-tuple key */
+  OpType op_;      /**< Operation type */
 
-  friend class CommitIt;
-  friend class CommitTable;
+  friend class commit_table;
 };
 
 /**
@@ -72,27 +64,28 @@ class CommitEntry {
  * - Iterator support for traversing entries
  * - Fixed maximum size per transaction
  */
-class CommitTable {
+class commit_table {
  private:
   /** @brief Maximum entries per transaction */
   static constexpr std::size_t N = MAX_COMMIT_PER_TRANSACTION;
 
  public:
   /** @brief Result type for queue operations */
-  using queue_r = Result<CommitEntry, QueueError>;
+  using queue_r = Result<commit_entry, QueueError>;
 
   /** @brief Default constructor initializes empty table */
-  constexpr CommitTable() noexcept : commits_(), head_(0), tail_(0), size_(0) {}
+  constexpr commit_table() noexcept
+      : commits_(), head_(0), tail_(0), size_(0) {}
 
   // Not copyable
-  CommitTable(const CommitTable& other) noexcept = delete;
-  CommitTable& operator=(const CommitTable& other) noexcept = delete;
+  commit_table(const commit_table& other) noexcept = delete;
+  commit_table& operator=(const commit_table& other) noexcept = delete;
 
   /** @brief Get commit entry without blocking */
   queue_r get() noexcept;
 
   /** @brief Add commit entry to queue */
-  QueueError send(const CommitEntry& entry) noexcept;
+  QueueError send(const commit_entry& entry) noexcept;
 
   /** @brief Remove front entry */
   void pop() noexcept;
@@ -110,10 +103,10 @@ class CommitTable {
   bool full() const noexcept;
 
  private:
-  std::array<CommitEntry, N> commits_; /**< Entry storage */
-  std::size_t head_;                   /**< Read position */
-  std::size_t tail_;                   /**< Write position */
-  std::size_t size_;                   /**< Number of entries */
+  std::array<commit_entry, N> commits_; /**< Entry storage */
+  std::size_t head_;                    /**< Read position */
+  std::size_t tail_;                    /**< Write position */
+  std::size_t size_;                    /**< Number of entries */
 };
 
 }  // namespace PawnDB

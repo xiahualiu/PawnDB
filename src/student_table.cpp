@@ -56,7 +56,7 @@ tbl_row_t StudentTuple::trait_key() const noexcept {
 }
 
 StudentTuple::serial_r StudentTuple::trait_serialize(
-    buffer_t& _buffer, std::size_t _offset) const noexcept {
+    buf_t& _buffer, std::size_t _offset) const noexcept {
   auto buffer_ptr = _buffer.data() + _offset;
   std::memcpy(buffer_ptr, name_.data(), NAME_LENGTH);
   buffer_ptr += NAME_LENGTH;
@@ -67,7 +67,7 @@ StudentTuple::serial_r StudentTuple::trait_serialize(
 }
 
 StudentTuple::serial_r StudentTuple::trait_deserialize(
-    const buffer_t& _buffer, std::size_t _offset) noexcept {
+    const buf_t& _buffer, std::size_t _offset) noexcept {
   auto buffer_ptr = _buffer.data() + _offset;
   std::memcpy(name_.data(), buffer_ptr, NAME_LENGTH);
   buffer_ptr += NAME_LENGTH;
@@ -138,53 +138,53 @@ StudentTable::table_r StudentTable::trait_search(const key_t& _key) noexcept {
   auto start = idx;
   do {
     if (!table_[idx].is_used_) {
-      return TableError::NotFound;
+      return StudentTableError::NotFound;
     }
     if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       return table_[idx].tuple_;
     }
     idx = (idx + 1) % Rows;
   } while (idx != start);
-  return TableError::NotFound;
+  return StudentTableError::NotFound;
 }
 
-Result<StudentTable::Entry&, TableError> StudentTable::_test_get_entry(
+Result<StudentTable::Entry&, StudentTableError> StudentTable::_test_get_entry(
     const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   auto start = idx;
   do {
     if (!table_[idx].is_used_) {
-      return TableError::NotFound;
+      return StudentTableError::NotFound;
     }
     if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       return table_[idx];
     }
     idx = (idx + 1) % Rows;
   } while (idx != start);
-  return TableError::NotFound;
+  return StudentTableError::NotFound;
 }
 
-TableError StudentTable::trait_remove(const key_t& _key) noexcept {
+StudentTableError StudentTable::trait_remove(const key_t& _key) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _key % Rows;
   while (true) {
     if (table_[idx].tuple_.key_ == _key && !table_[idx].is_deleted_) {
       table_[idx].is_deleted_ = true;
       size_--;
-      return TableError::None;
+      return StudentTableError::None;
     }
     idx = (idx + 1) % Rows;
   }
 }
 
-TableError StudentTable::trait_write(const tuple_t& _tuple) noexcept {
+StudentTableError StudentTable::trait_write(const tuple_t& _tuple) noexcept {
   auto lock = std::unique_lock<std::mutex>(mtx_);
   auto idx = _tuple.key_ % Rows;
   while (true) {
     if (table_[idx].tuple_.key_ == _tuple.key_ && !table_[idx].is_deleted_) {
       table_[idx].tuple_ = _tuple;
-      return TableError::None;
+      return StudentTableError::None;
     }
     idx = (idx + 1) % Rows;
   }

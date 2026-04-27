@@ -36,14 +36,14 @@ class ThreadManager {
 
  private:
   /** @brief Send reply to client */
-  void reply(OpAck _ack, Parser& _parser, const sockaddr_un& _client_addr,
+  void reply(OpAck _ack, buf_parser& _parser, const sockaddr_un& _client_addr,
              const socklen_t _client_addr_len) noexcept;
 
   /** @brief Database instance */
   Database& db_;
 
   /** @brief Return channel */
-  RetChannel ret_ch_;
+  ret_channel ret_ch_;
 
   /** @brief Worker hash table */
   WorkerTable workers_;

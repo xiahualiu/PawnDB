@@ -29,8 +29,29 @@
 #include <string>
 
 #include "pawndb/params.h"
+#include "pawndb/result.h"
 
 namespace PawnDB {
+
+/** @brief Student table operation error codes */
+enum class StudentTableError {
+  None,    /**< Operation successful */
+  NotFound /**< Entry not found */
+};
+
+/** @brief Tuple table operation error codes */
+enum class TupleTableError {
+  None,    /**< Operation successful */
+  Full,    /**< Table at capacity */
+  Timeout, /**< Lock wait timeout */
+  NotFound /**< Entry not found */
+};
+
+/** @brief Serializer error codes */
+enum class SerializerError {
+  None,         /**< No error */
+  ExceededWidth /**< Data exceeds buffer width */
+};
 
 /**
  * @brief Entry in student table storing student records
@@ -81,10 +102,10 @@ class StudentTuple {
   tbl_row_t key() const noexcept;
 
   /** @brief Serialize entry */
-  serial_r serialize_(buffer_t& buffer, std::size_t offset) const noexcept;
+  serial_r serialize_(buf_t& buffer, std::size_t offset) const noexcept;
 
   /** @brief Deserialize entry */
-  serial_r deserialize_(const buffer_t& buffer, std::size_t offset) noexcept;
+  serial_r deserialize_(const buf_t& buffer, std::size_t offset) noexcept;
 
   /** @brief Compute hash */
   std::size_t hash_() const noexcept;
@@ -139,7 +160,7 @@ class StudentTable {
   using tuple_t = StudentTuple;
 
   /** @brief Result type for table operations */
-  using table_r = Result<StudentTuple&, TableError>;
+  using table_r = Result<StudentTuple&, StudentTableError>;
 
   /** @brief Entry in student table */
   struct Entry {
@@ -173,7 +194,7 @@ class StudentTable {
   /** @brief Remove student record
    *  @param _key Key of record to remove
    *  @return Error status */
-  TableError remove_(const key_t& _key) noexcept;
+  StudentTableError remove_(const key_t& _key) noexcept;
 
   /** @brief Clear the student table */
   void clear_() noexcept;
@@ -181,7 +202,7 @@ class StudentTable {
   /** @brief Update student record
    *  @param _tuple Tuple with updated values
    *  @return Error status */
-  TableError write_(const tuple_t& _tuple) noexcept;
+  StudentTableError write_(const tuple_t& _tuple) noexcept;
 
   /** @brief Wait for shared access */
   ttable_r wait_shared_() noexcept;
@@ -220,7 +241,7 @@ class StudentTable {
   bool full_() const noexcept;
 
   /** @brief Same as search but return the whole entry */
-  Result<Entry&, TableError> _test_get_entry(const key_t& _key) noexcept;
+  Result<Entry&, StudentTableError> _test_get_entry(const key_t& _key) noexcept;
 
   /** @brief Get number of shared locks available */
   tbl_row_t _test_s_avail_cnt() const noexcept;
