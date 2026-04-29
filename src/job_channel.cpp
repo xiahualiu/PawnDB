@@ -1,49 +1,6 @@
 #include "pawndb/types/job_channel.h"
 
-#include <sys/socket.h>
-
-#include <cstring>
-
 namespace PawnDB {
-
-job::job(buf_ref _buffer, std::size_t _buffer_size, const sockaddr_un& _addr,
-         socklen_t _addr_len) noexcept
-    : buffer_(_buffer),
-      buffer_size_(_buffer_size),
-      client_addr_len_(_addr_len) {
-  memcpy(&client_addr_, &_addr, sizeof(_addr));
-}
-
-job::job(const job& other) noexcept
-    : buffer_(other.buffer_),
-      buffer_size_(other.buffer_size_),
-      client_addr_len_(other.client_addr_len_) {
-  memcpy(&client_addr_, &other.client_addr_, sizeof(other.client_addr_));
-}
-
-job& job::operator=(const job& other) noexcept {
-  buffer_ = other.buffer_;
-  buffer_size_ = other.buffer_size_;
-  client_addr_len_ = other.client_addr_len_;
-  memcpy(&client_addr_, &other.client_addr_, sizeof(other.client_addr_));
-  return *this;
-}
-
-buf_ref job::buf() const noexcept {
-  return buffer_;
-}
-
-std::size_t job::buf_sz() const noexcept {
-  return buffer_size_;
-}
-
-const sockaddr* job::c_addr() const noexcept {
-  return reinterpret_cast<const sockaddr*>(&client_addr_);
-}
-
-socklen_t job::c_addr_len() const noexcept {
-  return client_addr_len_;
-}
 
 job_channel::job_channel() noexcept : jobs_(), head_(0), tail_(0), count_(0) {}
 

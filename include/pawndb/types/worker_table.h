@@ -11,8 +11,8 @@
 #include "pawndb/params.h"
 #include "pawndb/result.h"
 #include "pawndb/schema/demo.h"
+#include "pawndb/types/job_buf.h"
 #include "pawndb/types/job_channel.h"
-#include "pawndb/types/parser.h"
 #include "pawndb/types/ret_channel.h"
 
 namespace PawnDB {
@@ -94,7 +94,7 @@ class WorkerContext {
 
  private:
   // Reply functions
-  void reply(OpAck _ack, buf_parser& _parser, std::size_t _size,
+  void reply(OpAck _ack, job_buf& _parser, std::size_t _size,
              job& _job) noexcept;
 
   /** @brief Worker quit function */
@@ -103,18 +103,18 @@ class WorkerContext {
   /** @brief Release all locks */
   void release_locks() noexcept;
 
-  /** @brief Clear commit table */
-  void clear_commit_table() noexcept;
+  /** @brief Clear commit queue */
+  void clear_commit_queue() noexcept;
 
   // Process functions
-  void process_commit(buf_parser& _parser, job& _job) noexcept;
-  void process_add(buf_parser& _parser, job& _job) noexcept;
-  void process_shared_read(buf_parser& _parser, job& _job) noexcept;
-  void process_exclusive_read(buf_parser& _parser, job& _job) noexcept;
-  void process_yield(buf_parser& _parser, job& _job) noexcept;
-  void process_promote(buf_parser& _parser, job& _job) noexcept;
-  void process_update(buf_parser& _parser, job& _job) noexcept;
-  void process_rm(buf_parser& _parser, job& _job) noexcept;
+  void process_commit(job_buf& _parser, job& _job) noexcept;
+  void process_add(job_buf& _parser, job& _job) noexcept;
+  void process_shared_read(job_buf& _parser, job& _job) noexcept;
+  void process_exclusive_read(job_buf& _parser, job& _job) noexcept;
+  void process_yield(job_buf& _parser, job& _job) noexcept;
+  void process_promote(job_buf& _parser, job& _job) noexcept;
+  void process_update(job_buf& _parser, job& _job) noexcept;
+  void process_rm(job_buf& _parser, job& _job) noexcept;
 
   ret_channel* ret_ch_;      /**< Return channel */
   Database* db_;             /**< Database instance */

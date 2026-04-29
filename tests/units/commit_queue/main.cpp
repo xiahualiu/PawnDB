@@ -2,19 +2,19 @@
 
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
-#include "pawndb/types/commit_table.h"
+#include "pawndb/types/commit_queue.h"
 
 namespace PawnDB {
 
-TEST_CASE("commit_table Basic Operations #1") {
-  commit_table table;
+TEST_CASE("commit_queue Basic Operations #1") {
+  commit_queue table;
   CHECK(table.empty());
   CHECK(!table.full());
   CHECK(table.size() == 0);
 }
 
-TEST_CASE("commit_table Queue Operations #1") {
-  commit_table table;
+TEST_CASE("commit_queue Queue Operations #1") {
+  commit_queue table;
   buf_table buffers;
   auto buffer_r = buffers.request();
   CHECK(buffer_r);
@@ -40,8 +40,8 @@ TEST_CASE("commit_table Queue Operations #1") {
   CHECK(table.size() == 0);
 }
 
-TEST_CASE("commit_table Full #1") {
-  commit_table table;
+TEST_CASE("commit_queue Full #1") {
+  commit_queue table;
   buf_table buffers;
 
   // Fill up to capacity
@@ -63,8 +63,8 @@ TEST_CASE("commit_table Full #1") {
   CHECK(table.send(entry) == QueueError::Full);
 }
 
-TEST_CASE("commit_table Clear #1") {
-  commit_table table;
+TEST_CASE("commit_queue Clear #1") {
+  commit_queue table;
   buf_table buffers;
 
   // Add some entries
@@ -85,7 +85,7 @@ TEST_CASE("commit_table Clear #1") {
 }
 
 TEST_CASE("commit_entry Copy #1") {
-  commit_table table;
+  commit_queue table;
   buf_table buffers;
   auto buffer_r = buffers.request();
   CHECK(buffer_r);
@@ -102,7 +102,7 @@ TEST_CASE("commit_entry Copy #1") {
 }
 
 TEST_CASE("commit_entry Clone #1") {
-  commit_table table;
+  commit_queue table;
   buf_table buffers;
   auto buffer_r = buffers.request();
   CHECK(buffer_r);
@@ -118,7 +118,7 @@ TEST_CASE("commit_entry Clone #1") {
 }
 
 TEST_CASE("commit_entry Buffer #1") {
-  commit_table table;
+  commit_queue table;
   buf_table buffers;
   auto buffer_r = buffers.request();
   CHECK(buffer_r);

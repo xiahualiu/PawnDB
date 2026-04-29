@@ -1,5 +1,5 @@
 add_subdirectory(buffer_table)
-add_subdirectory(commit_table)
+add_subdirectory(commit_queue)
 add_subdirectory(job_channel)
 add_subdirectory(lock_table)
 add_subdirectory(parser)

@@ -3,7 +3,8 @@
 #include <utility>
 
 #include "doctest/doctest.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buf_ref.h"
+#include "pawndb/types/buf_table.h"
 
 namespace PawnDB {
 

@@ -1,7 +1,7 @@
 /**
- * @file parser.h
+ * @file job_buf.h
  * @author Xiahua Liu @xiahualiu
- * @brief PawnDB binary protocol parser.
+ * @brief PawnDB job buffer — owns a buffer and provides protocol parsing.
  * @version 0.1
  * @date 2025-01-02
  *
@@ -9,8 +9,8 @@
  *
  */
 
-#ifndef PAWNDB_TYPES_PARSER_H
-#define PAWNDB_TYPES_PARSER_H
+#ifndef PAWNDB_TYPES_JOB_BUF_H
+#define PAWNDB_TYPES_JOB_BUF_H
 
 #include <cstddef>
 #include <cstring>
@@ -18,7 +18,7 @@
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buf_ref.h"
 
 namespace PawnDB {
 
@@ -61,6 +61,17 @@ enum class ParserError {
   InvalidValue  /**< Invalid value encountered */
 };
 
+/** @brief Protocol field offsets for binary message layout */
+enum class FieldOffset : std::size_t {
+  OP = 0,     /**< Operation type */
+  OP_ID = 1,  /**< Operation ID */
+  TXN = 2,    /**< Transaction ID (4 bytes) */
+  ACK = 6,    /**< Acknowledgement */
+  TBL = 7,    /**< Table ID */
+  TP_KEY = 8, /**< Tuple key */
+  TUPLE = 9,  /**< Tuple data start */
+};
+
 /** @brief Parser operation result type */
 using op_r = Result<OpType, ParserError>;
 
@@ -79,27 +90,29 @@ using tbl_id_r = Result<tp_id_t, ParserError>;
 /** @brief Parser tuple key result type */
 using tp_key_r = Result<tbl_row_t, ParserError>;
 
-/** @brief Protocol field offsets for binary message layout */
-enum class FieldOffset : std::size_t {
-  OP = 0,     /**< Operation type */
-  OP_ID = 1,  /**< Operation ID */
-  TXN = 2,    /**< Transaction ID (4 bytes) */
-  ACK = 6,    /**< Acknowledgement */
-  TBL = 7,    /**< Table ID */
-  TP_KEY = 8, /**< Tuple key */
-  TUPLE = 9,  /**< Tuple data start */
-};
-
 /**
- * @brief Binary parser for decoding protocol messages in pawnDB.
+ * @brief Job buffer — a buffer reference with protocol parsing for job
+ * processing.
+ *
+ * Inherits buf_ref for buffer ownership and adds binary protocol field
+ * parsing. Tailored for use within the job class.
  *
  * Input format:
  * | op (1) | op_id (1) | txn_id (4) | ack (1) | table_id (1) | tp_key (1) |
  * data... |
  */
-class buf_parser {
+class job_buf : public buf_ref {
  public:
-  buf_parser(buf_ref& buffer, std::size_t size) noexcept;
+  /** @brief Default constructor — creates empty job buffer */
+  constexpr job_buf() noexcept : buf_ref(), buffer_size_(0) {}
+
+  /** @brief Construct from an existing buf_ref, taking ownership */
+  job_buf(buf_ref buf, std::size_t size) noexcept;
+
+  /** @brief Get the underlying buffer */
+  buf_t& get_buffer() const noexcept {
+    return buffer();
+  }
 
   /** @brief Get the operation type */
   Result<OpType, ParserError> get_op() const noexcept;
@@ -144,7 +157,6 @@ class buf_parser {
   std::size_t get_tuple_offset() const noexcept;
 
  private:
-  buf_ref& buffer_ref_;
   std::size_t buffer_size_;
 
   template <typename T>
@@ -155,21 +167,21 @@ class buf_parser {
 };
 
 template <typename T>
-bool buf_parser::parse_field(T& value, FieldOffset offset) const noexcept {
+bool job_buf::parse_field(T& value, FieldOffset offset) const noexcept {
   const auto off = static_cast<std::size_t>(offset);
   if (off + sizeof(T) > buffer_size_) {
     return false;
   }
-  std::memcpy(&value, buffer_ref_.buffer().data() + off, sizeof(T));
+  std::memcpy(&value, buffer().data() + off, sizeof(T));
   return true;
 }
 
 template <typename T>
-void buf_parser::set_field(const T& value, FieldOffset offset) noexcept {
-  std::memcpy(buffer_ref_.buffer().data() + static_cast<std::size_t>(offset),
-              &value, sizeof(T));
+void job_buf::set_field(const T& value, FieldOffset offset) noexcept {
+  std::memcpy(buffer().data() + static_cast<std::size_t>(offset), &value,
+              sizeof(T));
 }
 
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TYPES_PARSER_H
+#endif  // PAWNDB_TYPES_JOB_BUF_H

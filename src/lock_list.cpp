@@ -2,37 +2,6 @@
 
 namespace PawnDB {
 
-lock_entry::lock_entry(const unique_key& _key, LockType _type) noexcept
-    : key_(_key), type_(_type), is_used_(true), is_deleted_(false) {}
-
-lock_entry::lock_entry(const lock_entry& other) noexcept {
-  key_ = other.key_;
-  type_ = other.type_;
-}
-
-lock_entry& lock_entry::operator=(const lock_entry& other) noexcept {
-  key_ = other.key_;
-  type_ = other.type_;
-  return *this;
-}
-
-lock_entry lock_entry::copy() const noexcept {
-  return lock_entry(*this);
-}
-
-void lock_entry::copy_from(const lock_entry& other) noexcept {
-  key_ = other.key_;
-  type_ = other.type_;
-}
-
-LockType lock_entry::lock_type() const noexcept {
-  return type_;
-}
-
-const unique_key& lock_entry::key() const noexcept {
-  return key_;
-}
-
 lock_list::table_r lock_list::insert(const lock_entry& _entry) noexcept {
   auto idx = _entry.key_.hash_() % N;
   while (true) {
@@ -101,7 +70,7 @@ LockError lock_list::promote_lock(const unique_key& _key) noexcept {
   return LockError::None;
 }
 
-lock_list::LockR lock_list::get_lock(const unique_key& _key) noexcept {
+lock_list::lock_r lock_list::get_lock(const unique_key& _key) noexcept {
   auto search_r = search(_key);
   switch (search_r.getError()) {
     case LockError::NotFound: return LockError::NotFound;

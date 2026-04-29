@@ -1,11 +1,11 @@
-#include "pawndb/types/parser.h"
+#include "pawndb/types/ret_buf.h"
 
 namespace PawnDB {
 
-buf_parser::buf_parser(buf_ref& buffer, std::size_t size) noexcept
-    : buffer_ref_(buffer), buffer_size_(size) {}
+ret_buf::ret_buf(buf_ref buf, std::size_t size) noexcept
+    : buf_ref(std::move(buf)), buffer_size_(size) {}
 
-Result<OpType, ParserError> buf_parser::get_op() const noexcept {
+Result<OpType, ParserError> ret_buf::get_op() const noexcept {
   op_t raw;
   if (!parse_field(raw, FieldOffset::OP)) {
     return ParserError::ReadAfterEnd;
@@ -16,7 +16,7 @@ Result<OpType, ParserError> buf_parser::get_op() const noexcept {
   return static_cast<OpType>(raw);
 }
 
-Result<op_t, ParserError> buf_parser::get_op_id() const noexcept {
+Result<op_t, ParserError> ret_buf::get_op_id() const noexcept {
   op_t raw;
   if (!parse_field(raw, FieldOffset::OP_ID)) {
     return ParserError::ReadAfterEnd;
@@ -24,7 +24,7 @@ Result<op_t, ParserError> buf_parser::get_op_id() const noexcept {
   return raw;
 }
 
-Result<txn_id_t, ParserError> buf_parser::get_txn() const noexcept {
+Result<txn_id_t, ParserError> ret_buf::get_txn() const noexcept {
   txn_id_t raw;
   if (!parse_field(raw, FieldOffset::TXN)) {
     return ParserError::ReadAfterEnd;
@@ -32,7 +32,7 @@ Result<txn_id_t, ParserError> buf_parser::get_txn() const noexcept {
   return raw;
 }
 
-Result<tp_id_t, ParserError> buf_parser::get_tbl() const noexcept {
+Result<tp_id_t, ParserError> ret_buf::get_tbl() const noexcept {
   tp_id_t raw;
   if (!parse_field(raw, FieldOffset::TBL)) {
     return ParserError::ReadAfterEnd;
@@ -40,7 +40,7 @@ Result<tp_id_t, ParserError> buf_parser::get_tbl() const noexcept {
   return raw;
 }
 
-Result<tbl_row_t, ParserError> buf_parser::get_key() const noexcept {
+Result<tbl_row_t, ParserError> ret_buf::get_key() const noexcept {
   tbl_row_t raw;
   if (!parse_field(raw, FieldOffset::TP_KEY)) {
     return ParserError::ReadAfterEnd;
@@ -48,7 +48,7 @@ Result<tbl_row_t, ParserError> buf_parser::get_key() const noexcept {
   return raw;
 }
 
-Result<OpAck, ParserError> buf_parser::get_ack() const noexcept {
+Result<OpAck, ParserError> ret_buf::get_ack() const noexcept {
   std::uint8_t raw;
   if (!parse_field(raw, FieldOffset::ACK)) {
     return ParserError::ReadAfterEnd;
@@ -59,8 +59,8 @@ Result<OpAck, ParserError> buf_parser::get_ack() const noexcept {
   return static_cast<OpAck>(raw);
 }
 
-std::string buf_parser::get_string() const noexcept {
-  auto& buf = buffer_ref_.buffer();
+std::string ret_buf::get_string() const noexcept {
+  auto& buf = buffer();
   std::uint16_t length;
   const auto tup_off = static_cast<std::size_t>(FieldOffset::TUPLE);
   if (tup_off + sizeof(length) > buffer_size_) {
@@ -73,39 +73,63 @@ std::string buf_parser::get_string() const noexcept {
   return std::string(buf.data() + tup_off + sizeof(length), length);
 }
 
-cksum_t buf_parser::get_checksum() const noexcept {
+cksum_t ret_buf::get_checksum() const noexcept {
   if (buffer_size_ <= static_cast<std::size_t>(FieldOffset::TUPLE)) {
     return 0;
   }
   cksum_t sum = 0;
-  auto& buf = buffer_ref_.buffer();
+  auto& buf = buffer();
   for (std::size_t i = 0; i < buffer_size_; i++) {
     sum += static_cast<unsigned char>(buf[i]);
   }
   return sum;
 }
 
-void buf_parser::set_ack(OpAck ack) noexcept {
+void ret_buf::set_op(OpType op) noexcept {
+  set_field(static_cast<op_t>(op), FieldOffset::OP);
+}
+
+void ret_buf::set_op_id(op_t id) noexcept {
+  set_field(id, FieldOffset::OP_ID);
+}
+
+void ret_buf::set_ack(OpAck ack) noexcept {
   set_field(ack, FieldOffset::ACK);
 }
 
-void buf_parser::set_txn(txn_id_t txn) noexcept {
+void ret_buf::set_txn(txn_id_t txn) noexcept {
   set_field(txn, FieldOffset::TXN);
 }
 
-void buf_parser::set_key(tbl_row_t key) noexcept {
+void ret_buf::set_tbl(tp_id_t tbl) noexcept {
+  set_field(tbl, FieldOffset::TBL);
+}
+
+void ret_buf::set_key(tbl_row_t key) noexcept {
   set_field(key, FieldOffset::TP_KEY);
 }
 
-void buf_parser::set_buffer_size(std::size_t size) noexcept {
+void ret_buf::set_string(const std::string& str) noexcept {
+  auto& buf = buffer();
+  const auto tup_off = static_cast<std::size_t>(FieldOffset::TUPLE);
+  std::uint16_t length = static_cast<std::uint16_t>(str.size());
+  if (tup_off + sizeof(length) + length > BUFFER_WIDTH) {
+    return;
+  }
+  std::memcpy(buf.data() + tup_off, &length, sizeof(length));
+  std::memcpy(buf.data() + tup_off + sizeof(length), str.data(), length);
+  buffer_size_ = tup_off + sizeof(length) + length;
+}
+
+void ret_buf::set_buffer_size(std::size_t size) noexcept {
   buffer_size_ = size;
 }
 
-std::size_t buf_parser::get_buffer_size() const noexcept {
+std::size_t ret_buf::get_buffer_size() const noexcept {
   return buffer_size_;
 }
 
-std::size_t buf_parser::get_tuple_offset() const noexcept {
+std::size_t ret_buf::get_tuple_offset() const noexcept {
   return static_cast<std::size_t>(FieldOffset::TUPLE);
 }
 

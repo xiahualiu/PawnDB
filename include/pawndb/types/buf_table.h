@@ -1,17 +1,5 @@
-/**
- * @file buffer_table.h
- * @brief Fixed-size thread-safe buffer pool implementation
- * @version 0.1
- * @date 2025-01-02
- *
- * Features:
- * - Fixed buffer allocation
- * - Thread safety
- * - Size tracking
- * - Error handling
- */
-#ifndef PAWNDB_TYPES_BUFFER_TABLE_H
-#define PAWNDB_TYPES_BUFFER_TABLE_H
+#ifndef PAWNDB_TYPES_BUF_TABLE_H
+#define PAWNDB_TYPES_BUF_TABLE_H
 
 #include <array>
 #include <cstddef>
@@ -19,10 +7,9 @@
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
+#include "pawndb/types/buf_ref.h"
 
 namespace PawnDB {
-
-class buf_ref;
 
 /** @brief Buffer operation error codes */
 enum class BufferError {
@@ -92,42 +79,6 @@ class buf_table {
   friend std::uint16_t test_ref_count(const buf_table& t, std::size_t i);
 };
 
-/**
- * @brief Buffer reference wrapper
- */
-class buf_ref {
- private:
-  buf_table* table_;  /**< Owner table reference */
-  std::size_t index_; /**< Buffer index */
-
- public:
-  /** @brief Default constructor - creates invalid reference */
-  constexpr buf_ref() noexcept : table_(nullptr), index_(0) {}
-
-  /** @brief Constructor with table and index
-   *  @param table Owner buffer table
-   *  @param index Buffer index */
-  buf_ref(buf_table* table, std::size_t index) noexcept;
-
-  // Copyable
-  buf_ref(const buf_ref& other) noexcept;
-  buf_ref& operator=(const buf_ref& other) noexcept;
-
-  // Movable
-  buf_ref(buf_ref&& other) noexcept;
-  buf_ref& operator=(buf_ref&& other) noexcept;
-  ~buf_ref() noexcept;
-
-  friend bool test_null(const buf_ref& ref);
-  friend std::size_t test_index(const buf_ref& ref);
-
-  /** @brief Get underlying buffer */
-  buf_t& buffer() const noexcept;
-
- private:
-  void release_ref_() noexcept;
-};
-
 }  // namespace PawnDB
 
-#endif  // PAWNDB_TYPES_BUFFER_TABLE_H
+#endif  // PAWNDB_TYPES_BUF_TABLE_H

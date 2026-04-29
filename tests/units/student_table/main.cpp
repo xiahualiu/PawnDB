@@ -3,7 +3,7 @@
 #include "doctest/doctest.h"
 #include "pawndb/params.h"
 #include "pawndb/traits/tuple_table.h"
-#include "pawndb/types/buffer_table.h"
+#include "pawndb/types/buf_table.h"
 #include "pawndb/types/student_table.h"
 
 namespace PawnDB {

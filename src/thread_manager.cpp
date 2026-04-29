@@ -15,8 +15,8 @@
 #include "pawndb/params.h"
 #include "pawndb/schema/demo.h"
 #include "pawndb/traits/queue.h"
-#include "pawndb/types/buffer_table.h"
-#include "pawndb/types/parser.h"
+#include "pawndb/types/buf_table.h"
+#include "pawndb/types/job_buf.h"
 #include "pawndb/types/ret_channel.h"
 #include "pawndb/types/worker_table.h"
 
@@ -25,12 +25,11 @@ namespace PawnDB {
 ThreadManager::ThreadManager(Database* _db) noexcept
     : db_(*_db), ret_ch_(), workers_(), running_() {}
 
-void ThreadManager::reply(OpAck _ack, buf_parser& _parser,
-                          const sockaddr_un& _client_addr,
-                          const socklen_t _client_addr_len) noexcept {
+void ThreadManager::reply(OpAck _ack, job_buf& _parser,
+                          const client_conn& _conn) noexcept {
   _parser.set_ack(_ack);
-  sendto(server_fd_, _parser.get_buffer().data(), _parser.get_buffer_size(), 0,
-         reinterpret_cast<const sockaddr*>(&_client_addr), _client_addr_len);
+  _conn.reply(server_fd_, _parser.get_buffer().data(),
+              _parser.get_buffer_size());
 }
 
 void ThreadManager::trait_start() noexcept {
@@ -110,12 +109,13 @@ void ThreadManager::trait_start() noexcept {
     }
 
     auto recv_size_u = static_cast<std::size_t>(recv_size);
-    auto parser = buf_parser(recv_buffer, recv_size_u);
+    auto conn = client_conn(client_addr, client_addr_len);
+    auto parser = job_buf(recv_buffer, recv_size_u);
     auto op_r = parser.get_op();
     auto op_id_r = parser.get_op_id();
     if (!op_r || !op_id_r) {
       std::cerr << "Failed to parse operation" << std::endl;
-      reply(OpAck::BAD_OP, parser, client_addr, client_addr_len);
+      reply(OpAck::BAD_OP, parser, conn);
       continue;
     }
     auto op = op_r.unwrap();
@@ -133,13 +133,12 @@ void ThreadManager::trait_start() noexcept {
         auto insert_r = workers_.insert(new_worker_ct);
         // Check if worker was inserted
         if (!insert_r) {
-          reply(OpAck::BUSY, parser, client_addr, client_addr_len);
+          reply(OpAck::BUSY, parser, conn);
           continue;
         }
         auto& worker_entry = insert_r.unwrap();
         // Send the first job to the worker
-        worker_entry.send(
-            {recv_buffer, recv_size_u, client_addr, client_addr_len});
+        worker_entry.send({recv_buffer, recv_size_u, conn});
         worker_entry.notify_not_empty();
         next_txn_id++;
         // We don't release the buffer here, the worker will take care of it.
@@ -158,23 +157,22 @@ void ThreadManager::trait_start() noexcept {
         auto txn_id_r = parser.get_txn();
         if (!txn_id_r) {
           std::cerr << "Failed to parse transaction ID" << std::endl;
-          reply(OpAck::BAD_TXN, parser, client_addr, client_addr_len);
+          reply(OpAck::BAD_TXN, parser, conn);
           continue;
         }
         // Search for the txn worker
         auto search_r = workers_.search(txn_id_r.unwrap());
         if (!search_r) {
           std::cerr << "Failed to find worker" << std::endl;
-          reply(OpAck::BAD_TXN, parser, client_addr, client_addr_len);
+          reply(OpAck::BAD_TXN, parser, conn);
           continue;
         }
         // Send the job to the worker
         auto& worker = search_r.unwrap();
-        auto send_r = worker.send(
-            {recv_buffer, recv_size_u, client_addr, client_addr_len});
+        auto send_r = worker.send({recv_buffer, recv_size_u, conn});
         if (send_r != QueueError::None) {
           std::cerr << "Failed to send job to worker" << std::endl;
-          reply(OpAck::BUSY, parser, client_addr, client_addr_len);
+          reply(OpAck::BUSY, parser, conn);
           continue;
         }
         // If the operation is abort, kill the worker if the worker is waiting.

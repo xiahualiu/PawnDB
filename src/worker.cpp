@@ -21,9 +21,9 @@ Worker::Worker(WorkerContext* entry) noexcept
       txn_id_(entry->txn_id_),
       fd_(entry->fd_),
       timeout_cnt_(0),
-      commit_table_(),
+      commit_queue_(),
       status_(TxnStatus::GROWING),
-      lock_table_() {}
+      lock_list_() {}
 
 void Worker::reply(OpAck _ack, buf_parser& _parser, std::size_t _size,
                    job& _job) noexcept {
@@ -42,14 +42,14 @@ bool Worker::trait_is_running() noexcept {
 
 void Worker::worker_quit() noexcept {
   std::cout << "Worker #" << txn_id_ << " is stopping" << std::endl;
-  release_locks();
-  clear_commit_table();
+  release_all_locks();
+  clear_commit_queue();
   ret_ch_.send(txn_id_);
 }
 
-void Worker::release_locks() noexcept {
-  auto lock_it = lock_table_.begin();
-  auto lock_it_end = lock_table_.end();
+void Worker::release_all_locks() noexcept {
+  auto lock_it = lock_list_.begin();
+  auto lock_it_end = lock_list_.end();
   while (lock_it != lock_it_end) {
     auto& lock = *lock_it;
     auto [tbl, tp_key] = lock.key().disassemble();
@@ -65,13 +65,13 @@ void Worker::release_locks() noexcept {
     }
     lock_it++;
   }
-  lock_table_.clear();
+  lock_list_.clear();
 }
 
-void Worker::clear_commit_table() noexcept {
-  while (!commit_table_.empty()) {
-    auto commit = commit_table_.get().unwrap();
-    commit_table_.pop();
+void Worker::clear_commit_queue() noexcept {
+  while (!commit_queue_.empty()) {
+    auto commit = commit_queue_.get().unwrap();
+    commit_queue_.pop();
   }
 }
 
@@ -83,8 +83,8 @@ void Worker::process_commit(buf_parser& _parser, job& _job) noexcept {
     return;
   }
   // No error allowed in commit phase because of ACID properties
-  while (!commit_table_.empty()) {
-    auto& commit = commit_table_.get().unwrap();
+  while (!commit_queue_.empty()) {
+    auto& commit = commit_queue_.get().unwrap();
     switch (commit.op()) {
       case OpType::ADD_TUPLE: {
         auto [table_id, tuple_key] = commit.key().disassemble_();
@@ -109,7 +109,7 @@ void Worker::process_commit(buf_parser& _parser, job& _job) noexcept {
       }
       case OpType::DELETE: {
         auto [table_id, tuple_key] = commit.key().disassemble_();
-        lock_table_.rm_lock(commit.key());
+        lock_list_.rm_lock(commit.key());
         switch (table_id) {
           case tbl_id<StudentTable>(): {
             auto& table_ref = db_.students_;
@@ -145,7 +145,7 @@ void Worker::process_commit(buf_parser& _parser, job& _job) noexcept {
         break;
       }
     }
-    commit_table_.pop();
+    commit_queue_.pop();
   }
   reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
   job_ch_.pop();
@@ -191,7 +191,7 @@ void Worker::process_add(buf_parser& _parser, job& _job) noexcept {
   }
   // Insert new tuple into commit table
   auto commit_error =
-      commit_table_.send({{table_id, 0}, OpType::ADD_TUPLE, _job.buf()});
+      commit_queue_.send({{table_id, 0}, OpType::ADD_TUPLE, _job.buf()});
   // Check if commit table is full
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
@@ -242,8 +242,8 @@ void Worker::process_shared_read(buf_parser& _parser, job& _job) noexcept {
           timeout_cnt++;
           continue;
         }
-        auto add_lock_r = lock_table_.add_lock(
-            {table_id, wait_r.unwrap().key()}, LockType::SHARED);
+        auto add_lock_r = lock_list_.add_lock({table_id, wait_r.unwrap().key()},
+                                              LockType::SHARED);
         // Check if lock is valid
         if (add_lock_r != LockError::None) {
           reply(OpAck::BAD_ACCESS, _parser, 7, _job);
@@ -304,8 +304,8 @@ void Worker::process_exclusive_read(buf_parser& _parser, job& _job) noexcept {
           timeout_cnt++;
           continue;
         }
-        auto add_lock_r = lock_table_.add_lock(
-            {table_id, wait_r.unwrap().key()}, LockType::EXCLUSIVE);
+        auto add_lock_r = lock_list_.add_lock({table_id, wait_r.unwrap().key()},
+                                              LockType::EXCLUSIVE);
         // Check if lock is valid
         if (add_lock_r != LockError::None) {
           reply(OpAck::BAD_ACCESS, _parser, 7, _job);
@@ -352,7 +352,7 @@ void Worker::process_yield(buf_parser& _parser, job& _job) noexcept {
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = lock_table_.get_lock({table_id, tuple_key});
+  auto lock_r = lock_list_.get_lock({table_id, tuple_key});
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::SHARED) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
@@ -360,7 +360,7 @@ void Worker::process_yield(buf_parser& _parser, job& _job) noexcept {
     return;
   }
   // because we checked the lock above, it is safe to ignore the return value
-  lock_table_.rm_lock({table_id, tuple_key});
+  lock_list_.rm_lock({table_id, tuple_key});
   // Release lock on entry
   switch (table_id) {
     case tbl_id<StudentTable>(): {
@@ -401,7 +401,7 @@ void Worker::process_promote(buf_parser& _parser, job& _job) noexcept {
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = lock_table_.get_lock({table_id, tuple_key});
+  auto lock_r = lock_list_.get_lock({table_id, tuple_key});
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::SHARED) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
@@ -434,7 +434,7 @@ void Worker::process_promote(buf_parser& _parser, job& _job) noexcept {
         break;
       }
       // Promote the lock in the lock table
-      lock_table_.promote_lock({table_id, tuple_key});
+      lock_list_.promote_lock({table_id, tuple_key});
       reply(OpAck::SUCCESS, _parser, _parser.get_buffer_size(), _job);
       job_ch_.pop();
       return;
@@ -467,7 +467,7 @@ void Worker::process_update(buf_parser& _parser, job& _job) noexcept {
   }
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
-  auto lock_r = lock_table_.get_lock({table_id, tuple_key});
+  auto lock_r = lock_list_.get_lock({table_id, tuple_key});
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::EXCLUSIVE) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
@@ -494,7 +494,7 @@ void Worker::process_update(buf_parser& _parser, job& _job) noexcept {
     }
   }
   auto commit_error =
-      commit_table_.send({{table_id, tuple_key}, OpType::UPDATE, _job.buf()});
+      commit_queue_.send({{table_id, tuple_key}, OpType::UPDATE, _job.buf()});
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);
     job_ch_.pop();
@@ -529,14 +529,14 @@ void Worker::process_rm(buf_parser& _parser, job& _job) noexcept {
   auto table_id = table_id_r.unwrap();
   auto tuple_key = tuple_key_r.unwrap();
   auto lock_record_key = unique_key{table_id, tuple_key};
-  auto lock_r = lock_table_.get_lock(lock_record_key);
+  auto lock_r = lock_list_.get_lock(lock_record_key);
   // Check if lock is valid
   if (!lock_r || lock_r.unwrap() != LockType::EXCLUSIVE) {
     reply(OpAck::BAD_ACCESS, _parser, 7, _job);
     job_ch_.pop();
     return;
   }
-  auto commit_error = commit_table_.send({lock_record_key, OpType::DELETE, {}});
+  auto commit_error = commit_queue_.send({lock_record_key, OpType::DELETE, {}});
   // Check if commit table is full
   if (commit_error == QueueError::Full) {
     reply(OpAck::COMMIT_FULL, _parser, 7, _job);

@@ -1,12 +1,11 @@
 #ifndef PAWNDB_THREAD_MANAGER_H
 #define PAWNDB_THREAD_MANAGER_H
 
-#include <sys/socket.h>
-
 #include <atomic>
 
 #include "pawndb/schema/demo.h"
-#include "pawndb/types/parser.h"
+#include "pawndb/types/client_conn.h"
+#include "pawndb/types/job_buf.h"
 #include "pawndb/types/ret_channel.h"
 #include "pawndb/types/worker_table.h"
 
@@ -36,8 +35,7 @@ class ThreadManager {
 
  private:
   /** @brief Send reply to client */
-  void reply(OpAck _ack, buf_parser& _parser, const sockaddr_un& _client_addr,
-             const socklen_t _client_addr_len) noexcept;
+  void reply(OpAck _ack, job_buf& _parser, const client_conn& _conn) noexcept;
 
   /** @brief Database instance */
   Database& db_;

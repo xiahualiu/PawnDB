@@ -5,58 +5,11 @@
 
 #include "pawndb/params.h"
 #include "pawndb/result.h"
-#include "pawndb/types/unique_key.h"
+#include "pawndb/types/lock.h"
 
 namespace PawnDB {
 
-/** @brief Lock operation error codes */
-enum class LockError {
-  None,     /**< Operation successful */
-  Full,     /**< Lock table full */
-  NotFound, /**< Lock not found */
-  Conflict  /**< Lock already held */
-};
-
 class LockRecordIterator;
-
-/**
- * @brief Lock entry storing lock information
- */
-class lock_entry {
- public:
-  using key_t = unique_key; /**< Key type alias */
-
-  /** @brief Default constructor creates invalid entry */
-  constexpr lock_entry() noexcept
-      : key_(),
-        type_(LockType::EXCLUSIVE),
-        is_used_(false),
-        is_deleted_(false) {}
-
-  /** @brief Construct lock entry with values
-   *  @param _key Tuple key
-   *  @param _type Lock type */
-  lock_entry(const unique_key& _key, LockType _type) noexcept;
-
-  // Copyable
-  lock_entry(const lock_entry& other) noexcept;
-  lock_entry& operator=(const lock_entry& other) noexcept;
-
-  /** @brief Get lock type */
-  LockType lock_type() const noexcept;
-
-  /** @brief Get lock key */
-  const unique_key& key() const noexcept;
-
- private:
-  unique_key key_;  /**< Tuple identifier */
-  LockType type_;   /**< Lock mode */
-  bool is_used_;    /**< Usage flag */
-  bool is_deleted_; /**< Deletion flag */
-
-  friend class lock_list;
-  friend class LockRecordIterator;
-};
 
 /**
  * @brief Fixed-size table storing transaction locks
@@ -73,13 +26,8 @@ class lock_list {
   using table_r = Result<lock_entry&, LockError>;
 
   /** @brief Result type for lock queries */
-  using LockR = Result<const lock_entry&, LockError>;
+  using lock_r = Result<const lock_entry&, LockError>;
 
- private:
-  /** @brief Maximum locks per transaction */
-  constexpr static std::size_t N = MAX_LOCK_PER_TRANSACTION;
-
- public:
   /** @brief Initialize empty lock table */
   constexpr lock_list() noexcept : locks_(), size_(0), next_() {}
 
@@ -106,7 +54,7 @@ class lock_list {
   /** @brief Get lock information
    *  @param key Key to query
    *  @return Result with lock or error */
-  LockR get_lock(const unique_key& key) noexcept;
+  lock_r get_lock(const unique_key& key) noexcept;
 
   /** @brief Get iterator to first lock
    *  @return Iterator positioned at first valid lock */
@@ -147,9 +95,9 @@ class lock_list {
   bool full() const noexcept;
 
  private:
-  std::array<lock_entry, N> locks_; /**< Lock storage */
-  std::size_t size_;                /**< Current lock count */
-  unique_key next_;                 /**< Next free key */
+  std::array<lock_entry, MAX_LOCK_PER_TRANSACTION> locks_; /**< Lock storage */
+  std::size_t size_; /**< Current lock count */
+  unique_key next_;  /**< Next free key */
 
   friend class LockRecordIterator;
 };
