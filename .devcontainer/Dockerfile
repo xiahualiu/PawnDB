@@ -54,6 +54,7 @@ RUN --mount=type=secret,id=gh_token,required=true,uid=1000,gid=1000,mode=0400 \
     test -s /run/secrets/gh_token \
     || (echo "Error: required secret 'gh_token' is missing or empty at /run/secrets/gh_token" >&2; exit 1) \
     && gh auth login --with-token < /run/secrets/gh_token \
-    && gh auth status
+    && gh auth status \
+    && gh auth setup-git
 
 WORKDIR /workspaces
